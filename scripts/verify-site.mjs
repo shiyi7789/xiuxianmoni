@@ -101,6 +101,23 @@ chk('rel=canonical', /<link rel="canonical"/.test(H), '');
 chk('Open Graph 三件套', /og:title/.test(H) && /og:description/.test(H) && /og:image/.test(H), '');
 chk('JSON-LD 结构化数据', /application\/ld\+json/.test(H) && /"@type":"VideoGame"/.test(H), 'VideoGame');
 chk('theme-color 区分明暗', (H.match(/name="theme-color"/g) || []).length >= 2, 'light + dark');
+/* 真实域名守卫：防止带着 example.com 占位域名上线（会把 SEO 权重指向别人） */
+const HOST = 'xiuxianmoni.me';
+const Hclean = H.replace(/<!--[\s\S]*?-->/g, '');   /* 去掉注释再校验，避免被注释里的示例干扰 */
+chk('canonical 已指向真实域名', Hclean.indexOf('canonical" href="https://' + HOST + '/"') >= 0, HOST);
+chk('og:url 已指向真实域名', Hclean.indexOf('<meta property="og:url" content="https://' + HOST + '/"') >= 0, '');
+chk('JSON-LD 含真实域名 url', Hclean.indexOf('"url":"https://' + HOST + '/"') >= 0, '');
+chk('全站无 example.com 残留', !/example\.com/.test(Hclean + bodies['/robots.txt'].text + bodies['/sitemap.xml'].text), '');
+chk('robots.txt 的 Sitemap 已指向真实域名', bodies['/robots.txt'].text.indexOf('https://' + HOST + '/sitemap.xml') >= 0, '');
+chk('sitemap.xml 的两个 loc 均为真实域名', (bodies['/sitemap.xml'].text.match(new RegExp('https://' + HOST.replace('.', '\\.'), 'g')) || []).length >= 2, '');
+/* og:image 若已设置，文件必须真实存在 —— 指向 404 比不设置更糟 */
+const ogImg = (Hclean.match(/<meta property="og:image" content="([^"]+)"/) || [])[1];
+if (ogImg) {
+  const rel = ogImg.replace('https://' + HOST + '/', '');
+  chk('og:image 指向的文件真实存在', existsSync(join(SITE, rel)), rel);
+} else {
+  ok('og:image 未设置（可选；分享卡片显示标题+描述，不会出现空白图）', '');
+}
 
 const h1s = H.match(/<h1[\s>]/g) || [];
 chk('恰好一个 h1', h1s.length === 1, h1s.length + ' 个');

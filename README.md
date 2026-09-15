@@ -84,14 +84,23 @@ git push
 
 ## 部署
 
-发布单元是 `site/` 目录。各平台配置：
+发布单元是 `site/` 目录，目标域名 **<https://xiuxianmoni.me>**（阿里云注册，DNS 在阿里云云解析）。
 
-| 平台 | Build command | 输出 / 发布目录 |
-|---|---|---|
-| Cloudflare Pages | 留空 | `site` |
-| Netlify | 留空 | `site` |
-| Vercel | 留空 | 已由根目录 `vercel.json` 声明 `outputDirectory: site` |
-| GitHub Pages | 见 `.github/workflows/pages.yml` | 由 Actions 打包 `site/` |
+| 平台 | Build command | 输出 / 发布目录 | 需要备案 |
+|---|---|---|---|
+| Vercel（推荐） | 留空 | 已由根目录 `vercel.json` 声明 `outputDirectory: site` | 否 |
+| Cloudflare Pages | 留空 | `site`（需把域名 NS 迁到 Cloudflare） | 否 |
+| Netlify | 留空 | `site` | 否 |
+| GitHub Pages | 见 `.github/workflows/pages.yml` | 由 Actions 打包 `site/` | 否 |
+| 阿里云 OSS / CDN / ECS | — | — | **需要 ICP 备案** |
+
+> **不需要服务器。** 本站没有后端——游戏逻辑全部在浏览器里执行，存档存在访客本机的 `localStorage`，
+> 服务端零存储、零数据库。因此只需**免费静态托管**（CDN 边缘节点直接返回文件），
+> 不必购买 ECS / VPS / 虚拟主机，选用海外平台时也无需 ICP 备案。
+>
+> 选 Vercel 的原因：根域名按 DNS 规范不能用 CNAME（RFC 1034），Vercel 提供标准 **A 记录**，
+> 因此可以保留阿里云的 NS 与现有解析记录，改动最小。域名绑定的完整步骤（含 DNS 记录表、
+> 备案判断、验证命令）见 [`部署指引.md`](./部署指引.md) 第 4 步。
 
 ### 「更新即实时生效」需要三段机制同时成立
 
