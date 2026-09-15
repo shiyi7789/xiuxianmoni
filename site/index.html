@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>修仙模拟器 · 文字版 — 单文件离线修仙放置游戏</title>
-<meta name="description" content="一款零依赖、纯离线的文字修仙游戏：13 大境界 41 层、五品装备与流光、妖兽秘境、轮回传承、42 项成就与 25 段奇遇。打开即玩，进度自动存在本机，无需注册。">
+<meta name="description" content="一款零依赖、纯离线的文字修仙游戏：13 大境界 41 层、五品装备与流光、妖兽秘境、轮回传承、42 项成就、25 段奇遇与 30 部功法。打开即玩，进度自动存在本机，无需注册。">
 <meta name="keywords" content="修仙模拟器,文字游戏,放置游戏,离线游戏,修仙,单文件网页游戏">
 <meta name="author" content="修仙模拟器">
 <meta name="theme-color" content="#efe7d8" media="(prefers-color-scheme: light)">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="修仙模拟器 · 文字版">
 <meta property="og:title" content="修仙模拟器 · 文字版">
-<meta property="og:description" content="零依赖纯离线的文字修仙游戏。13 大境界 41 层，装备流光、秘境妖王、轮回传承、成就气运与 25 段奇遇。打开即玩。">
+<meta property="og:description" content="零依赖纯离线的文字修仙游戏。13 大境界 41 层，装备流光、秘境妖王、轮回传承、成就气运、25 段奇遇与 30 部功法。打开即玩。">
 <meta property="og:url" content="https://xiuxianmoni.me/">
 <meta property="og:locale" content="zh_CN">
 <!-- og:image 暂未设置。理由：指向不存在的文件会让分享卡片渲染成空白图，不如不设。
@@ -160,7 +160,7 @@
   .card h3{margin:0 0 6px;font-size:var(--h3);display:flex;align-items:center;gap:9px}
   .card p{margin:0;font-size:14px;color:var(--ink2);line-height:1.7}
   .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--zhu)}
-  .d2{background:var(--jin)} .d3{background:var(--qing)} .d4{background:var(--zhu2)} .d5{background:var(--ink3)} .d6{background:var(--ink4)}
+  .d2{background:var(--jin)} .d3{background:var(--qing)} .d4{background:var(--zhu2)} .d5{background:var(--ink3)} .d6{background:var(--ink4)} .d7{background:var(--zi)}
 
   /* ---------- 玩法循环 ---------- */
   .loop{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));counter-reset:lp}
@@ -284,6 +284,7 @@
           <li><b>13</b> 大境界 · <b>41</b> 层</li>
           <li><b>42</b> 项成就</li>
           <li><b>25</b> 段奇遇</li>
+          <li><b>30</b> 部功法</li>
           <li><b>5</b> 品装备 · 仙品流光</li>
           <li>离线可玩</li>
         </ul>
@@ -314,7 +315,7 @@
     <div class="wrap">
       <div class="sec-h">
         <h2>有 什 么 可 玩</h2>
-        <p>六条并行成长线：修为、装备、秘境、轮回、成就、奇遇。它们互不替代，也互不打架。</p>
+        <p>七条并行成长线：修为、装备、秘境、轮回、成就、奇遇、功法。它们互不替代，也互不打架。</p>
       </div>
       <div class="grid feats">
         <article class="card">
@@ -340,6 +341,11 @@
         <article class="card">
           <h3><span class="dot d6" aria-hidden="true"></span>奇遇与抉择</h3>
           <p>25 段奇遇按大境界分段，各有专属内容。每次弹出两三条选项，<strong>各有所得、不可兼得</strong>：稳妥的拿小利，冒险的可能翻倍，也可能重伤。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d7" aria-hidden="true"></span>功法 · 悟道录</h3>
+          <p>30 部功法分<strong>心法</strong>与<strong>术法</strong>两类。心法只可运转一部、术法只备两式——<strong>习得多寡不等同于强弱，如何取舍才是关键</strong>。
+             心法给属性、修速与突破率，术法则让你在「灵力斩」之外另出二式。已习得的功法刻入道基、轮回不灭。</p>
         </article>
       </div>
     </div>
@@ -487,7 +493,7 @@
     <a href="#notice">游玩声明</a>
     <a href="#faq">常见问题</a>
     <span style="margin-left:auto" class="muted">
-      不盈利 · 无广告 · 免费游玩　|　版本 <span id="verText">2026.09.15-2052</span>
+      不盈利 · 无广告 · 免费游玩　|　版本 <span id="verText">2026.09.15-2228</span>
     </span>
   </div>
 </footer>

@@ -4,7 +4,9 @@
  * 用法：
  *   node scripts/release.mjs "本次更新说明"
  *
- * 它做三件事：
+ * 它做四件事：
+ *   0. 先跑一次构建：src/**（多模块源码） → xiuxian.html（单文件成品）
+ *      ★ 日常改的是 src/ 下的模块，不再直接手改 xiuxian.html
  *   1. 把工作区根目录的 xiuxian.html 同步到 site/xiuxian.html
  *   2. 计算 sha256 与字节数，写入 site/version.json（供前端轮询比对）
  *   3. 把版本号回填进 site/index.html 的页脚占位，并刷新 sitemap 的 lastmod
@@ -15,6 +17,7 @@ import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC  = join(root, 'xiuxian.html');
@@ -31,6 +34,17 @@ process.on('exit', () => {
     writeFileSync(join(root, '_release_out.txt'), text, 'utf8');
   } catch (e) {}
 });
+
+/* 0) 构建：模块源码 → 单文件成品 */
+const bld = spawnSync(process.execPath, [join(root, 'scripts', 'build.mjs')], { encoding: 'utf8', cwd: root });
+if (bld.status !== 0) {
+  say('✗ 构建失败，已中止发版');
+  say((bld.stdout || '') + (bld.stderr || ''));
+  console.log(log.join('\n'));
+  writeFileSync(join(root, '_release_out.txt'), log.join('\n'), 'utf8');
+  process.exit(1);
+}
+say('0) 已构建 ' + (String(bld.stdout || '').trim().split('\n')[0] || 'xiuxian.html'));
 
 if (!existsSync(SRC)) { say('✗ 找不到游戏源文件：' + SRC); process.exit(1); }
 

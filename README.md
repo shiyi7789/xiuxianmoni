@@ -2,10 +2,11 @@
 
 一款**单文件、零依赖、纯离线**的文字修仙放置游戏，外加一个响应式落地页站点。
 
-从炼气一层走到天道，共 **13 大境界 41 层**。打坐吐纳攒修为，冲击境界求突破，斩妖入秘境换一身法器。
+从炼气一层走到天道，共 **13 大境界 41 层**。打坐吐纳攒修为，冲击境界求突破，斩妖入秘境换一身法器，
+再修一部**功法**——心法只运转一部、术法只备两式，取舍由你。
 
 - **无需注册**：进度存在浏览器 `localStorage`，不上传任何服务器
-- **离线可玩**：游戏本体是一个约 163 KB 的单文件 HTML，另存即用
+- **离线可玩**：游戏本体是一个约 204 KB 的单文件 HTML，另存即用
 - **无第三方请求**：没有字体 CDN、没有统计脚本、没有广告
 - **移动优先**：窄屏下页签变底部导航，道体与背包收进上滑抽屉
 
@@ -14,18 +15,31 @@
 ## 目录结构
 
 ```
-├─ xiuxian.html              ← 游戏源文件（日常只改这个）
-├─ site/                     ← ★ 发布目录，各平台上线这个目录
+├─ src/                      ← ★ 日常改这里（40 个 ES 模块，见「开发日志.md」）
+│  ├─ core/                  ← 工具 / 状态 / 元进度 / 存档
+│  ├─ data/                  ← 纯数据表（装备·境界·妖兽·秘境·成就·奇遇·功法）
+│  ├─ sys/                   ← 玩法系统（修炼·突破·战斗·秘境·坊市·轮回·功法…）
+│  ├─ ui/                    ← 渲染 / 弹层 / 主题 / 抽屉 / 面板
+│  ├─ style/index.css        ← 全部样式与设计令牌
+│  ├─ template/              ← HTML 外壳（head / body / 脚本头尾）
+│  └─ manifest.json          ← 模块拼接顺序（加新模块要登记在这里）
+│
+├─ xiuxian.html              ← ★ 构建产物（单文件成品，**不要手改**）
+├─ scripts/
+│  ├─ build.mjs              ← 零依赖构建：src/ → xiuxian.html（可 `--check` 做「一字未改」校验）
+│  ├─ release.mjs            ← 一键发版（内部先跑 build）
+│  ├─ verify-site.mjs        ← 上线前自检（74 项 HTTP / SEO / a11y / 性能 / 部署配置）
+│  └─ connect-github.ps1     ← 一键连远端仓库
+│
+├─ site/                     ← ★ 发布单元，各平台上线这个目录
 │  ├─ index.html             ← 响应式落地页
 │  ├─ xiuxian.html           ← 游戏本体副本（由发版脚本自动同步）
 │  ├─ version.json           ← 版本清单（sha256 + 字节数），实时更新的触发点
 │  ├─ _headers               ← 缓存与安全响应头（Cloudflare Pages / Netlify）
-│  ├─ 404.html
-│  └─ robots.txt / sitemap.xml
-├─ scripts/
-│  ├─ release.mjs            ← 一键发版：同步游戏 + 生成版本号 + 回填首页
-│  └─ verify-site.mjs        ← 上线前自检（56 项 HTTP / SEO / a11y / 性能）
-├─ regression-test.js        ← 游戏逻辑回归测试（101 项断言）
+│  └─ 404.html / robots.txt / sitemap.xml
+│
+├─ regression-test.js        ← 游戏逻辑回归测试（126 项断言，固定随机种子）
+├─ 开发日志.md                ← 架构决策、改动历史、给下一个 AI 的交接说明
 ├─ vercel.json               ← Vercel 配置（outputDirectory: site）
 └─ 部署指引.md                ← 部署与「实时更新」完整指引
 ```
@@ -34,11 +48,14 @@
 
 ## 本地运行
 
-项目零依赖、零构建，直接用浏览器打开 `site/index.html` 即可。
-若需要模拟真实服务器（`fetch('version.json')` 在 `file://` 下会被 CORS 拦），起一个静态服务：
+项目零依赖、零构建**运行**，直接用浏览器打开 `site/index.html` 即可。
+改代码时的流程是「改 `src/` → 构建 → 刷新浏览器」：
 
 ```bash
-# 任选其一
+# 把 src/ 的模块拼回单文件 xiuxian.html（零依赖，不需要 npm install）
+node scripts/build.mjs
+
+# 若需模拟真实服务器（fetch('version.json') 在 file:// 下会被 CORS 拦），起一个静态服务
 node -e "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{let u=decodeURIComponent(new URL(q.url,'http://x').pathname);if(u==='/')u='/index.html';const fp=p.join('site',u);f.readFile(fp,(e,d)=>{if(e){s.writeHead(404);s.end('404');return}s.writeHead(200,{'content-type':{'html':'text/html','json':'application/json','xml':'application/xml'}[fp.split('.').pop()]||'application/octet-stream'}).end(d)})}).listen(8080,()=>console.log('http://127.0.0.1:8080'))"
 ```
 
@@ -49,23 +66,35 @@ node -e "const h=require('http'),f=require('fs'),p=require('path');h.createServe
 ## 开发与验证
 
 ```bash
-# 游戏逻辑回归测试（101 项断言）
+# 构建（src/ → xiuxian.html）
+node scripts/build.mjs
+
+# 游戏逻辑回归测试（126 项断言）
 node regression-test.js xiuxian.html 回归测试结果.txt
 
-# 站点质量自检（56 项，会本地起服务并真实抓取页面）
+# 站点质量自检（74 项，会本地起服务并真实抓取页面）
 node scripts/verify-site.mjs
 ```
 
-两套都必须 **0 失败** 才提交。回归测试的做法是：抽出游戏 `<script>`，用 `new Function` 注入自制 DOM/BOM 桩，跑断言并**回放全部内联 `onclick` 处理器**。
+两套测试都必须 **0 失败** 才提交。回归测试的做法是：抽出游戏 `<script>`，用 `new Function` 注入自制 DOM/BOM 桩，
+跑断言、**回放全部内联 `onclick` 处理器**，并**固定随机种子**（`XX_SEED` 环境变量可换一条随机路径）：
+
+```bash
+XX_SEED=9999 node regression-test.js xiuxian.html 回归测试结果.txt   # 复现某条随机路径
+```
+
+> 为什么不用打包器：本游戏的分发形态是「一个 HTML 文件、双击即用」。`scripts/build.mjs` 只做一件事——
+> 把 `src/` 的模块按 `manifest.json` 的顺序拼回一个 `<script>` 并重新内联 CSS。构建**零依赖**，
+> 不需要 `npm install`，也因此不会让 Vercel 误判成前端框架项目（详见 `开发日志.md`）。
 
 ---
 
 ## 发版流程
 
-改完 `xiuxian.html` 之后：
+改完 `src/` 之后：
 
 ```bash
-# 1) 同步游戏到站点 + 重算 sha256 写入 version.json + 回填首页版本号 + 刷 sitemap
+# 1) 构建 + 同步到站点 + 重算 sha256 写入 version.json + 回填首页版本号 + 刷 sitemap
 node scripts/release.mjs "本次更新说明"
 
 # 2) 自检
@@ -77,7 +106,7 @@ git commit -m "release: 本次更新说明"
 git push
 ```
 
-> **`release.mjs` 是「实时更新」的唯一触发点。** 它重算 sha256 并写进 `site/version.json`；
+> **`release.mjs` 是「实时更新」的唯一触发点。** 它内部先跑构建，再把 sha256 写进 `site/version.json`；
 > 忘了跑，线上文件会更新，但已经打开页面的访客收不到升级提示。
 
 ---

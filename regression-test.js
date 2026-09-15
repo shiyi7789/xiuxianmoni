@@ -12,6 +12,14 @@ const file = process.argv[2];
 const src = fs.readFileSync(file, 'utf8');
 const js = src.slice(src.indexOf('<script>') + 8, src.lastIndexOf('</script>'));
 
+/* ---- 固定随机序列：回归结果必须可复现（换种子 = 换一条随机路径） ----
+   环境变量 XX_SEED 可指定种子，便于复现某个失败路径 */
+let __seed = (Number(process.env.XX_SEED) || 20260915) >>> 0;
+Math.random = function () {
+  __seed = (__seed * 1664525 + 1013904223) >>> 0;
+  return __seed / 4294967296;
+};
+
 /* ---- DOM / BOM 桩 ---- */
 const allEls = [];
 function mkEl(tag) {
@@ -191,7 +199,42 @@ const boot = new Function(
   showNotice: showNotice,
   noticeHtml: noticeHtml,
   NOTICE_KEY: NOTICE_KEY,
-  NOTICE_VER: NOTICE_VER
+  NOTICE_VER: NOTICE_VER,
+  /* --- 功法 · 悟道录 --- */
+  gfDefs: GONGFA,
+  gfByKey: GF_BY_KEY,
+  gfMaxArr: GF_MAX,
+  gfSegName: GF_SEG_NAME,
+  gfSeg: gfSeg,
+  gfPool: gfPool,
+  gfRollDrop: gfRollDrop,
+  gfRollBook: gfRollBook,
+  gfBookPrice: gfBookPrice,
+  gfBuyBook: gfBuyBook,
+  gfLearn: gfLearn,
+  gfGrant: gfGrant,
+  gfLearned: gfLearned,
+  gfLearnedList: gfLearnedList,
+  gfEquip: gfEquip,
+  gfAllOff: gfAllOff,
+  gfLevel: gfLevel,
+  gfCost: gfCost,
+  gfExpCost: gfExpCost,
+  gfUpgrade: gfUpgrade,
+  gfBonus: gfBonus,
+  gfLuck: gfLuck,
+  gfSkill: gfSkill,
+  gfSkillMp: gfSkillMp,
+  gfEffectText: gfEffectText,
+  gfSanitizeS: gfSanitizeS,
+  gfSanitizeMeta: gfSanitizeMeta,
+  openGongfa: openGongfa,
+  completeDungeon: completeDungeon,
+  fightSkillA: fightSkillA,
+  fightSkillB: fightSkillB,
+  gfShopBook: gfShopBook,
+  restore: restore,
+  closeModal: closeModal
 };`
 );
 
@@ -207,6 +250,18 @@ try {
 
 const S = G.S, META = G.META;
 const el = id => doc.getElementById(id);
+
+/* 结束当前战斗，一律带上限，杜绝死循环。
+   注意：历练有 4% 概率撞上「妖王」，而妖王禁止遁走（战斗面板的「遁走」卡也是锁住的），
+   所以这里必须按 boss 与否选动作 —— 否则纯靠 flee 会永远打不完（2026-09-15 踩过这个坑）。 */
+function endCombat(max){
+  const cap = max || 6000;
+  let n = 0;
+  while(S().combat && n++ < cap){
+    G.fightAction(S().combat.m.boss ? 'atk' : 'flee');
+  }
+  return n;
+}
 
 log('=== A. 启动与基础渲染 ===');
 step('新号基础状态', () => 'lv=' + S().level + ' stones=' + S().stones + ' hp=' + S().hp);
@@ -564,7 +619,7 @@ step('战斗中左栏操作被拦住', () => {
   S().bag.push(G.makeItem('weapon', 1, 0));
   G.sellBagItem(S().bag[S().bag.length - 1].id);
   const ok = S().bag.length === before + 1;
-  while (S().combat) G.fightAction('flee');
+  endCombat();
   if (!ok) throw new Error('战斗中仍然卖出了装备');
   return '战中出售已被拦截';
 });
@@ -575,7 +630,7 @@ step('战斗面板服丹（走 fightPill）', () => {
   if (!S().combat) return '未遇敌（跳过）';
   const hp = S().hp;
   G.fightPill();
-  while (S().combat) G.fightAction('flee');
+  endCombat();
   return '气血 ' + hp + ' -> ' + S().hp + '（未突破上限）';
 });
 step('秘境全程：进入→搜寻→深入→妖王→贯通', () => {
@@ -1181,9 +1236,369 @@ step('战中 pillBox / slotRow / bagBox 均被锁定', () => {
   const stones = S().stones;
   G.sellEquipped('weapon', 0);
   if (S().stones !== stones) throw new Error('直接调用仍可卖出');
-  let g = 0;
-  while (S().combat && g++ < 60) G.fightAction('flee');
+  endCombat();
   return '丹药 / 卸下 / 出售按钮均已摘除，直接调用亦被拦截';
+});
+
+log('');
+log('=== P. 功法 · 悟道录 ===');
+/* 每一步自备状态：前面的「回放全部 onclick」会顺手买下/习得若干功法，
+   不清空已学清单的话，本节的断言会随随机路径漂移 */
+const resetGf = () => { META().gongfa.learned = []; META().gongfa.best = {}; G.newGame(); };
+step('功法表结构（30 部 / 心法术法各半 / 键唯一 / 段位齐备）', () => {
+  const A = G.gfDefs;
+  if (A.length !== 30) throw new Error('应为 30 部，实为 ' + A.length);
+  const keys = new Set(), xin = A.filter(g => g.kind === 'xin'), shu = A.filter(g => g.kind === 'shu');
+  if (xin.length !== 15 || shu.length !== 15) throw new Error('心法/术法应为 15/15，实为 ' + xin.length + '/' + shu.length);
+  for (const g of A) {
+    if (keys.has(g.k)) throw new Error('键重复 ' + g.k);
+    keys.add(g.k);
+    if (!(g.t >= 0 && g.t <= 4)) throw new Error('品阶越界 ' + g.k);
+    if (!(g.seg >= 0 && g.seg <= 4)) throw new Error('段位越界 ' + g.k);
+    if (!g.n || !g.d) throw new Error('缺名称或描述 ' + g.k);
+    if (g.kind === 'xin' && !g.p) throw new Error('心法缺基调 ' + g.k);
+    if (g.kind === 'shu' && !g.sk) throw new Error('术法缺技法 ' + g.k);
+  }
+  for (let s = 0; s <= 4; s++) {
+    if (A.filter(g => g.seg === s).length !== 6) throw new Error('第 ' + (s + 1) + ' 段应 6 部');
+    if (!xin.filter(g => g.seg === s).length || !shu.filter(g => g.seg === s).length) throw new Error('第 ' + (s + 1) + ' 段缺心法或术法');
+  }
+  return '30 部 · 心法 15 / 术法 15 · 五段各 6 部';
+});
+step('参悟上限与品阶系数单调', () => {
+  const m = G.gfMaxArr;
+  for (let i = 1; i < m.length; i++) if (!(m[i] >= m[i - 1])) throw new Error('上限非单调');
+  return '上限 ' + m.join(' / ') + ' 重';
+});
+step('段位随大境界切换（与奇遇分段一致）', () => {
+  G.newGame();
+  /* 段映射：g0~1→0(炼气·筑基) g2~3→1(金丹·元婴) g4~6→2(化神·炼虚·合体)
+             g7~9→3(大乘·渡劫·大罗) g10~12→4(准圣·圣人·天道) */
+  const probe = [[0, 0], [9, 0], [12, 1], [15, 1], [18, 2], [27, 3], [33, 3], [34, 4], [40, 4]];
+  const got = probe.map(([lv, want]) => {
+    S().level = lv;
+    const s = G.gfSeg();
+    if (s !== want) throw new Error('lv' + lv + ' 应为段' + want + '，实为段' + s);
+    if (s !== G.encSeg()) throw new Error('lv' + lv + ' 与奇遇分段口径不一致');
+    return lv + '→' + s;
+  });
+  return got.slice(0, 5).join(' · ') + ' … · 与奇遇分段完全一致';
+});
+step('习得后计入已学、可装备、可卸下', () => {
+  resetGf();
+  const key = 'gf_yinqi';
+  if (G.gfLearned(key)) throw new Error('初始不应已学');
+  if (!G.gfLearn(key)) throw new Error('习得失败');
+  if (!G.gfLearned(key)) throw new Error('已学标记缺失');
+  if (META().gongfa.learned.indexOf(key) < 0) throw new Error('未写入 META');
+  if (G.gfLearn(key)) throw new Error('重复习得应被拒');
+  /* 空槽自动运转 */
+  if (S().gongfa.xin !== key) throw new Error('心法空槽未自动运转');
+  G.gfEquip(key);
+  if (S().gongfa.xin !== null) throw new Error('再点未卸下');
+  G.gfEquip(key);
+  if (S().gongfa.xin !== key) throw new Error('未能重新运转');
+  return '习得→自动运转→卸下→复位 全通';
+});
+step('术法只容两部，第三部顶替最旧', () => {
+  resetGf();
+  const shu = G.gfDefs.filter(g => g.kind === 'shu').slice(0, 3).map(g => g.k);
+  shu.forEach(k => G.gfLearn(k, true));
+  if (S().gongfa.shu.indexOf(shu[0]) < 0 || S().gongfa.shu.indexOf(shu[1]) < 0) throw new Error('前两部未入槽');
+  S().gongfa.shu = [shu[0], shu[1]];
+  G.gfEquip(shu[2]);
+  if (S().gongfa.shu.indexOf(shu[2]) < 0) throw new Error('第三部未入槽');
+  if (S().gongfa.shu.indexOf(shu[0]) >= 0) throw new Error('未顶替最旧');
+  return '两槽固定，第三部顶替最旧';
+});
+step('参悟：灵石与修为双消耗、不足被拒、上限封顶', () => {
+  resetGf();
+  G.gfLearn('gf_tiegu', true);
+  S().stones = 0; S().exp = 9999999;
+  const lv0 = G.gfLevel('gf_tiegu');
+  G.gfUpgrade('gf_tiegu');
+  if (G.gfLevel('gf_tiegu') !== lv0) throw new Error('灵石不足仍可参悟');
+  S().stones = 99999999; S().exp = 0;
+  G.gfUpgrade('gf_tiegu');
+  if (G.gfLevel('gf_tiegu') !== lv0) throw new Error('修为不足仍可参悟');
+  S().stones = 99999999; S().exp = 99999999;
+  const c0 = G.gfCost('gf_tiegu'), e0 = G.gfExpCost('gf_tiegu');
+  G.gfUpgrade('gf_tiegu');
+  if (G.gfLevel('gf_tiegu') !== lv0 + 1) throw new Error('参悟未生效');
+  if (S().stones !== 99999999 - c0) throw new Error('灵石未按价扣除');
+  if (S().exp !== 99999999 - e0) throw new Error('修为未按价扣除');
+  const max = G.gfMaxArr[G.gfByKey['gf_tiegu'].t];
+  while (G.gfLevel('gf_tiegu') < max) G.gfUpgrade('gf_tiegu');
+  G.gfUpgrade('gf_tiegu');
+  if (G.gfLevel('gf_tiegu') !== max) throw new Error('超过上限');
+  return '双资源扣除正确，上限 ' + max + ' 重封顶';
+});
+step('心法加成进入 stats()，且不越界、不产生 NaN', () => {
+  resetGf();
+  G.gfAllOff();
+  const base = G.stats();
+  G.gfLearn('gf_taiyi', true);       /* 太乙玄清道：修速为主 */
+  S().gongfa.xin = 'gf_taiyi';
+  S().gongfa.lv['gf_taiyi'] = G.gfMaxArr[G.gfByKey['gf_taiyi'].t];
+  const on = G.stats();
+  if (!(on.cult > base.cult)) throw new Error('修速未提升');
+  if (!(on.hpMax > base.hpMax)) throw new Error('气血未提升');
+  for (const k of ['atk', 'def', 'crit', 'cult', 'speed', 'hpMax', 'mpMax']) {
+    if (typeof on[k] !== 'number' || !isFinite(on[k])) throw new Error(k + ' 异常 ' + on[k]);
+  }
+  const lv = S().gongfa.lv['gf_taiyi'], per = G.gfBonus().cult;
+  if (!(per > 0)) throw new Error('加成汇总为 0');
+  G.gfAllOff();
+  const off = G.stats();
+  if (Math.abs(off.cult - base.cult) > 0.001) throw new Error('卸下后未还原');
+  return '修速 ' + base.cult + '% → ' + on.cult + '%（满 ' + lv + ' 重）';
+});
+step('心法气运并入 fortune()，不新开乘区', () => {
+  resetGf();
+  G.gfAllOff();
+  META().ach = [];
+  META().up.luck = 0;
+  const f0 = G.fortune();
+  G.gfLearn('gf_tianji', true);      /* 天机演算术：缘法（气运） */
+  S().gongfa.xin = 'gf_tianji';
+  S().gongfa.lv['gf_tianji'] = G.gfMaxArr[G.gfByKey['gf_tianji'].t];
+  const gfl = G.gfLuck();
+  const f1 = G.fortune();
+  if (!(gfl > 0)) throw new Error('心法气运为 0');
+  /* fortune() 统一保留一位小数，故容差取 0.06 */
+  if (Math.abs(f1 - (f0 + gfl)) > 0.06) throw new Error('气运未并入统一乘区：' + f0 + ' + ' + gfl + ' ≠ ' + f1);
+  if (!(G.fortStone(10000) > 10000)) throw new Error('气运未作用于灵石收益');
+  if (!(G.luckBoost() > 0)) throw new Error('气运未作用于掉落运气');
+  G.gfAllOff();
+  return '心法气运 +' + gfl + '，气运 ' + f0 + ' → ' + f1;
+});
+step('术法提供战斗参数，未装备则回落基础灵力斩', () => {
+  resetGf();
+  G.gfAllOff();
+  if (G.gfSkill(0) !== null || G.gfSkill(1) !== null) throw new Error('未装备却有术法参数');
+  G.gfLearn('gf_sk_zhanfeng', true);
+  S().gongfa.shu = ['gf_sk_zhanfeng', null];
+  const sk = G.gfSkill(0);
+  if (!sk) throw new Error('术法参数缺失');
+  for (const k of ['mult', 'mpF', 'mpFlat']) if (typeof sk[k] !== 'number' || !isFinite(sk[k])) throw new Error(k + ' 异常');
+  if (!(sk.mult > 1)) throw new Error('倍率异常');
+  if (!(G.gfSkillMp(sk, 1000) > 0)) throw new Error('灵力消耗异常');
+  /* 满重后倍率应更高 */
+  S().gongfa.lv['gf_sk_zhanfeng'] = G.gfMaxArr[G.gfByKey['gf_sk_zhanfeng'].t];
+  const sk2 = G.gfSkill(0);
+  if (!(sk2.mult > sk.mult)) throw new Error('重数未提高术法威能');
+  return '倍率 ' + sk.mult + ' → 满重 ' + sk2.mult + '（原基础灵力斩为 2.3）';
+});
+step('术法在战斗中生效（连击/吸血各有其效）', () => {
+  const real = Math.random;
+  /* 用妖王当靶子（血厚，一击打不死）；随机固定为 0.9（不暴击） */
+  const putFoe = () => {
+    resetGf();
+    S().level = 20;
+    S().hp = G.__eval('stats().hpMax');
+    S().mp = G.__eval('stats().mpMax');
+    S().combat = { m: G.__eval('makeMonster(4,true)'), ctx: { type:'test' }, turn:1 };
+  };
+  try {
+    Math.random = () => 0.9;
+    /* 基础灵力斩 */
+    putFoe();
+    const hpA = S().combat.m.hp;
+    G.fightSkill();
+    const dmgBase = hpA - S().combat.m.hp;
+    if (!(dmgBase > 0)) throw new Error('基础灵力斩无伤害');
+    S().combat = null;
+    /* 术法「两仪剑」：两段 */
+    putFoe();
+    G.gfLearn('gf_sk_liangyi', true);
+    S().gongfa.shu = ['gf_sk_liangyi', null];
+    const hpB = S().combat.m.hp;
+    const logN = S().logs.length;
+    G.fightSkillA();
+    const dmgLian = hpB - S().combat.m.hp;
+    const seg = S().logs.slice(logN).map(l => l.t).join('|');
+    if (!(dmgLian > dmgBase)) throw new Error('连击伤害未高于基础：' + dmgLian + ' vs ' + dmgBase);
+    if (seg.indexOf('2 段合计') < 0) throw new Error('未按两段结算');
+    S().combat = null;
+    /* 术法「太阴血噬」：回血 */
+    putFoe();
+    G.gfLearn('gf_sk_taiyin', true);
+    S().gongfa.shu = ['gf_sk_taiyin', null];
+    S().hp = Math.round(G.__eval('stats().hpMax') * 0.3);
+    const hpSelf = S().hp;
+    const logN2 = S().logs.length;
+    G.fightSkillA();
+    const seg2 = S().logs.slice(logN2).map(l => l.t).join('|');
+    if (seg2.indexOf('气血 +') < 0) throw new Error('血噬未回血');
+    S().combat = null;
+    /* 未装备术法时回落基础灵力斩 */
+    G.gfAllOff();
+    if (G.gfSkill(0) || G.gfSkill(1)) throw new Error('卸下后仍取到术法');
+    return '基础 ' + dmgBase + ' → 连击 ' + dmgLian + '，血噬回血 ' + hpSelf + ' 起效';
+  } finally { Math.random = real; }
+});
+step('秘境妖王必遗功法；已全习得则折算灵石', () => {
+  /* 直接驱动「贯通结算」，避免被中途阵亡等随机分支干扰（全流程走通由 G 节负责） */
+  const run = () => {
+    G.__eval('S.dungeon = { idx:0, floor:SECRETS[0].floors, total:SECRETS[0].floors, searched:false, gained:0, items:0 }');
+    const logN = S().logs.length;
+    G.completeDungeon();
+    return S().logs.slice(logN).map(l => l.t).join('|');
+  };
+  resetGf();
+  S().level = 30; S().stones = 99999;
+  const before = G.gfLearnedList().length;
+  let seg = run();
+  const after = G.gfLearnedList().length;
+  if (after <= before) throw new Error('贯通后未得功法（' + before + ' → ' + after + '）');
+  if (seg.indexOf('石壁') < 0) throw new Error('缺少「石壁得法」的叙述');
+  /* 全部习得之后，应折算为灵石而不是静默无事 */
+  G.gfDefs.forEach(g => G.gfLearn(g.k, true));
+  seg = run();
+  if (seg.indexOf('早已参透') < 0) throw new Error('已全习得时未折算灵石');
+  return '已学 ' + before + ' → ' + after + ' 部；全习得时折算灵石';
+});
+step('藏经阁：进货两部、买下即习得、价随品阶', () => {
+  resetGf();
+  S().level = 40;                 /* 段 4：全部功法都在池子里 */
+  S().stones = 0;
+  G.refreshShop(true);
+  const books = G.gfShopBook();
+  if (books.length !== 2) throw new Error('藏经阁应上架两部，实为 ' + books.length);
+  /* 注意：gfShopBook() 返回的就是 S.shopBook 本体，买走会 splice，故先取值 */
+  const key0 = books[0], key1 = books[1];
+  if (!G.gfByKey[key0] || !G.gfByKey[key1]) throw new Error('货架含非法键');
+  if (G.gfLearned(key0)) throw new Error('货架不应摆已习得者');
+  const gf = G.gfByKey[key0];
+  const price = G.gfBookPrice(gf);
+  G.gfBuyBook(0);
+  if (G.gfLearned(key0)) throw new Error('灵石不足仍买下');
+  S().stones = price;
+  G.gfBuyBook(0);
+  if (!G.gfLearned(key0)) throw new Error('购买后未习得（key=' + key0 + ' 价=' + price + ' 余石=' + S().stones + '）');
+  if (S().stones !== 0) throw new Error('未按价扣款，余 ' + S().stones);
+  if (G.gfShopBook().length !== 1) throw new Error('买走后未从货架移除');
+  if (G.gfShopBook()[0] !== key1) throw new Error('买错了一部');
+  const hi = G.gfBookPrice(G.gfDefs.filter(g => g.t === 4)[0]);
+  const lo = G.gfBookPrice(G.gfDefs.filter(g => g.t === 0)[0]);
+  if (!(hi > lo)) throw new Error('价格未随品阶递增');
+  return '两部上架 · 神品 ' + hi + ' > 凡品 ' + lo + ' · 买下即习得';
+});
+step('存档往返：功法重数、装备槽与藏经阁货架都不丢', () => {
+  resetGf();
+  S().stones = 999999; S().exp = 999999;
+  G.gfLearn('gf_liuyun', true);
+  G.gfLearn('gf_sk_xuangui', true);
+  S().gongfa.xin = 'gf_liuyun';
+  S().gongfa.shu = ['gf_sk_xuangui', null];
+  S().gongfa.lv['gf_liuyun'] = 2;
+  G.gfUpgrade('gf_liuyun');
+  G.refreshShop(true);
+  const bk = G.gfShopBook().slice();
+  const lv = S().gongfa.lv['gf_liuyun'];
+  const d = G.saveData();
+  G.newGame();
+  if (S().gongfa.xin !== null) throw new Error('新建号未清空装备槽');
+  if (!G.restore(d)) throw new Error('restore 失败');
+  if (S().gongfa.xin !== 'gf_liuyun') throw new Error('心法槽未还原');
+  if (S().gongfa.shu[0] !== 'gf_sk_xuangui') throw new Error('术法槽未还原');
+  if (S().gongfa.lv['gf_liuyun'] !== lv) throw new Error('重数未还原');
+  if (S().shopBook.join() !== bk.join()) throw new Error('藏经阁货架未还原');
+  /* 存档码往返（含 META 的已学清单） */
+  const code = G.exportCode();
+  G.wipeAll();
+  if (G.gfLearnedList().length !== 0) throw new Error('抹除后已学清单应清空');
+  G.importSave(code);
+  if (!G.gfLearned('gf_liuyun') || !G.gfLearned('gf_sk_xuangui')) throw new Error('存档码未还原已学功法');
+  return '心法/术法/重数 ' + lv + ' + 货架 ' + bk.length + ' 部 + 存档码均已还原';
+});
+step('旧存档（无功法字段）可平滑升级', () => {
+  const d = { v:2, level:5, exp:0, day:3, stones:100, hp:10, mp:10,
+    equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
+    bag:[], pills:{}, logs:[], shop:[], stat:{} };
+  if (!G.__eval('restore(' + JSON.stringify(d) + ')')) throw new Error('旧存档读入失败');
+  if (!S().gongfa || S().gongfa.xin !== null || !Array.isArray(S().gongfa.shu)) throw new Error('未补默认功法字段');
+  if (!Array.isArray(S().shopBook)) throw new Error('未补藏经阁字段');
+  G.stats();                                   /* 不能炸 */
+  return '缺字段自动补全，stats() 正常';
+});
+step('清洗器拒绝非法键与越界重数', () => {
+  const s = G.gfSanitizeS({ xin:'不存在的功法', shu:['gf_sk_yuqi','乱码',5], lv:{ 'gf_yinqi': 999, '野键': 3, 'gf_sk_yuqi': 1 } });
+  if (s.xin !== null) throw new Error('非法心法未被剔除');
+  if (s.shu[0] !== 'gf_sk_yuqi' || s.shu[1] !== null) throw new Error('术法槽清洗异常');
+  if (s.lv['gf_yinqi'] !== G.gfMaxArr[0]) throw new Error('重数未按上限截断');
+  if (s.lv['野键'] !== undefined) throw new Error('非法键未被剔除');
+  const m = G.gfSanitizeMeta({ learned:['gf_yinqi','gf_yinqi','野键',7], best:{ 'gf_yinqi': 99, '野': 1 } });
+  if (m.learned.length !== 1) throw new Error('已学清单未去重/过滤');
+  if (m.best['gf_yinqi'] !== G.gfMaxArr[0]) throw new Error('best 未截断');
+  return '非法键 / 重复 / 越界均已拦截';
+});
+step('功法随轮回留存（悟道不灭），重数归零', () => {
+  resetGf();
+  G.gfLearn('gf_yinqi', true);
+  G.gfLearn('gf_danxia', true);
+  S().gongfa.xin = 'gf_danxia';
+  S().gongfa.lv['gf_danxia'] = 3;
+  const n = G.gfLearnedList().length;
+  G.doRebirth();
+  if (G.gfLearnedList().length !== n) throw new Error('轮回复习得清单丢失');
+  if (!G.gfLearned('gf_danxia')) throw new Error('轮回后应仍已习得');
+  if (G.gfLevel('gf_danxia') !== 0) throw new Error('重数应归零');
+  if (S().gongfa.xin !== null) throw new Error('装备槽应清空');
+  return '已学 ' + n + ' 部留存 · 重数归零 · 装备清空';
+});
+step('悟道录面板可打开且列出全部功法', () => {
+  resetGf();
+  G.gfLearn('gf_yinqi', true);
+  G.openGongfa();
+  const html = el('modalRoot').innerHTML || '';
+  if (html.indexOf('悟 道 录') < 0) throw new Error('面板标题缺失');
+  const miss = G.gfDefs.filter(g => html.indexOf(g.n) < 0);
+  if (miss.length) throw new Error('面板缺 ' + miss.length + ' 部（如 ' + miss[0].n + '）');
+  if (html.indexOf('参 悟') < 0) throw new Error('缺参悟按钮');
+  if (html.indexOf('style="color:#') >= 0) throw new Error('面板输出内联色值');
+  G.closeModal();
+  return '面板 ' + html.length + ' 字符，30 部齐备';
+});
+step('左栏功法面板与顶栏入口就位', () => {
+  resetGf();
+  G.gfLearn('gf_zixiao', true);
+  S().gongfa.xin = 'gf_zixiao';
+  G.renderAll();
+  const box = el('gfBox').innerHTML;
+  if (box.indexOf('gf_zixiao') >= 0 || box.indexOf('紫霄雷书') < 0) throw new Error('左栏未显示当前心法');
+  if (box.indexOf('openGongfa()') < 0) throw new Error('左栏缺入口');
+  if (el('gfTag').textContent.indexOf('已 习') < 0) throw new Error('标题未显示已习数量');
+  if (el('utilBox').innerHTML.indexOf('功 法') < 0) throw new Error('移动端抽屉缺功法入口');
+  /* 战斗中不可参悟 */
+  S().combat = { m: G.__eval('makeMonster(1,false)'), ctx:{type:'test'}, turn:1 };
+  const lv = G.gfLevel('gf_zixiao');
+  S().stones = 9999999; S().exp = 9999999;
+  G.gfUpgrade('gf_zixiao');
+  if (G.gfLevel('gf_zixiao') !== lv) throw new Error('战斗中仍可参悟');
+  S().combat = null;
+  return '左栏 · 顶栏 · 抽屉入口齐备，战中参悟已锁';
+});
+step('道法纲要与藏经阁文案已含功法', () => {
+  resetGf();
+  G.showHelp();
+  const help = el('modalRoot').innerHTML || '';
+  if (help.indexOf('功 法') < 0) throw new Error('道法纲要缺功法章节');
+  if (help.indexOf('取舍') < 0) throw new Error('未说明取舍设计');
+  G.closeModal();
+  S().level = 40; S().stones = 99999;
+  G.refreshShop(true);
+  G.switchTab('shop');
+  const shop = el('actPanel').innerHTML;
+  if (shop.indexOf('藏 经 阁') < 0) throw new Error('坊市缺藏经阁');
+  if (shop.indexOf('openGongfa()') < 0) throw new Error('坊市缺悟道录入口');
+  /* 货架可能已被买空（已习得者不再上架），两种分支都要有正确渲染 */
+  if (G.gfShopBook().length > 0) {
+    if (shop.indexOf('gfBuyBook(') < 0) throw new Error('藏经阁有货却无可购按钮');
+  } else if (shop.indexOf('书 架 已 空') < 0) {
+    throw new Error('货架已空却缺少提示');
+  }
+  return '纲要 / 藏经阁文案齐备（当期货架 ' + G.gfShopBook().length + ' 部）';
 });
 
 log('');

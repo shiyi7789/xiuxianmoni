@@ -1,0 +1,112 @@
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">
+      <h1 class="serif">修 仙 模 拟 器</h1>
+      <span>L I T E R A R Y &nbsp; C U L T I V A T I O N</span>
+    </div>
+    <div class="top-stats">
+      <div class="ts realm"><i>境 界</i><b id="topRealm">炼气一层</b></div>
+      <div class="ts"><i>修 行 日</i><b id="topDay">第 1 日</b></div>
+      <div class="ts"><i>灵 石</i><b id="topStones">0</b></div>
+      <div class="ts"><i>战 力</i><b id="topPower">0</b></div>
+      <div class="ts luck" id="luckTs"><i>气 运</i><b id="topLuck">0</b></div>
+      <div class="ts" id="metaTs" style="display:none"><i>轮 回 印 记</i><b id="topMeta">0</b></div>
+    </div>
+    <div class="top-acts">
+      <button class="btn-mini act-d" onclick="showHelp()">道 法</button>
+      <button class="btn-mini act-d" onclick="openAchievements()" id="achBtn">成 就</button>
+      <button class="btn-mini act-d" onclick="openGongfa()" id="gfBtn">功 法</button>
+      <button class="btn-mini act-d" onclick="openSavePanel()">存 档</button>
+      <button class="btn-mini act-d" onclick="openHeritage()">传 承</button>
+      <button class="btn-mini act-d" onclick="openRebirth()">轮 回</button>
+      <button class="btn-mini act-d" onclick="toggleTheme()" id="themeBtn" title="明暗切换">☾</button>
+      <button class="btn-mini only-m" onclick="toggleSheet()" id="menuBtn" aria-label="状态与功能">≡</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- 左栏（移动端为底部抽屉） -->
+    <div class="left" id="leftPane">
+      <div class="sheetbar only-m">
+        <span class="grip"></span>
+        <span class="stitle serif">道 体 · 囊 中 之 物</span>
+        <button class="sclose" onclick="closeSheet()" aria-label="收起">✕</button>
+      </div>
+      <div class="panel util-panel">
+        <div class="ph">功 能</div>
+        <div class="pb" id="utilBox" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+      <div class="panel">
+        <div class="ph">道 体</div>
+        <div class="pb">
+          <div class="bar">
+            <div class="lab"><span>修 为</span><em id="expTxt">0 / 140</em></div>
+            <div class="track"><div class="fill f-exp" id="expBar" style="width:0%"></div></div>
+          </div>
+          <div class="bar">
+            <div class="lab"><span>气 血</span><em id="hpTxt">0 / 0</em></div>
+            <div class="track"><div class="fill f-hp" id="hpBar" style="width:0%"></div></div>
+          </div>
+          <div class="bar">
+            <div class="lab"><span>灵 力</span><em id="mpTxt">0 / 0</em></div>
+            <div class="track"><div class="fill f-mp" id="mpBar" style="width:0%"></div></div>
+          </div>
+          <div class="grid2">
+            <div><span>攻 击</span><b id="sAtk">0</b></div>
+            <div><span>防 御</span><b id="sDef">0</b></div>
+            <div><span>暴 击</span><b id="sCrit">0%</b></div>
+            <div><span>修 速</span><b id="sCult">+0%</b></div>
+            <div><span>遁 速</span><b id="sSpeed">+0%</b></div>
+            <div><span>气 运</span><b id="sLuck">0</b></div>
+            <div><span>斩 妖</span><b id="sKill">0</b></div>
+            <div><span>殒 身</span><b id="sDeath">0</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">法 器 <span id="autoTag" style="margin-left:auto;letter-spacing:.04em;color:var(--ink4);cursor:pointer" onclick="toggleAutoEquip()"></span></div>
+        <div class="pb" id="equipBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">坐 骑 <span id="mountTag" style="margin-left:auto;letter-spacing:.04em;color:var(--ink4)"></span></div>
+        <div class="pb" id="mountBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">功 法 <span id="gfTag" style="margin-left:auto;letter-spacing:.04em;color:var(--ink4)"></span></div>
+        <div class="pb" id="gfBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">丹 药</div>
+        <div class="pb" id="pillBox" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">储 物 袋 <span style="margin-left:auto;letter-spacing:0;color:var(--ink4)" id="bagCount"></span></div>
+        <div class="pb" id="bagBox" style="padding:6px 8px"></div>
+      </div>
+    </div>
+
+    <!-- 右栏 -->
+    <div class="right">
+      <div class="tabs" id="tabs"></div>
+      <div class="panel actwrap" id="actPanel"></div>
+      <div class="panel logpanel">
+        <div class="ph">天 机 录</div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="veil" onclick="closeSheet()"></div>
+<input type="file" id="impFile" accept=".txt,.json,text/plain" style="display:none" onchange="onImportFile(this)">
+<div id="modalRoot"></div>
+
+<script>

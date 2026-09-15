@@ -1,7 +1,9 @@
 name: CI
 
-# 每次推送与 PR 都跑两套测试，守住「实时更新」的关键不变量：
-# 有人改了 xiuxian.html 却忘了跑 release.mjs，这里会直接失败。
+# 每次推送与 PR 都跑三件事，守住「源码 = 成品」的关键不变量：
+#   1. 源码能构建出成品（scripts/build.mjs）
+#   2. 构建产物与提交的 xiuxian.html 完全一致（改了 src/ 却忘了跑构建，这里会直接失败）
+#   3. 有人改了 xiuxian.html 却忘了跑 release.mjs（站点自检会失败）
 on:
   push:
     branches: [main]
@@ -10,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: 游戏回归 + 站点自检
+    name: 构建 + 游戏回归 + 站点自检
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,10 +23,21 @@ jobs:
         with:
           node-version: '22'
 
-      - name: 游戏逻辑回归测试（101 项断言）
+      - name: 构建（src/ → xiuxian.html）
+        run: node scripts/build.mjs
+
+      - name: 校验构建产物与提交版一致
+        run: |
+          if ! git diff --quiet -- xiuxian.html; then
+            echo "::error::src/ 与提交的 xiuxian.html 不一致 —— 请在本地跑 node scripts/build.mjs 后一起提交"
+            git diff --stat -- xiuxian.html
+            exit 1
+          fi
+
+      - name: 游戏逻辑回归测试（126 项断言）
         run: node regression-test.js xiuxian.html 回归测试结果.txt
 
-      - name: 站点自检（56 项）
+      - name: 站点自检（74 项）
         run: node scripts/verify-site.mjs
 
       - name: 失败时保留测试输出
@@ -35,4 +48,5 @@ jobs:
           path: |
             回归测试结果.txt
             _site_check.txt
+            _build_report.txt
           if-no-files-found: ignore
