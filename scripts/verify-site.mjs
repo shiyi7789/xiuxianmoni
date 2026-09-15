@@ -127,6 +127,19 @@ for (let i = 1; i < hs.length; i++) if (hs[i] - hs[i - 1] > 1) skip = hs[i - 1] 
 chk('标题层级无跳级', !skip, skip ? '发现 ' + skip : hs.join(','));
 chk('语义化分区齐全', /<header[\s>]/.test(H) && /<main[\s>]/.test(H) && /<nav[\s>]/.test(H) && /<footer[\s>]/.test(H) && /<section[\s>]/.test(H), 'header/main/nav/footer/section');
 
+/* ---------- 3.5 游玩声明 ---------- */
+const GAME = bodies['/xiuxian.html'].text;
+const promise = ['不 盈 利', '无 广 告', '不 采 集 信 息', '不 传 播 不 良 信 息', '只 供 游 玩'];
+const missP = promise.filter(k => H.indexOf(k) < 0);
+chk('落地页含游玩声明五条', missP.length === 0, missP.length ? '缺 ' + missP.join(' / ') : promise.length + ' 条');
+chk('声明有独立锚点 #notice', /<section id="notice">/.test(H), '');
+chk('导航与页脚都能跳到声明', (H.match(/href="#notice"/g) || []).length >= 2, (H.match(/href="#notice"/g) || []).length + ' 处入口');
+chk('声明含免广告 / 不采集的明确表述', /不做统计埋点/.test(H) && /不上传任何个人信息/.test(H), '');
+chk('声明含作息与未成年人提示', /合理安排游戏时间/.test(H) && /监护人指导/.test(H), '');
+chk('游戏内含同一份声明与确认按钮', GAME.indexOf('NOTICE_KEY') >= 0 && GAME.indexOf('我 已 知 晓') >= 0
+  && GAME.indexOf('不 传 播 不 良 信 息') >= 0, 'xiuxian.html');
+chk('声明确认状态独立存储（不随存档/轮回丢失）', GAME.indexOf('xiuxian_notice_v1') >= 0, 'xiuxian_notice_v1');
+
 /* ---------- 4. 无障碍 ---------- */
 out('');
 out('=== 4. 无障碍 a11y ===');

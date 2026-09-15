@@ -391,6 +391,17 @@
   .savecode{width:100%;height:76px;font-size:11.5px;font-family:ui-monospace,Consolas,monospace;padding:8px;border:1px solid var(--line2);border-radius:2px;background:var(--raise2);color:var(--ink2);resize:vertical}
   .meta-note{font-size:11.5px;color:var(--ink3);line-height:1.85;margin-bottom:12px;letter-spacing:.03em}
   .meta-note b{color:var(--zhu)}
+
+  /* ---------- 游玩声明 ---------- */
+  .notice{font-size:13px;line-height:1.95;color:var(--ink2)}
+  .notice > p:first-child{margin:0 0 12px;color:var(--ink)}
+  .notice ul{margin:0 0 10px;padding:0;list-style:none}
+  .notice li{padding:7px 0 7px 13px;border-left:2px solid var(--line2);margin-bottom:7px}
+  .notice li b{color:var(--zhu);letter-spacing:.06em}
+  .notice .dim{
+    font-size:11.5px;color:var(--ink4);line-height:1.9;margin:14px 0 0;
+    border-top:1px dotted var(--line);padding-top:11px;
+  }
   .hrline{height:1px;background:var(--line);margin:14px 0}
   /* ---------- 顶栏：分隔线与气运 ---------- */
   .ts{padding-left:16px;border-left:1px solid var(--line)}
@@ -3734,6 +3745,42 @@ function showModal(title, html, buttons, cls){
 }
 function closeModal(){ $('modalRoot').innerHTML = ''; }
 
+/* =========================================================
+   游玩声明 —— 首次进入需点「我已知晓」，之后可随时从「道 法」重看
+   独立存档键：不随游戏存档或轮回变化，只有「彻底抹除」才会再次弹出
+   ========================================================= */
+const NOTICE_KEY = 'xiuxian_notice_v1';
+const NOTICE_VER = 1;
+
+function noticeAccepted(){
+  try{ return localStorage.getItem(NOTICE_KEY) === String(NOTICE_VER); }
+  catch(e){ return false; }
+}
+function acceptNotice(){
+  try{ localStorage.setItem(NOTICE_KEY, String(NOTICE_VER)); }catch(e){}
+  closeModal();
+}
+function noticeHtml(){
+  return '<div class="notice">'
+    + '<p><b>本模拟器为个人兴趣作品，完全免费、不盈利。</b>开始游玩前，请先阅读以下声明：</p>'
+    + '<ul>'
+    + '<li><b>不 盈 利</b>　无充值、无内购、无任何付费入口，也不以任何形式售卖道具或接受付费推广。</li>'
+    + '<li><b>无 广 告</b>　页面不接入任何第三方广告、推广链接，也不做统计埋点。</li>'
+    + '<li><b>不 采 集 信 息</b>　无需注册或登录，不采集、不上传任何个人信息；'
+      + '游玩进度仅保存在你本机浏览器中，可随时用「存 档」导出或清除。</li>'
+    + '<li><b>不 传 播 不 良 信 息</b>　内容为架空修仙题材的虚构文字，其中战斗与历练均为情节描写，'
+      + '不含血腥、色情、赌博、恐怖及其它违反法律法规的有害信息。</li>'
+    + '<li><b>只 供 游 玩</b>　仅供个人娱乐消遣，不构成任何形式的建议或承诺，请勿用于商业用途。</li>'
+    + '</ul>'
+    + '<p class="dim">请合理安排游戏时间，注意休息；未成年人请在监护人指导下使用。<br>'
+    + '本作纯属虚构，如与现实中任何人物、事件或组织有所雷同，实属巧合。</p>'
+    + '</div>';
+}
+function showNotice(){
+  showModal('游 玩 声 明', noticeHtml(),
+    [{ label:'我 已 知 晓', primary:true, fn: acceptNotice }], 'wide');
+}
+
 function showHelp(){
   showModal('道 法 纲 要',
       '<b>修 炼</b>　打坐吐纳最稳；灵石修炼耗财而快，约为枯坐四倍；闭关七日所得最丰，然心魔与顿悟皆在一线之间。'
@@ -3772,7 +3819,8 @@ function showHelp(){
     + '<b>奇 遇</b>　打坐、灵石修炼、闭关与历练之后，你有机会撞上奇遇——共 <b>25 段</b>，按大境界分五段，'
     + '每段内容各不相同。奇遇弹出数条选项，<b>各有得失、不可兼得</b>：稳妥的拿小利，冒险的可能翻倍，'
     + '也可能重伤。两次奇遇至少相隔 5 日，不会反复打断你。<br><br>',
-    [{ label:'受 教 了', primary:true, fn: closeModal }], 'wide');
+    [{ label:'游 玩 声 明', fn: showNotice },
+     { label:'受 教 了', primary:true, fn: closeModal }], 'wide');
 }
 
 /* =========================================================
@@ -3785,6 +3833,8 @@ function showHelp(){
   loadMeta();
   if(!load()) newGame();
   else renderAll();
+  /* 首次进入：先请玩家阅读游玩声明（点「我已知晓」后才记录） */
+  if(!noticeAccepted()) showNotice();
   /* 老玩家回归：补发历史上其实已经达成的成就 */
   const got = checkAch();
   if(got.length) renderAll();

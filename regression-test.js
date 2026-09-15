@@ -184,7 +184,14 @@ const boot = new Function(
   systemDark: systemDark,
   savedTheme: savedTheme,
   renderUtil: renderUtil,
-  themeKey: THEME_KEY
+  themeKey: THEME_KEY,
+  /* --- 游玩声明 --- */
+  noticeAccepted: noticeAccepted,
+  acceptNotice: acceptNotice,
+  showNotice: showNotice,
+  noticeHtml: noticeHtml,
+  NOTICE_KEY: NOTICE_KEY,
+  NOTICE_VER: NOTICE_VER
 };`
 );
 
@@ -1052,6 +1059,62 @@ step('移动端断点覆盖关键容器', () => {
   const miss = need.filter(k => mb.indexOf(k) < 0);
   if (miss.length) throw new Error('移动端未覆盖 ' + miss.join(' '));
   return '移动断点覆盖 ' + need.length + ' 类容器';
+});
+
+log('=== O. 游玩声明 ===');
+step('声明条目齐备（不盈利 / 无广告 / 不采集 / 不传播 / 只供游玩）', () => {
+  const h = G.noticeHtml();
+  const need = ['不 盈 利', '无 广 告', '不 采 集 信 息', '不 传 播 不 良 信 息', '只 供 游 玩'];
+  const miss = need.filter(k => h.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺条款：' + miss.join(' / '));
+  const extra = ['免费', '不盈利', '充值', '内购', '广告', '个人信息', '商业用途', '合理安排游戏时间', '监护人'];
+  const miss2 = extra.filter(k => h.indexOf(k) < 0);
+  if (miss2.length) throw new Error('缺说明：' + miss2.join(' / '));
+  return '五条主条款 + ' + extra.length + ' 处具体说明';
+});
+step('首次进入自动弹出，且带「我已知晓」按钮', () => {
+  delete store[G.NOTICE_KEY];
+  if (G.noticeAccepted()) throw new Error('未确认时不应算已读');
+  G.showNotice();
+  const html = el('modalRoot').innerHTML;
+  if (html.indexOf('游 玩 声 明') < 0) throw new Error('弹层未渲染');
+  if (html.indexOf('我 已 知 晓') < 0) throw new Error('缺「我已知晓」按钮');
+  return '弹层 ' + html.length + ' 字符，含确认按钮';
+});
+step('点「我已知晓」后记录并关闭，且不再重复弹出', () => {
+  G.acceptNotice();
+  if (!G.noticeAccepted()) throw new Error('未写入本地记录');
+  if (el('modalRoot').innerHTML !== '') throw new Error('弹层未关闭');
+  if (store[G.NOTICE_KEY] !== String(G.NOTICE_VER)) throw new Error('记录值异常：' + store[G.NOTICE_KEY]);
+  return '已记录 ' + G.NOTICE_KEY + '=' + store[G.NOTICE_KEY] + '，弹层已关闭';
+});
+step('声明记录独立于游戏存档与轮回', () => {
+  /* 轮回、新建号都不应让声明重新弹出（只有 wipeAll 会） */
+  G.doRebirth();
+  if (!G.noticeAccepted()) throw new Error('轮回后失效');
+  G.newGame();
+  if (!G.noticeAccepted()) throw new Error('新建号后失效');
+  /* 存档往返也不应影响 */
+  const code = G.exportCode();
+  G.importSave(code);
+  if (!G.noticeAccepted()) throw new Error('导入存档后失效');
+  return '轮回 / 新建号 / 导入存档后均保持已读';
+});
+step('「道 法」面板内可随时重看声明', () => {
+  G.showHelp();
+  const h = el('modalRoot').innerHTML;
+  if (h.indexOf('游 玩 声 明') < 0) throw new Error('道法面板缺少声明入口');
+  /* 走一遍按钮：data-i=0 应为声明 */
+  G.showNotice();
+  if (el('modalRoot').innerHTML.indexOf('不 盈 利') < 0) throw new Error('重看时未渲染条款');
+  G.acceptNotice();
+  return '道法面板含入口，可随时重看';
+});
+step('声明相关样式齐备', () => {
+  const need = ['.notice{', '.notice ul', '.notice li', '.notice .dim'];
+  const miss = need.filter(k => src.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺样式 ' + miss.join(' '));
+  return need.length + ' 条声明样式就位（含暗色令牌，无硬编码色值）';
 });
 
 log('=== I. 全量内联 onclick 处理器求值 ===');

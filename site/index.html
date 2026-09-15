@@ -193,6 +193,21 @@
   .poster span{font-size:12.5px;color:var(--ink3)}
   .poster[hidden]{display:none}
 
+  /* ---------- 游玩声明 ---------- */
+  .promise{display:grid;gap:9px;margin:0;padding:0;list-style:none}
+  .promise li{
+    display:grid;gap:2px 16px;padding:14px 16px 14px 15px;
+    border:1px solid var(--line);border-left:3px solid var(--zhu);border-radius:0 var(--r) var(--r) 0;
+    background:var(--surface);
+  }
+  @media (min-width:640px){ .promise li{grid-template-columns:104px 1fr;align-items:baseline} }
+  .promise b{font-size:14px;color:var(--zhu);letter-spacing:.1em;font-weight:600}
+  .promise span{font-size:14px;color:var(--ink2);line-height:1.75}
+  .fineprint{
+    margin:16px 0 0;font-size:12.5px;color:var(--ink3);line-height:2;
+    border-top:1px dotted var(--line);padding-top:13px;
+  }
+
   /* ---------- FAQ ---------- */
   .faq{display:grid;gap:9px}
   details{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
@@ -241,6 +256,7 @@
       <a href="#features">玩法</a>
       <a href="#loop">循环</a>
       <a href="#play">试玩</a>
+      <a href="#notice">声明</a>
       <a href="#faq">常见问题</a>
     </nav>
     <div class="hdr-act">
@@ -395,6 +411,26 @@
     </div>
   </section>
 
+  <section id="notice">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>游 玩 声 明</h2>
+        <p>开始游玩前请先阅读。首次进入游戏时也会弹出同一份声明，点「我已知晓」后方可继续。</p>
+      </div>
+      <ul class="promise">
+        <li><b>不 盈 利</b><span>无充值、无内购、无任何付费入口，也不以任何形式售卖道具或接受付费推广。</span></li>
+        <li><b>无 广 告</b><span>不接入任何第三方广告与推广链接，也不做统计埋点。</span></li>
+        <li><b>不 采 集 信 息</b><span>无需注册或登录，不采集、不上传任何个人信息。游玩进度只保存在你自己的浏览器里，可随时用游戏内的「存 档」导出或清除。</span></li>
+        <li><b>不 传 播 不 良 信 息</b><span>架空修仙题材的虚构文字，其中战斗与历练均为情节描写，不含血腥、色情、赌博、恐怖及其它违反法律法规的有害信息。</span></li>
+        <li><b>只 供 游 玩</b><span>仅供个人娱乐消遣，不构成任何形式的建议或承诺，请勿用于商业用途。</span></li>
+      </ul>
+      <p class="fineprint">
+        请合理安排游戏时间，注意休息；未成年人请在监护人指导下使用。<br>
+        本作纯属虚构，如与现实中任何人物、事件或组织有所雷同，实属巧合。
+      </p>
+    </div>
+  </section>
+
   <section id="faq">
     <div class="wrap">
       <div class="sec-h">
@@ -435,7 +471,7 @@
         <details>
           <summary>有充值、广告或体力限制吗？</summary>
           <div class="ans">
-            <p>没有。没有充值入口、没有广告、没有体力条，也不做任何埋点统计。页面本身不发任何第三方请求。</p>
+            <p>没有。没有充值入口、没有广告、没有体力条，也不做任何埋点统计。页面本身不发任何第三方请求。完整条款见上方的<a href="#notice">游玩声明</a>。</p>
           </div>
         </details>
       </div>
@@ -448,9 +484,10 @@
     <span>修仙模拟器 · 文字版</span>
     <a href="xiuxian.html">进入游戏</a>
     <a href="#play">页内试玩</a>
+    <a href="#notice">游玩声明</a>
     <a href="#faq">常见问题</a>
     <span style="margin-left:auto" class="muted">
-      版本 <span id="verText">2026.09.15-1405</span>
+      不盈利 · 无广告 · 免费游玩　|　版本 <span id="verText">2026.09.15-2052</span>
     </span>
   </div>
 </footer>
