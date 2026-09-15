@@ -1,0 +1,38 @@
+name: CI
+
+# 每次推送与 PR 都跑两套测试，守住「实时更新」的关键不变量：
+# 有人改了 xiuxian.html 却忘了跑 release.mjs，这里会直接失败。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 游戏回归 + 站点自检
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 游戏逻辑回归测试（101 项断言）
+        run: node regression-test.js xiuxian.html 回归测试结果.txt
+
+      - name: 站点自检（56 项）
+        run: node scripts/verify-site.mjs
+
+      - name: 失败时保留测试输出
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: |
+            回归测试结果.txt
+            _site_check.txt
+          if-no-files-found: ignore
