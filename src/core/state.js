@@ -37,8 +37,9 @@ export function newGame(){
     stat: blankStat(),
     encDay:0,
     encOpen:null,
-    /* 功法：本局的重数与装备（已习得的清单在 META.gongfa，轮回不灭） */
-    gongfa:{ xin:null, shu:[null,null], lv:{} },
+    /* 功法：本局的重数与装备槽
+       被动（心法）3 格 · 主动（术法）2 格 —— 已习得清单在 META.gongfa，轮回不灭 */
+    gongfa:{ passive:[null,null,null], active:[null,null], lv:{} },
     /* 坊市藏经阁的当期货品（功法键） */
     shopBook:[]
   };

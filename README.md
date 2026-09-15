@@ -1,9 +1,9 @@
-# 修仙模拟器 · 文字版
+﻿# 修仙模拟器 · 文字版
 
 一款**单文件、零依赖、纯离线**的文字修仙放置游戏，外加一个响应式落地页站点。
 
 从炼气一层走到天道，共 **13 大境界 41 层**。打坐吐纳攒修为，冲击境界求突破，斩妖入秘境换一身法器，
-再修一部**功法**——心法只运转一部、术法只备两式，取舍由你。
+再修一部**功法**——被动运转三部、主动备下两式，各带冷却与护体/冰封/灼烧/吸血之效，取舍由你。
 
 - **无需注册**：进度存在浏览器 `localStorage`，不上传任何服务器
 - **离线可玩**：游戏本体是一个约 204 KB 的单文件 HTML，另存即用
@@ -38,7 +38,7 @@
 │  ├─ _headers               ← 缓存与安全响应头（Cloudflare Pages / Netlify）
 │  └─ 404.html / robots.txt / sitemap.xml
 │
-├─ regression-test.js        ← 游戏逻辑回归测试（126 项断言，固定随机种子）
+├─ regression-test.js        ← 游戏逻辑回归测试（137 项断言，固定随机种子）
 ├─ 开发日志.md                ← 架构决策、改动历史、给下一个 AI 的交接说明
 ├─ vercel.json               ← Vercel 配置（outputDirectory: site）
 └─ 部署指引.md                ← 部署与「实时更新」完整指引
@@ -69,7 +69,7 @@ node -e "const h=require('http'),f=require('fs'),p=require('path');h.createServe
 # 构建（src/ → xiuxian.html）
 node scripts/build.mjs
 
-# 游戏逻辑回归测试（126 项断言）
+# 游戏逻辑回归测试（137 项断言）
 node regression-test.js xiuxian.html 回归测试结果.txt
 
 # 站点质量自检（74 项，会本地起服务并真实抓取页面）

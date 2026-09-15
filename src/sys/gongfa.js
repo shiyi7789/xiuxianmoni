@@ -1,7 +1,9 @@
 import { META, saveMeta } from '../core/meta.js';
 import { S, busy } from '../core/state.js';
 import { clamp, num } from '../core/utils.js';
-import { GF_BY_KEY, GF_MAX, GF_SEG_NAME, GF_SHU, GF_SLOT, GF_TIER_M, GF_XIN, GONGFA } from '../data/gongfa.js';
+import {
+  GF_BY_KEY, GF_MAX, GF_PROFILE_SCHOOL, GF_SCHOOL, GF_SEG_NAME, GF_SHU, GF_SLOT, GF_TIER_M, GF_XIN, GONGFA
+} from '../data/gongfa.js';
 import { QUALITIES } from '../data/qualities.js';
 import { addLog, toast } from './log.js';
 import { expNeed, realmAt } from './cultivate.js';
@@ -10,11 +12,14 @@ import { after } from '../ui/render.js';
 /* =========================================================
    功 法 · 悟 道 录 —— 逻辑层
    ---------------------------------------------------------
-   设计三原则（改动前请先读）：
-   1. 永不改格局：心法只 1 格、术法只 2 格，多学不等于多强 → 逼出取舍
-   2. 已习得永久留存（存 META，轮回不灭）；重数与本局装备槽归本局
+   设计四原则（改动前请先读）：
+   1. 永不改格局：被动（心法）只 3 格、主动（术法）只 2 格
+      —— 习得多寡不等同于强弱，如何取舍才是关键
+   2. 已习得永久留存（存 META，轮回不灭）；重数与装备槽归本局
       —— 与「知识不灭、力量重来」的三轴设计一致，也避免永久伤害通胀
    3. 参悟同时消耗灵石与修为 → 让「冲境界」与「厚积功法」形成真实取舍
+   4. 主动技能带冷却（cd）与附加效果（fx：护盾/闪避/冰封/灼烧/吸血/破防/自伤/回灵）
+      —— 战斗节奏从「一直挥击」变成「何时放招」
    ========================================================= */
 
 /* ---------- 段位与池子 ---------- */
@@ -53,6 +58,23 @@ export function gfRollDrop(){
 /* 藏经阁售价：品阶为主，段位加成 */
 export function gfBookPrice(gf){ return Math.round((120 + gf.t * gf.t * 300) * (1 + gf.seg * 0.22)); }
 
+/* ---------- 槽位 ---------- */
+/* 本局装备：passive[3]（心法）· active[2]（术法）
+   兼容旧存档形态 { xin, shu } —— 由 gfSanitizeS 迁移 */
+export function gfEnsure(){
+  /* 无本局状态时返回一份临时默认（只读场景不崩；有状态时正常就地补齐） */
+  if(!S) return { passive: [null, null, null], active: [null, null], lv: {} };
+  if(!S.gongfa) S.gongfa = {};
+  const g = S.gongfa;
+  if(!Array.isArray(g.passive)) g.passive = [null, null, null];
+  while(g.passive.length < GF_SLOT.passive) g.passive.push(null);
+  if(!Array.isArray(g.active)) g.active = [null, null];
+  while(g.active.length < GF_SLOT.active) g.active.push(null);
+  if(!g.lv || typeof g.lv !== 'object') g.lv = {};
+  return g;
+}
+export function gfEquipped(){ return gfEnsure(); }
+
 /* ---------- 习得（永久） ---------- */
 export function gfLearn(key, quiet){
   const gf = GF_BY_KEY[key];
@@ -66,13 +88,13 @@ export function gfLearn(key, quiet){
     addLog('你参研【' + gf.n + '】（' + QUALITIES[gf.t].name + '）——关窍豁然贯通，此法刻入道基，<b>轮回不灭</b>。', 'ach');
   }
   /* 空槽自动祭炼，省得玩家来回点 */
-  if(S && S.gongfa){
-    if(gf.kind === 'xin' && !S.gongfa.xin){
-      S.gongfa.xin = key;
-      if(!quiet) addLog('心法本无，你自然而然地运转起【' + gf.n + '】。', 'sys');
-    }else if(gf.kind === 'shu' && S.gongfa.shu.indexOf(null) >= 0){
-      S.gongfa.shu[S.gongfa.shu.indexOf(null)] = key;
-      if(!quiet) addLog('术法一栏尚空，【' + gf.n + '】已备于识海。', 'sys');
+  if(S){
+    const g = gfEnsure();
+    const arr = gf.kind === 'xin' ? g.passive : g.active;
+    const e = arr.indexOf(null);
+    if(e >= 0){
+      arr[e] = key;
+      if(!quiet) addLog('（' + (gf.kind === 'xin' ? '被动' : '主动') + '槽尚空，【' + gf.n + '】已自行' + (gf.kind === 'xin' ? '运转' : '备于识海') + '）', 'sys');
     }
   }
   return true;
@@ -80,46 +102,64 @@ export function gfLearn(key, quiet){
 export function gfGrant(gf, quiet){ return gf ? gfLearn(gf.k, quiet) : false; }
 
 /* ---------- 装备 / 卸下 ---------- */
-export function gfEnsure(){
-  if(!S.gongfa) S.gongfa = { xin: null, shu: [null, null], lv: {} };
-  if(!Array.isArray(S.gongfa.shu)) S.gongfa.shu = [null, null];
-  while(S.gongfa.shu.length < GF_SLOT.shu) S.gongfa.shu.push(null);
-  if(!S.gongfa.lv) S.gongfa.lv = {};
-}
-export function gfEquip(key){
+/* 把 key 装到 kind 对应的槽位 idx；idx 省略则自动择空位（无空位返回 false） */
+export function gfSlotArr(kind){ return gfEnsure()[kind === 'xin' ? 'passive' : 'active']; }
+export function gfSlotOf(key){
   const gf = GF_BY_KEY[key];
-  if(!gf) return;
-  if(!gfLearned(key)){ toast('尚未习得此法'); return; }
-  gfEnsure();
-  if(gf.kind === 'xin'){
-    const on = S.gongfa.xin === key;
-    S.gongfa.xin = on ? null : key;
-    addLog(on ? '你散去【' + gf.n + '】的运转，重归平常。'
-              : '你运转【' + gf.n + '】，周身气机为之一变。', on ? 'dim' : 'act');
-  }else{
-    const shu = S.gongfa.shu;
-    const i = shu.indexOf(key);
-    if(i >= 0){
-      shu[i] = null;
-      addLog('你收起术法【' + gf.n + '】。', 'dim');
-    }else{
-      const e = shu.indexOf(null);
-      if(e >= 0) shu[e] = key;
-      else{
-        const off = shu.shift();
-        shu.push(key);
-        const offName = GF_BY_KEY[off] ? GF_BY_KEY[off].n : '旧法';
-        addLog('术法只容两部，【' + offName + '】自识海中散去。', 'dim');
-      }
-      addLog('你祭炼术法【' + gf.n + '】，已备于识海。', 'sys');
-    }
+  if(!gf) return { arr: null, idx: -1 };
+  const arr = gfSlotArr(gf.kind);
+  return { arr, idx: arr.indexOf(key) };
+}
+export function gfEquipAt(key, idx){
+  const gf = GF_BY_KEY[key];
+  if(!gf) return false;
+  if(!gfLearned(key)){ toast('尚未习得此法'); return false; }
+  const arr = gfSlotArr(gf.kind);
+  if(idx < 0 || idx >= arr.length) return false;
+  /* 同一部功法只占一格 */
+  for(let i = 0; i < arr.length; i++) if(i !== idx && arr[i] === key) arr[i] = null;
+  arr[idx] = key;
+  return true;
+}
+/* 槽满时的替换（用于 UI 的选择框） */
+export function gfReplaceAt(key, idx){ return gfEquipAt(key, idx); }
+
+/* 点一下装/卸（左栏与列表用）：已在该槽位则卸下，否则装到空位，无空位返回 'full' */
+export function gfToggleEquip(key){
+  const gf = GF_BY_KEY[key];
+  if(!gf) return 'no';
+  if(!gfLearned(key)){ toast('尚未习得此法'); return 'no'; }
+  const arr = gfSlotArr(gf.kind);
+  const i = arr.indexOf(key);
+  if(i >= 0){
+    arr[i] = null;
+    addLog(gf.kind === 'xin' ? '你散去【' + gf.n + '】的运转。' : '你收起术法【' + gf.n + '】。', 'dim');
+    after();
+    return 'off';
   }
+  const e = arr.indexOf(null);
+  if(e < 0) return 'full';
+  arr[e] = key;
+  addLog(gf.kind === 'xin'
+    ? '你运转【' + gf.n + '】，周身气机为之一变。'
+    : '你祭炼术法【' + gf.n + '】，已备于识海。', 'act');
+  after();
+  return 'on';
+}
+export function gfUnequipAt(kind, idx){
+  const arr = gfSlotArr(kind);
+  if(idx < 0 || idx >= arr.length) return;
+  const key = arr[idx];
+  if(!key) return;
+  arr[idx] = null;
+  const gf = GF_BY_KEY[key];
+  addLog('你收起了【' + (gf ? gf.n : '功法') + '】。', 'dim');
   after();
 }
 export function gfAllOff(){
-  gfEnsure();
-  S.gongfa.xin = null;
-  S.gongfa.shu = [null, null];
+  const g = gfEnsure();
+  g.passive = g.passive.map(() => null);
+  g.active = g.active.map(() => null);
   addLog('你把所修功法尽数收起，重归素朴。', 'dim');
   after();
 }
@@ -159,22 +199,21 @@ export function gfUpgrade(key){
   after();
 }
 
-/* ---------- 加成汇总 ---------- */
-const ZERO = () => ({ hp: 0, mp: 0, atk: 0, def: 0, cult: 0, crit: 0, brk: 0, luck: 0 });
+/* ---------- 被动加成汇总（供 stats / breakChance / fortune 使用） ---------- */
+const ZERO = () => ({ hp: 0, mp: 0, atk: 0, def: 0, cult: 0, crit: 0, brk: 0, luck: 0, speed: 0 });
 
-/* 已装备心法的加成（术法不提供被动加成，其价值在战斗中） */
 export function gfBonus(){
   const z = ZERO();
   if(!S || !S.gongfa) return z;
-  const g = S.gongfa;
-  const xin = GF_BY_KEY[g.xin];
-  if(xin && xin.kind === 'xin'){
-    const prof = GF_XIN[xin.p];
-    const lv = (g.lv || {})[xin.k] || 0;
-    if(prof && lv){
-      const m = GF_TIER_M[xin.t] * lv;
-      for(const k in z) if(prof[k]) z[k] += prof[k] * m;
-    }
+  const g = gfEnsure();
+  for(const key of g.passive){
+    const gf = GF_BY_KEY[key];
+    if(!gf || gf.kind !== 'xin') continue;
+    const prof = GF_XIN[gf.p];
+    const lv = (g.lv || {})[key] || 0;
+    if(!prof || !lv) continue;
+    const m = GF_TIER_M[gf.t] * lv;
+    for(const k in z) if(prof[k]) z[k] += prof[k] * m;
   }
   for(const k in z) z[k] = (k === 'crit' || k === 'brk' || k === 'luck') ? +z[k].toFixed(2) : +z[k].toFixed(1);
   return z;
@@ -182,33 +221,66 @@ export function gfBonus(){
 /* 气运：并入 fortune()，不新开乘区 */
 export function gfLuck(){ return gfBonus().luck; }
 
-/* 术法参数（槽 0 / 1），未装备返回 null */
-export function gfSkill(i){
-  if(!S || !S.gongfa) return null;
-  const key = (S.gongfa.shu || [])[i];
+/* ---------- 主动技能 ---------- */
+/* 按功法键构造技能参数（未装在槽位上也可构造，便于测试与快捷键） */
+export function gfSkillByKey(key){
   const gf = GF_BY_KEY[key];
   if(!gf || gf.kind !== 'shu') return null;
   const prof = GF_SHU[gf.sk];
   if(!prof) return null;
-  const lv = (S.gongfa.lv || {})[key] || 0;
+  const g = gfEnsure();
+  const lv = (g.lv || {})[key] || 0;
   const grow = 1 + GF_TIER_M[gf.t] * 0.5 * (lv / GF_MAX[gf.t]);   /* 满重时 ×(1+0.5×品阶系数) */
   return {
-    key, gf, lv,
+    key, gf, lv, slot: (g.active || []).indexOf(key),
+    n: prof.n,
     mult: +(prof.mult * grow).toFixed(2),
+    hits: prof.hits || 1,
+    cd: prof.cd || 1,
     mpF: prof.mpF || 0.14,
     mpFlat: prof.mpFlat || 6,
-    crit: prof.crit || 0,
-    heal: prof.heal || 0,
-    hits: prof.hits || 1,
-    pierce: prof.pierce || 0,
-    guard: prof.guard || 0
+    fx: prof.fx || {}
   };
 }
+/* 槽 i（0/1）的技能参数；未装备返回 null */
+export function gfActiveSkill(i){
+  if(!S || !S.gongfa) return null;
+  const g = gfEnsure();
+  return gfSkillByKey(g.active[i]);
+}
 export function gfSkillMp(sk, mpMax){ return Math.round(mpMax * sk.mpF) + sk.mpFlat; }
-export function gfShuEquipped(){ return [0, 1].map(i => gfSkill(i)).filter(Boolean); }
+export function gfActiveList(){ return [0, 1].map(i => gfActiveSkill(i)).filter(Boolean); }
+/* 兼容旧名（阶段一 API） */
+export function gfSkill(i){ return gfActiveSkill(i); }
 
 /* ---------- 文案 ---------- */
-const GF_STAT_NAME = { hp: '气血', mp: '灵力', atk: '攻击', def: '防御', cult: '修速', crit: '暴击', brk: '突破', luck: '气运' };
+const GF_STAT_NAME = { hp: '气血', mp: '灵力', atk: '攻击', def: '防御', cult: '修速', crit: '暴击', brk: '突破', luck: '气运', speed: '遁速' };
+
+/* 附加效果的可读描述（战斗面板与面板都用它，避免两处口径不一） */
+export function gfFxText(fx){
+  if(!fx) return '';
+  const out = [];
+  if(fx.crit) out.push('暴击 +' + fx.crit + 'pt');
+  if(fx.pierce) out.push('破防 ' + Math.round(fx.pierce * 100) + '%');
+  if(fx.heal) out.push('吸血 ' + Math.round(fx.heal * 100) + '%');
+  if(fx.shield) out.push('减伤 ' + Math.round(fx.shield * 100) + '% ×' + (fx.dur || 1) + ' 回合');
+  if(fx.dodge) out.push('闪避 ' + fx.dodge + ' 回合');
+  if(fx.freeze) out.push('冰封 ' + fx.freeze + ' 回合（敌伤减半）');
+  if(fx.burn) out.push('灼烧 ' + fx.burn + ' 回合（每回合 ' + Math.round((fx.burnPct || 0.05) * 100) + '% 攻）');
+  if(fx.selfDmgPct) out.push('反噬 ' + Math.round(fx.selfDmgPct * 100) + '% 气血上限');
+  if(fx.mpBack) out.push('回灵 ' + Math.round(fx.mpBack * 100) + '%');
+  return out.join(' · ');
+}
+export function gfSchoolOf(gf){
+  if(!gf) return GF_SCHOOL.xin;
+  const key = GF_PROFILE_SCHOOL[gf.kind === 'xin' ? gf.p : gf.sk];
+  return GF_SCHOOL[key] || GF_SCHOOL.xin;
+}
+export function gfSchoolKey(gf){
+  if(!gf) return 'xin';
+  return GF_PROFILE_SCHOOL[gf.kind === 'xin' ? gf.p : gf.sk] || 'xin';
+}
+
 export function gfEffectText(gf, lv){
   if(!gf || !lv) return '尚未参悟';
   const prof = gf.kind === 'xin' ? GF_XIN[gf.p] : null;
@@ -227,12 +299,11 @@ export function gfEffectText(gf, lv){
   if(!sk) return '';
   const grow = 1 + GF_TIER_M[gf.t] * 0.5 * (lv / GF_MAX[gf.t]);
   const parts = ['伤害 ×' + (sk.mult * grow).toFixed(2)];
-  parts.push('耗灵力 ' + Math.round((sk.mpF || 0.14) * 100) + '%+' + (sk.mpFlat || 6));
-  if(sk.hits) parts.push(sk.hits + ' 段');
-  if(sk.crit) parts.push('暴击 +' + sk.crit + 'pt');
-  if(sk.heal) parts.push('吸血 ' + Math.round(sk.heal * 100) + '%');
-  if(sk.pierce) parts.push('破防 ' + Math.round(sk.pierce * 100) + '%');
-  if(sk.guard) parts.push('减伤 ' + Math.round(sk.guard * 100) + '%');
+  if(sk.hits > 1) parts.push(sk.hits + ' 段');
+  parts.push('灵力 ' + Math.round((sk.mpF || 0.14) * 100) + '%+' + (sk.mpFlat || 6));
+  parts.push('冷却 ' + (sk.cd || 1) + ' 回合');
+  const fx = gfFxText(sk.fx);
+  if(fx) parts.push(fx);
   return parts.join(' · ');
 }
 export function gfPerLvText(gf){
@@ -252,16 +323,15 @@ export function gfPerLvText(gf){
   const sk = GF_SHU[gf.sk];
   if(!sk) return '';
   const parts = ['伤害 ×' + sk.mult];
-  if(sk.hits) parts.push(sk.hits + ' 段');
-  if(sk.crit) parts.push('暴击 +' + sk.crit + 'pt');
-  if(sk.heal) parts.push('吸血 ' + Math.round(sk.heal * 100) + '%');
-  if(sk.pierce) parts.push('破防 ' + Math.round(sk.pierce * 100) + '%');
-  if(sk.guard) parts.push('减伤 ' + Math.round(sk.guard * 100) + '%');
+  if(sk.hits > 1) parts.push(sk.hits + ' 段');
+  parts.push('冷却 ' + (sk.cd || 1));
+  const fx = gfFxText(sk.fx);
+  if(fx) parts.push(fx);
   return '重数愈高威能愈盛（每重 ×' + (1 + GF_TIER_M[gf.t] * 0.5 / GF_MAX[gf.t]).toFixed(3) + '）· ' + parts.join(' · ');
 }
 export function gfTierName(t){ return QUALITIES[t] ? QUALITIES[t].name : '凡品'; }
-export function gfGrade(gf){   /* 品阶 + 类别，用于卡片角标 */
-  return (gf.kind === 'xin' ? '心法' : '术法') + ' · ' + gfTierName(gf.t);
+export function gfGrade(gf){   /* 类别 + 品阶，用于卡片角标 */
+  return (gf.kind === 'xin' ? '被动' : '主动') + ' · ' + gfTierName(gf.t);
 }
 
 /* ---------- 藏经阁 ---------- */
@@ -284,17 +354,15 @@ export function gfBuyBook(i){
   S.stones -= p;
   S.shopBook.splice(i, 1);
   addLog('你以 ' + num(p) + ' 枚灵石买下藏经阁中的《' + gf.n + '》。', 'item');
-  gfLearn(key);
-  if(gf.kind === 'xin'){
-    S.gongfa.xin = key;   /* 新买的心法直接运转，方便玩家立刻感受 */
-  }else{
-    const e = S.gongfa.shu.indexOf(null);
-    if(e >= 0) S.gongfa.shu[e] = key;
-  }
+  gfLearn(key);          /* gfLearn 会自动填入空槽 */
   after();
 }
 
 /* ---------- 存档进出（防御式，缺字段不炸） ---------- */
+/* 兼容三种形态：
+   v1: { xin:key, shu:[k0,k1] }        （阶段一旧档）
+   v3: { passive:[...], active:[...] }
+   以及任意字段缺失 */
 export function gfSanitizeS(d){
   const g = d || {};
   const lvIn = g.lv || {};
@@ -304,16 +372,23 @@ export function gfSanitizeS(d){
     if(!gf || typeof lvIn[k] !== 'number') continue;
     lv[k] = clamp(Math.floor(lvIn[k]), 0, GF_MAX[gf.t]);
   }
-  const xin = (g.xin && GF_BY_KEY[g.xin] && GF_BY_KEY[g.xin].kind === 'xin') ? g.xin : null;
-  const shuIn = Array.isArray(g.shu) ? g.shu : [];
-  const shu = [null, null];
-  for(const k of shuIn){
-    if(!k || !GF_BY_KEY[k] || GF_BY_KEY[k].kind !== 'shu') continue;
-    if(shu.indexOf(k) >= 0) continue;
-    const e = shu.indexOf(null);
-    if(e >= 0) shu[e] = k;
-  }
-  return { xin, shu, lv };
+  const fill = (src, kind, n) => {
+    const arr = [];
+    for(let i = 0; i < n; i++) arr.push(null);
+    const put = k => {
+      if(!k || !GF_BY_KEY[k] || GF_BY_KEY[k].kind !== kind) return;
+      if(arr.indexOf(k) >= 0) return;
+      const e = arr.indexOf(null);
+      if(e >= 0) arr[e] = k;
+    };
+    if(Array.isArray(src)) src.forEach(put); else put(src);
+    return arr;
+  };
+  /* 被动：优先新字段 passive，其次旧字段 xin */
+  const passive = fill(g.passive !== undefined ? g.passive : g.xin, 'xin', GF_SLOT.passive);
+  /* 主动：优先 active，其次旧字段 shu */
+  const active = fill(g.active !== undefined ? g.active : g.shu, 'shu', GF_SLOT.active);
+  return { passive, active, lv };
 }
 export function gfSanitizeMeta(m){
   const out = { learned: [], best: {} };

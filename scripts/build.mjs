@@ -36,10 +36,10 @@ const openPart = read(path.join(SRC, scriptOpen));
 const tailPart = read(path.join(SRC, tail));
 
 /* ---------- 2. 模块 → 脚本片段 ---------- */
-const stripImports = body => body
-  .split('\n')
-  .filter(l => !/^\s*import\s+.*\s+from\s+['"].*['"];?\s*$/.test(l))
-  .join('\n');
+/* 剥掉 import：支持跨行写法
+   import { a, b } from './x.js';     ← 常见
+   import {\n a, b\n} from './x.js';  ← 多行也要剥（曾经漏过，构建后残留 import 直接语法错误） */
+const stripImports = body => body.replace(/^[ \t]*import\b[\s\S]*?\bfrom\s+['"][^'"]*['"];?[ \t]*$/gm, '');
 
 const stripExports = body => body
   .replace(/^export\s+(?=(?:async\s+)?function\s|const\s|let\s|var\s)/gm, '');
@@ -62,6 +62,16 @@ if (missing.length) throw new Error('清单里的模块不存在：' + missing.j
 let js = openPart.replace(/\s+$/, '');
 for (const { mod, body } of chunks) js += '\n\n' + SEP(mod) + '\n\n' + body;
 js += '\n';
+
+/* ---------- 3.5 硬守卫：成品里不允许再有 import / export ----------
+   单文件是经典 <script>，残留 ESM 语法会直接 SyntaxError（曾经因为跨行 import 漏剥而炸） */
+const leftover = js.split('\n')
+  .map((l, i) => ({ l, i }))
+  .filter(x => /^\s*(import|export)\s/.test(x.l) && !/^\s*(\/\/|\*)/.test(x.l));
+if (leftover.length) {
+  throw new Error('成品仍含 ESM 语法，模块未剥干净：\n'
+    + leftover.slice(0, 6).map(x => '  第 ' + (x.i + 1) + ' 行：' + x.l.trim().slice(0, 90)).join('\n'));
+}
 
 const output = headPart + cssPart + midPart + js + tailPart;
 fs.writeFileSync(OUT, output, 'utf8');

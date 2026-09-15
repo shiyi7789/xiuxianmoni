@@ -4,8 +4,9 @@
    规则：本文件只导出常量，不 import 任何东西（防循环依赖的铁律）
    追加一部功法 = 在 GONGFA 里加一行，无需改任何逻辑
 
-   · kind:'xin' 心法 —— 被动加成，同时只能装备 1 部（须取舍）
-   · kind:'shu' 术法 —— 战斗技法，可装备 2 部（与基础「灵力斩」并用）
+   · kind:'xin' 心法 —— 被动加成，可运转 3 部（被动槽 3 格，须取舍）
+   · kind:'shu' 术法 —— 主动技能，可备 2 式（主动槽 2 格，带冷却与附加效果）
+                 战斗中与基础「灵力斩」并用；未备术法则只有基础技
    · t    品阶 0~4（凡·灵·宝·仙·神），沿用器物的五品配色 .qcN
    · seg  0~4 对应大境界五段，决定出现时机（见 GF_SEG_NAME）
    · p / sk 指向基调表：每重加成 = 基调值 × 品阶系数 × 重数
@@ -28,15 +29,61 @@ export const GF_XIN = {
   fate:    { n: '缘法', d: '不争而争，福缘自至',         luck: 0.83, cult: 0.39, hp: 0.22 }
 };
 
-/* 术法基调：战斗参数（mult 伤害倍率 / mpF·mpFlat 灵力消耗 / heal 吸血比 / hits 段数
-   crit 额外暴击率 / pierce 无视敌方防御比 / guard 释放后自身减伤比） */
+/* 术法基调（主动技能参数）
+   ---------------------------------------------------------
+   mult  伤害倍率（× 攻击力）
+   hits  段数（多段各自结算暴击）
+   cd    冷却回合数
+   mpF / mpFlat  灵力消耗 = mpMax × mpF + mpFlat
+   fx    附加效果（见 sys/combat.js 的 castSkill）
+         crit      额外暴击率（pt）
+         pierce    无视敌方防御比
+         heal      吸血比（按本次总伤害）
+         shield    减伤比 + dur 持续回合
+         dodge     完全闪避回合数
+         freeze    敌方伤害减半回合数
+         burn      灼烧回合数 + burnPct 每回合按其攻击力的比例扣血
+         selfDmgPct 自身承受气血上限的比例（反噬）
+         mpBack    行动后回复灵力上限的比例
+   --------------------------------------------------------- */
 export const GF_SHU = {
-  gun:  { n: '御器', d: '以气驭器，收放如意',       mult: 1.85, mpF: 0.13, mpFlat: 6 },
-  zhan: { n: '斩击', d: '聚力一击，势不可当',       mult: 2.35, mpF: 0.17, mpFlat: 9, crit: 8 },
-  lian: { n: '连击', d: '一击未落，二击已至',       mult: 1.35, mpF: 0.15, mpFlat: 8, hits: 2 },
-  xue:  { n: '血噬', d: '伤敌之血，补己之元',       mult: 1.70, mpF: 0.14, mpFlat: 7, heal: 0.35 },
-  dun:  { n: '守御', d: '以攻为守，护体为先',       mult: 1.20, mpF: 0.10, mpFlat: 5, guard: 0.45 },
-  ling: { n: '破灵', d: '无视皮膜，直伤神魂',       mult: 2.00, mpF: 0.16, mpFlat: 8, pierce: 0.5 }
+  gun:  { n:'御器', d:'以气驭器，收放如意',   mult:1.85, mpF:0.13, mpFlat:6,  cd:2,
+          fx:{ mpBack:0.05 } },
+  zhan: { n:'斩击', d:'聚力一击，势不可当',   mult:2.35, mpF:0.17, mpFlat:9,  cd:3,
+          fx:{ crit:8 } },
+  lian: { n:'连击', d:'一击未落，二击已至',   mult:1.35, mpF:0.20, mpFlat:8,  cd:3, hits:2 },
+  xue:  { n:'血噬', d:'伤敌之血，补己之元',   mult:1.70, mpF:0.14, mpFlat:7,  cd:4,
+          fx:{ heal:0.35 } },
+  dun:  { n:'守御', d:'以攻为守，护体为先',   mult:1.20, mpF:0.16, mpFlat:5,  cd:5,
+          fx:{ shield:0.55, dur:2 } },
+  ling: { n:'破灵', d:'无视皮膜，直伤神魂',   mult:2.00, mpF:0.16, mpFlat:8,  cd:3,
+          fx:{ pierce:0.5 } },
+  huo:  { n:'焚天', d:'烈火附骨，焚尽不休',   mult:1.90, mpF:0.20, mpFlat:10, cd:5,
+          fx:{ burn:3, burnPct:0.06 } },
+  bing: { n:'玄冰', d:'寒气封脉，其势顿挫',   mult:1.80, mpF:0.18, mpFlat:9,  cd:4,
+          fx:{ freeze:2 } },
+  xu:   { n:'虚空', d:'身形散入虚空，不可捉摸', mult:0.80, mpF:0.12, mpFlat:6, cd:6,
+          fx:{ dodge:1 } },
+  ji:   { n:'因果', d:'以精血为引，一击断因果', mult:3.20, mpF:0.24, mpFlat:12, cd:7,
+          fx:{ selfDmgPct:0.12 } }
+};
+
+/* 学派：基调 → 门派归属（只用于展示与配色，不影响数值）
+   配色走 CSS 类 .gfs-jian / .gfs-ti / .gfs-fa / .gfs-dun / .gfs-xin，禁止写死颜色 */
+export const GF_SCHOOL = {
+  jian: { n:'剑道' },
+  ti:   { n:'体修' },
+  fa:   { n:'法修' },
+  dun:  { n:'遁术' },
+  xin:  { n:'心法' }
+};
+export const GF_PROFILE_SCHOOL = {
+  /* 心法基调 */
+  speed:'dun', body:'ti', blade:'jian', ward:'ti', insight:'xin', fate:'xin',
+  /* 术法基调 */
+  gun:'jian', zhan:'jian', lian:'jian', ling:'jian', ji:'jian',
+  huo:'fa', bing:'fa', xue:'fa',
+  dun:'ti', xu:'dun'
 };
 
 /* ---------------------------------------------------------
@@ -64,12 +111,12 @@ export const GONGFA = [
     d:'身似流云不滞于物，行气亦如是。' },
   { k:'gf_panshi',     n:'磐石宝典',     t:2, kind:'xin', seg:1, p:'ward',
     d:'心若磐石，则外力难侵。' },
-  { k:'gf_sk_chiyan',  n:'赤炎斩',       t:1, kind:'shu', seg:1, sk:'zhan',
-    d:'刀上燃起真火，斩落时连妖气一并烧尽。' },
+  { k:'gf_sk_chiyan',  n:'赤炎斩',       t:1, kind:'shu', seg:1, sk:'huo',
+    d:'刀上燃起真火，斩落时连妖气一并烧尽——中者三回合内持续灼烧。' },
   { k:'gf_sk_liangyi', n:'两仪剑',       t:1, kind:'shu', seg:1, sk:'lian',
     d:'一剑分阴阳，两段剑光前后相随。' },
-  { k:'gf_sk_xuangui', n:'玄龟印',       t:2, kind:'shu', seg:1, sk:'dun',
-    d:'结印如龟甲覆身，打人只是顺带。' },
+  { k:'gf_sk_xuangui', n:'玄龟印',       t:2, kind:'shu', seg:1, sk:'bing',
+    d:'玄龟属水而性寒，印诀一出，敌手寒气入体、血脉顿滞。' },
 
   /* ── 第三段 · 化神炼虚合体 ── */
   { k:'gf_fentian',    n:'焚天诀',       t:2, kind:'xin', seg:2, p:'blade',
@@ -106,11 +153,11 @@ export const GONGFA = [
     d:'无极生太极，关窍开阖皆合天道。' },
   { k:'gf_zaohua',     n:'造化紫府篇',   t:4, kind:'xin', seg:4, p:'ward',
     d:'紫府一开，天地灵气皆为你所用。' },
-  { k:'gf_sk_hundun',  n:'混沌一炁',     t:4, kind:'shu', seg:4, sk:'zhan',
-    d:'一炁未分之时的一击，无所谓防御。' },
-  { k:'gf_sk_wuxiang', n:'无相劫指',     t:4, kind:'shu', seg:4, sk:'lian',
-    d:'指影重重，无相可依，无隙可挡。' },
-  { k:'gf_sk_tiandao', n:'天道敕令',     t:4, kind:'shu', seg:4, sk:'gun',
+  { k:'gf_sk_hundun',  n:'混沌一炁',     t:4, kind:'shu', seg:4, sk:'ji',
+    d:'一炁未分之时的一击，无所谓防御；代价是自身也要承受反噬。' },
+  { k:'gf_sk_wuxiang', n:'无相劫指',     t:4, kind:'shu', seg:4, sk:'xu',
+    d:'指影重重，无相可依——身形散入虚空，敌手扑之不得。' },
+  { k:'gf_sk_tiandao', n:'天道敕令',     t:4, kind:'shu', seg:4, sk:'zhan',
     d:'一言既出，即为天规。' }
 ];
 
@@ -118,5 +165,6 @@ export const GONGFA = [
 export const GF_BY_KEY = {};
 for(const g of GONGFA) GF_BY_KEY[g.k] = g;
 
-/* 槽位数量：心法 1 · 术法 2 */
-export const GF_SLOT = { xin: 1, shu: 2 };
+/* 槽位数量：被动（心法）3 格 · 主动（术法）2 格
+   —— 习得多寡不等同于强弱，如何取舍才是关键 */
+export const GF_SLOT = { passive: 3, active: 2 };

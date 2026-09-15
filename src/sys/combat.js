@@ -7,7 +7,7 @@ import { checkAch } from './achievement.js';
 import { addItem, rollItem, stats } from './character.js';
 import { expNeed, gainExp } from './cultivate.js';
 import { completeDungeon } from './dungeon.js';
-import { gfSkill, gfSkillMp } from './gongfa.js';
+import { gfActiveSkill, gfSkillByKey, gfSkillMp } from './gongfa.js';
 import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
 import { usePill } from './pills.js';
@@ -16,7 +16,14 @@ import { after, renderAll } from '../ui/render.js';
 
 
 /* =========================================================
-   妖兽系统
+   妖兽系统 / 战斗
+   ---------------------------------------------------------
+   回合模型：玩家的每个动作 = 自己出手一次 + 敌人行动一次（monsterTurn）
+   功法主动技（阶段二）叠加在此模型上：
+     · 冷却 cd：每个玩家回合开始递减（tickTurn）
+     · 增益 buff：shield（减伤 n 回合）/ dodge（完全闪避 n 回合）
+     · 减益 debuff：freeze（敌伤减半 n 回合）/ burn（每回合灼烧扣血 n 回合）
+   基础「灵力斩」永远可用（不依赖功法），保证没有功法时战斗照旧。
    ========================================================= */
 export function makeMonster(tier, boss){
   const lv = S.level;
@@ -37,7 +44,12 @@ export function makeMonster(tier, boss){
 }
 
 export function startFight(m, ctx){
-  S.combat = { m, ctx: ctx||{}, turn:1 };
+  S.combat = {
+    m, ctx: ctx||{}, turn:1,
+    cd: {},                                              /* 技能冷却：key → 剩余回合 */
+    buff: { shield:0, shieldDur:0, dodge:0, dodgeDur:0 },
+    debuff: { freeze:0, burn:0, burnPct:0 }
+  };
   S.fightPillN = 0;
   addSep();
   addLog('【'+m.name+'】出现在你面前——'+TIER_NAME[m.tier]+'，气血 '+num(m.hpMax)+'。','dmg');
@@ -51,15 +63,50 @@ export function dmgRoll(atk, def, crit, mult){
   return { d: Math.max(1, Math.round(d*(mult||1))), crit: isCrit };
 }
 
+/* 战斗对象的安全读取（老存档/异常态下不炸） */
+function combatState(c){
+  if(!c) return null;
+  if(!c.cd || typeof c.cd !== 'object') c.cd = {};
+  if(!c.buff) c.buff = { shield:0, shieldDur:0, dodge:0, dodgeDur:0 };
+  if(!c.debuff) c.debuff = { freeze:0, burn:0, burnPct:0 };
+  return c;
+}
+
+/* 每个玩家回合开始时结算：冷却递减、增益/减益计时、灼烧扣血 */
+export function tickTurn(){
+  const c = combatState(S.combat);
+  if(!c) return;
+  for(const k in c.cd) if(c.cd[k] > 0) c.cd[k]--;
+
+  if(c.buff.shieldDur > 0){
+    c.buff.shieldDur--;
+    if(c.buff.shieldDur <= 0){ c.buff.shield = 0; addLog('护体灵光散去。','dim'); }
+  }
+  if(c.buff.dodgeDur > 0){
+    c.buff.dodgeDur--;
+    if(c.buff.dodgeDur <= 0) c.buff.dodge = 0;
+  }
+  if(c.debuff.freeze > 0) c.debuff.freeze--;
+
+  /* 灼烧：按我方攻击力的一定比例，每回合烧敌一次 */
+  if(c.debuff.burn > 0 && c.m.hp > 0){
+    const st = stats();
+    const burn = Math.max(1, Math.round(st.atk * (c.debuff.burnPct || 0.05) * 4));
+    c.m.hp -= burn;
+    c.debuff.burn--;
+    addLog('烈焰灼烧，'+c.m.name+'再受 '+num(burn)+' 点伤害。','dmg');
+  }
+}
+
 export function fightAttack(){ fightAction('atk'); }
 export function fightSkill(){ fightAction('skill'); }
-/* 术法两式（仅当识海中备有术法时可用） */
-export function fightSkillA(){ fightAction('skill', 0); }
-export function fightSkillB(){ fightAction('skill', 1); }
 
 export function fightAction(kind, skIdx){
-  const c = S.combat;
+  const c = combatState(S.combat);
   if(!c) return;
+  tickTurn();
+  if(c.m.hp <= 0){ winFight(); after(); return; }
+
   const st = stats();
   const m = c.m;
 
@@ -86,77 +133,163 @@ export function fightAction(kind, skIdx){
     after(); return;
   }
 
-  /* 术法：识海中备下的两式之一（未备则回落到基础「灵力斩」） */
-  const sk = (kind === 'skill' && (skIdx === 0 || skIdx === 1)) ? gfSkill(skIdx) : null;
-
   let mult = 1, cost = 0;
   if(kind === 'skill'){
-    cost = sk ? gfSkillMp(sk, st.mpMax) : Math.round(st.mpMax*0.15) + 8;
+    cost = Math.round(st.mpMax*0.15) + 8;
     if(S.mp < cost){ toast('灵力不足（需 '+cost+'）'); return; }
     S.mp -= cost;
-    mult = sk ? sk.mult : 2.3;
+    mult = 2.3;
   }
 
-  const hits = sk ? (sk.hits||1) : 1;
-  const pierce = sk ? (sk.pierce||0) : 0;
-  const bonusCrit = sk ? (sk.crit||0) : 0;
-  const defUse = m.def * (1 - pierce);
-
-  let total = 0, anyCrit = false;
-  for(let i=0;i<hits;i++){
-    const r = dmgRoll(st.atk, defUse, st.crit + bonusCrit, mult);
-    m.hp -= r.d;
-    total += r.d;
-    if(r.crit) anyCrit = true;
-    if(m.hp <= 0) break;
-  }
-
-  const verb = sk ? ('催动【'+sk.gf.n+'】')
-    : (kind === 'skill' ? '催动灵力，一道灵光斩落' : '挥动法器直取');
-  addLog('你'+verb+'——'+ (anyCrit?'<b>暴击！</b>':'')
-    + '造成 '+num(total)+' 点伤害'+(hits>1?'（'+hits+' 段合计）':'')+'。', anyCrit?'epic':'dmg');
-
-  if(sk && sk.heal > 0 && total > 0){
-    const h = Math.round(total * sk.heal);
-    S.hp = Math.min(st.hpMax, S.hp + h);
-    addLog('所伤之血化作一缕精气回流，气血 +'+num(h)+'。','gain');
-  }
-  if(sk && sk.guard > 0){
-    c.guard = sk.guard;
-    addLog('你一式未收便已结印，护体灵光罩身（本回合减伤 '+Math.round(sk.guard*100)+'%）。','sys');
-  }
+  const r = dmgRoll(st.atk, m.def, st.crit, mult);
+  m.hp -= r.d;
+  addLog('你'+(kind==='skill' ? '催动灵力，一道灵光斩落' : '挥动法器直取')+'——'
+    + (r.crit?'<b>暴击！</b>':'') + '造成 '+num(r.d)+' 点伤害。', r.crit?'epic':'dmg');
 
   if(m.hp <= 0){ winFight(); after(); return; }
   monsterTurn();
   after();
 }
 
+/* ---------- 功法主动技（阶段二） ---------- */
+/* 槽位 0/1 的技能；k 也可直接给功法键（UI 按 key 调用） */
+export function castSkill(arg){
+  const c = combatState(S.combat);
+  if(!c) return;
+  const sk = typeof arg === 'number' ? gfActiveSkill(arg) : gfSkillByKey(arg);
+  if(!sk){ toast('尚未备下此术'); return; }
+  tickTurn();
+  if(c.m.hp <= 0){ winFight(); after(); return; }
+
+  const st = stats();
+  if((c.cd[sk.key] || 0) > 0){ toast('【'+sk.n+'】尚在冷却（'+c.cd[sk.key]+' 回合）'); return; }
+  const cost = gfSkillMp(sk, st.mpMax);
+  if(S.mp < cost){ toast('灵力不足（需 '+cost+'）'); return; }
+
+  S.mp -= cost;
+  c.cd[sk.key] = sk.cd;
+
+  const m = c.m;
+  const fx = sk.fx || {};
+  const defUse = m.def * (1 - (fx.pierce || 0));
+  const critUse = st.crit + (fx.crit || 0);
+
+  let total = 0, anyCrit = false;
+  for(let i=0;i<(sk.hits||1);i++){
+    const r = dmgRoll(st.atk, defUse, critUse, sk.mult);
+    m.hp -= r.d;
+    total += r.d;
+    if(r.crit) anyCrit = true;
+    if(m.hp <= 0) break;
+  }
+
+  if(sk.mult > 0){
+    addLog('你施展【'+sk.n+'】——' + (anyCrit?'<b>暴击！</b>':'')
+      + '造成 '+num(total)+' 点伤害' + ((sk.hits||1) > 1 ? '（'+sk.hits+' 段合计）' : '') + '。',
+      anyCrit ? 'epic' : 'dmg');
+  }else{
+    addLog('你施展【'+sk.n+'】。','act');
+  }
+
+  /* 附加效果 */
+  if(fx.heal && total > 0){
+    const h = Math.round(total * fx.heal);
+    S.hp = Math.min(st.hpMax, S.hp + h);
+    addLog('所伤之血化作一缕精气回流，气血 +'+num(h)+'。','gain');
+  }
+  if(fx.shield){
+    c.buff.shield = fx.shield;
+    c.buff.shieldDur = fx.dur || 1;
+    addLog('护体灵光凝如实质，'+Math.round(fx.shield*100)+'% 伤害将被卸去（'+c.buff.shieldDur+' 回合）。','gain');
+  }
+  if(fx.dodge){
+    c.buff.dodge = 1;
+    c.buff.dodgeDur = fx.dodge;
+    addLog('身形一晃，已遁入虚空——'+fx.dodge+' 回合内敌手难着其身。','gain');
+  }
+  if(fx.freeze){
+    c.debuff.freeze = Math.max(c.debuff.freeze, fx.freeze);
+    addLog('寒气入体，'+m.name+'动作一滞（'+fx.freeze+' 回合内伤害减半）。','gain');
+  }
+  if(fx.burn){
+    c.debuff.burn = Math.max(c.debuff.burn, fx.burn);
+    c.debuff.burnPct = fx.burnPct || 0.05;
+    addLog('烈焰附骨，'+m.name+'陷入灼烧（'+fx.burn+' 回合）。','gain');
+  }
+  if(fx.mpBack){
+    const back = Math.round(st.mpMax * fx.mpBack);
+    S.mp = Math.min(st.mpMax, S.mp + back);
+    addLog('一息运转，灵力回了 '+back+' 点。','sys');
+  }
+  if(fx.selfDmgPct){
+    const sd = Math.max(1, Math.round(st.hpMax * fx.selfDmgPct));
+    S.hp -= sd;
+    addLog('因果反噬，你自身承受 '+num(sd)+' 点伤害。','warn');
+    if(S.hp <= 0){ loseFight(); after(); return; }
+  }
+
+  if(m.hp <= 0){ winFight(); after(); return; }
+  monsterTurn();
+  after();
+}
+/* 按功法键施放（未装在槽位上也可调用，用于测试与快捷键） */
+export function castSkillAt(i){ castSkill(i); }
+
 export function monsterTurn(){
-  const c = S.combat;
+  const c = combatState(S.combat);
   if(!c || c.m.hp <= 0) return;
   const st = stats();
   const m = c.m;
 
+  /* 虚空：完全闪避 */
+  if(c.buff.dodge > 0){
+    addLog('你的身形在虚空与现世之间闪烁，'+m.name+'扑了个空。','gain');
+    c.buff.dodgeDur--;
+    if(c.buff.dodgeDur <= 0) c.buff.dodge = 0;
+    c.turn++;
+    return;
+  }
+
+  let dmg;
   if(c.defend){
     const raw = dmgRoll(m.atk, st.def, m.crit, 1);
-    const d = Math.max(1, Math.round(raw.d*0.32));
-    S.hp -= d;
-    addLog(m.name+'猛扑而来，被护体灵光卸去大半力道，你仍受 '+num(d)+' 点伤害。','sys');
+    dmg = Math.max(1, Math.round(raw.d*0.32));
+    addLog(m.name+'猛扑而来，被护体灵光卸去大半力道，你仍受 '+num(dmg)+' 点伤害。','sys');
     c.defend = false;
   }else{
     const r = dmgRoll(m.atk, st.def, m.crit, 1);
-    let d = r.d;
-    const guarded = !!(c.guard > 0);
-    if(guarded) d = Math.max(1, Math.round(d * (1 - c.guard)));
-    S.hp -= d;
-    addLog(m.name+(r.crit?'狞笑一声，一击命中要害':'扑上来撕咬')+'——你受 '+num(d)+' 点伤害'
-      + (guarded?'（守御之法卸去 '+Math.round(c.guard*100)+'%）':'')
-      + (r.crit?'（暴击）':'') + '。','dmg');
-    c.guard = 0;
+    dmg = r.d;
+    let tail = (r.crit?'（暴击）':'');
+    /* 冰封：伤害减半 */
+    if(c.debuff.freeze > 0){
+      const cut = Math.round(dmg * 0.5);
+      dmg -= cut;
+      tail += '（寒气封脉，伤害减半）';
+    }
+    /* 护盾：按比例减伤 */
+    if(c.buff.shield > 0){
+      const cut = Math.round(dmg * c.buff.shield);
+      dmg = Math.max(1, dmg - cut);
+      tail += '（护体灵光卸去 '+num(cut)+'）';
+    }
+    S.hp -= dmg;
+    addLog(m.name+(r.crit?'狞笑一声，一击命中要害':'扑上来撕咬')+'——你受 '+num(dmg)+' 点伤害'+tail+'。','dmg');
+    if(S.hp <= 0){ loseFight(); return; }
+    c.turn++;
+    return;
   }
+
+  /* 御守分支也可能被护盾/冰封补足减伤 */
+  if(c.debuff.freeze > 0) dmg = Math.max(1, Math.round(dmg * 0.5));
+  if(c.buff.shield > 0) dmg = Math.max(1, dmg - Math.round(dmg * c.buff.shield));
+  S.hp -= dmg;
   if(S.hp <= 0){ loseFight(); return; }
   c.turn++;
 }
+
+/* 兼容旧 API（阶段一的 fightSkillA/B 现在等价于槽位 0/1 的主动技） */
+export function fightSkillA(){ castSkill(0); }
+export function fightSkillB(){ castSkill(1); }
 
 export function winFight(){
   const c = S.combat;

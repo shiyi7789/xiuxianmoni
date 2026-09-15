@@ -21,7 +21,7 @@ export const slotKey = i => 'xiuxian_slot_'+i+'_v2';
 
 export function saveData(){
   return {
-    v:2,
+    v:3,                                   /* v3：功法改为 被动 3 格 / 主动 2 格（旧档自动迁移） */
     level:S.level, exp:S.exp, day:S.day, stones:S.stones,
     hp:S.hp, mp:S.mp, equip:S.equip, bag:S.bag, pills:S.pills,
     shop:S.shop, shopMount:S.shopMount, shopDay:S.shopDay,

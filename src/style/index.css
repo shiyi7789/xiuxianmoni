@@ -310,6 +310,13 @@
 
   /* ---------- 品阶徽章（全局） ---------- */
   .q{font-size:10.5px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.9}
+  /* 功法学派角标（配色全走令牌） */
+  .gfs{font-size:10px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.85;letter-spacing:.04em;flex:0 0 auto}
+  .gfs-jian{color:var(--qing)}
+  .gfs-ti{color:var(--jin)}
+  .gfs-fa{color:var(--zi)}
+  .gfs-dun{color:var(--ink3)}
+  .gfs-xin{color:var(--zhu)}
 
   /* ---------- 出售台 ---------- */
   .filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 9px}

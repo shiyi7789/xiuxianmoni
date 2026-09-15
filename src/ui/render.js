@@ -3,7 +3,7 @@ import { save } from '../core/save.js';
 import { S, busy } from '../core/state.js';
 import { clamp, num } from '../core/utils.js';
 import { ACHIEVEMENTS } from '../data/achievements.js';
-import { GF_BY_KEY, GF_MAX, GONGFA } from '../data/gongfa.js';
+import { GF_BY_KEY, GF_MAX, GF_SHU, GF_SLOT, GONGFA } from '../data/gongfa.js';
 import { GROUNDS } from '../data/grounds.js';
 import { TIER_NAME } from '../data/monsters.js';
 import { MOUNT_MAX_LV, MOUNT_TIER_NAME } from '../data/mounts.js';
@@ -16,7 +16,7 @@ import { autoEquip, clampVitals, dropItem, equipBag, godCls, isMount, itemCost, 
 import { fightAction, fightAttack, fightPill, fightSkill } from '../sys/combat.js';
 import { actMeditate, actSeclusion, actStoneCultivate, askExp, expNeed, realmAt, realmName } from '../sys/cultivate.js';
 import { dungeonBoss, dungeonForward, dungeonLeave, dungeonSearch, enterSecret } from '../sys/dungeon.js';
-import { gfBonus, gfBookPrice, gfEffectText, gfEnsure, gfGrade, gfLearnedList, gfLevel, gfPerLvText, gfShopBook, gfSkill, gfSkillMp } from '../sys/gongfa.js';
+import { gfActiveList, gfBonus, gfBookPrice, gfEffectText, gfEnsure, gfFxText, gfGrade, gfLearnedList, gfLevel, gfPerLvText, gfShopBook, gfSkill, gfSkillMp } from '../sys/gongfa.js';
 import { curGround, estPower, hunt } from '../sys/hunt.js';
 import { renderLog } from '../sys/log.js';
 import { buyMount, feedMount, mountCost, mountFeedCost, mountLabel, releaseMount } from '../sys/mount.js';
@@ -155,7 +155,7 @@ export function renderMount(){
 }
 
 /* --- 功法（左栏面板）：只做摘要，详情与操作都在「悟道录」弹层 --- */
-export function gfSlotRow(label, gf, lv){
+export function gfSlotRow(label, gf, lv, extra){
   if(!gf){
     return '<div class="slot"><span class="k">'+label+'</span><span class="v empty">— 空 —</span>'
       + '<span class="r" onclick="openGongfa()">习 法</span></div>';
@@ -163,27 +163,35 @@ export function gfSlotRow(label, gf, lv){
   const full = lv >= GF_MAX[gf.t];
   return '<div class="slot'+godCls(gf.t)+'"><span class="k">'+label+'</span>'
     + '<span class="v">'+qName(gf.n, gf.t)
-    + '<span class="muted-sm">　'+lv+' / '+GF_MAX[gf.t]+' 重'+(full?' · 圆满':'')+'</span></span>'
+    + '<span class="muted-sm">　'+lv+' / '+GF_MAX[gf.t]+' 重'+(full?' · 圆满':'')
+    + (extra?' · '+extra:'')+'</span></span>'
     + '<span class="r" onclick="openGongfa()">改 修</span></div>';
 }
 
 export function renderGongfa(){
   const box = $('gfBox');
   if(!box) return;
-  gfEnsure();
-  const xin = GF_BY_KEY[S.gongfa.xin];
-  const xinLv = xin ? gfLevel(xin.k) : 0;
-  let h = gfSlotRow('心法', xin, xinLv);
-  for(let i=0;i<2;i++){
-    const sk = GF_BY_KEY[S.gongfa.shu[i]];
-    h += gfSlotRow('术法'+(i+1), sk, sk ? gfLevel(sk.k) : 0);
+  const g = gfEnsure();
+  let h = '';
+  for(let i=0;i<GF_SLOT.passive;i++){
+    const gf = GF_BY_KEY[g.passive[i]];
+    h += gfSlotRow('被动'+(i+1), gf, gf ? gfLevel(gf.k) : 0);
+  }
+  for(let i=0;i<GF_SLOT.active;i++){
+    const gf = GF_BY_KEY[g.active[i]];
+    const prof = gf ? GF_SHU[gf.sk] : null;
+    h += gfSlotRow('主动'+(i+1), gf, gf ? gfLevel(gf.k) : 0, prof ? prof.n : '');
   }
   const n = gfLearnedList().length;
-  const gb = gfBonus();
-  let tip = '';
-  if(xin && xinLv) tip = gfEffectText(xin, xinLv);
-  else if(n) tip = '心法未运转，点上方「改 修」择一部运转。';
-  else tip = '尚未习得。秘境妖王与坊市藏经阁皆可求得功法。';
+  const b = gfBonus();
+  const parts = [];
+  if(b.cult) parts.push('修速 +'+b.cult+'%');
+  if(b.atk) parts.push('攻 +'+b.atk+'%');
+  if(b.hp) parts.push('血 +'+b.hp+'%');
+  if(b.def) parts.push('防 +'+b.def+'%');
+  if(b.luck) parts.push('气运 +'+b.luck);
+  const tip = parts.length ? '被动合计：'+parts.join(' · ')
+    : (n ? '被动槽尚未装心法，点「改 修」择一部运转。' : '尚未习得。秘境妖王与坊市藏经阁皆可求得功法。');
   h += '<div class="hint-mini">'+tip+'</div>';
   box.innerHTML = h;
 
@@ -304,17 +312,34 @@ export function renderCombat(){
     + '<span class="'+(myTurns <= foeTurns ? 'up' : 'dn')+'">'
       + (myTurns <= foeTurns ? '我占上风' : '宜守宜走') + '</span>'
     + '</div>';
+  /* 功法状态：护盾 / 虚空 / 冰封 / 灼烧 剩余回合 */
+  const buffs = [];
+  if(c.buff && c.buff.shield > 0) buffs.push('<span class="up">护体 '+Math.round(c.buff.shield*100)+'% · 余 '+c.buff.shieldDur+'</span>');
+  if(c.buff && c.buff.dodge > 0) buffs.push('<span class="up">虚空 · 余 '+c.buff.dodgeDur+'</span>');
+  if(c.debuff && c.debuff.freeze > 0) buffs.push('<span class="dn">冰封 · 余 '+c.debuff.freeze+'</span>');
+  if(c.debuff && c.debuff.burn > 0) buffs.push('<span class="dn">灼烧 · 余 '+c.debuff.burn+'</span>');
+  if(buffs.length){
+    h += '<div class="foe" style="margin-bottom:10px">'+buffs.join('')+'</div>';
+  }
+
   h += '<div class="actgrid">';
   h += card('挥 击','以手中法器直取要害，不耗灵力。','', "fightAttack()");
   h += card('灵 力 斩','催动灵力一击，伤害约 2.3 倍。','耗灵力 '+num(Math.round(st.mpMax*0.15)+8), "fightSkill()", S.mp < Math.round(st.mpMax*0.15)+8 ? {lock:true}:{});
-  /* 识海中的术法（功法系统） */
-  const shuFns = ['fightSkillA()', 'fightSkillB()'];
-  for(let i=0;i<2;i++){
-    const sk = gfSkill(i);
-    if(!sk) continue;
+  /* 识海中的主动功法（功法系统）：带冷却与附加效果 */
+  const skills = gfActiveList();
+  for(const sk of skills){
+    const cd = (c.cd && c.cd[sk.key]) || 0;
     const mc = gfSkillMp(sk, st.mpMax);
-    h += card('【'+sk.gf.n+'】', gfEffectText(sk.gf, sk.lv),
-      '耗灵力 '+num(mc), shuFns[i], S.mp < mc ? {lock:true} : {hot:true});
+    const canCast = cd === 0 && S.mp >= mc;
+    const fx = gfFxText(sk.fx);
+    const desc = '伤害 ×'+sk.mult + ((sk.hits||1) > 1 ? ' · '+sk.hits+' 段' : '') + (fx ? ' · '+fx : '');
+    h += card('【'+sk.n+'】', desc,
+      cd > 0 ? ('冷却中 · 余 '+cd+' 回合') : ('耗灵力 '+num(mc)),
+      "castSkill('"+sk.key+"')",
+      canCast ? {hot:true} : {lock:true});
+  }
+  if(!skills.length){
+    h += card('未 备 术 法','在「功 法」中把主动功法备入识海，战斗中便多出可放之技。','主动槽 2 格', "openGongfa()", {});
   }
   h += card('御 守','架起护体灵光，本回合受伤减至三成，并回灵力。','', "fightAction('defend')");
   const hasPill = (S.pills['回春丹']||0) > 0;

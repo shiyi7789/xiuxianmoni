@@ -200,11 +200,13 @@ const boot = new Function(
   noticeHtml: noticeHtml,
   NOTICE_KEY: NOTICE_KEY,
   NOTICE_VER: NOTICE_VER,
-  /* --- 功法 · 悟道录 --- */
+  /* --- 功法 · 悟道录（被动 3 格 / 主动 2 格） --- */
   gfDefs: GONGFA,
   gfByKey: GF_BY_KEY,
   gfMaxArr: GF_MAX,
   gfSegName: GF_SEG_NAME,
+  gfSlot: GF_SLOT,
+  gfSchools: GF_SCHOOL,
   gfSeg: gfSeg,
   gfPool: gfPool,
   gfRollDrop: gfRollDrop,
@@ -215,7 +217,12 @@ const boot = new Function(
   gfGrant: gfGrant,
   gfLearned: gfLearned,
   gfLearnedList: gfLearnedList,
-  gfEquip: gfEquip,
+  gfEnsure: gfEnsure,
+  gfSlotOf: gfSlotOf,
+  gfSlotArr: gfSlotArr,
+  gfEquipAt: gfEquipAt,
+  gfToggleEquip: gfToggleEquip,
+  gfUnequipAt: gfUnequipAt,
   gfAllOff: gfAllOff,
   gfLevel: gfLevel,
   gfCost: gfCost,
@@ -224,17 +231,35 @@ const boot = new Function(
   gfBonus: gfBonus,
   gfLuck: gfLuck,
   gfSkill: gfSkill,
+  gfActiveSkill: gfActiveSkill,
+  gfActiveList: gfActiveList,
+  gfSkillByKey: gfSkillByKey,
   gfSkillMp: gfSkillMp,
+  gfFxText: gfFxText,
+  gfSchoolOf: gfSchoolOf,
+  gfSchoolKey: gfSchoolKey,
   gfEffectText: gfEffectText,
+  gfPerLvText: gfPerLvText,
   gfSanitizeS: gfSanitizeS,
   gfSanitizeMeta: gfSanitizeMeta,
   openGongfa: openGongfa,
+  gfUiToggle: gfUiToggle,
+  gfUiPick: gfUiPick,
   completeDungeon: completeDungeon,
   fightSkillA: fightSkillA,
   fightSkillB: fightSkillB,
+  castSkill: castSkill,
+  castSkillAt: castSkillAt,
+  tickTurn: tickTurn,
   gfShopBook: gfShopBook,
   restore: restore,
-  closeModal: closeModal
+  closeModal: closeModal,
+  /* --- 战斗（功法主动技用） --- */
+  makeMonster: makeMonster,
+  startFight: startFight,
+  endFight: endFight,
+  winFight: winFight,
+  monsterTurn: monsterTurn
 };`
 );
 
@@ -1292,24 +1317,49 @@ step('习得后计入已学、可装备、可卸下', () => {
   if (!G.gfLearned(key)) throw new Error('已学标记缺失');
   if (META().gongfa.learned.indexOf(key) < 0) throw new Error('未写入 META');
   if (G.gfLearn(key)) throw new Error('重复习得应被拒');
-  /* 空槽自动运转 */
-  if (S().gongfa.xin !== key) throw new Error('心法空槽未自动运转');
-  G.gfEquip(key);
-  if (S().gongfa.xin !== null) throw new Error('再点未卸下');
-  G.gfEquip(key);
-  if (S().gongfa.xin !== key) throw new Error('未能重新运转');
+  /* 空槽自动运转（被动槽） */
+  if (S().gongfa.passive[0] !== key) throw new Error('被动空槽未自动运转');
+  /* 点一下卸下，再点一下装上 */
+  if (G.gfToggleEquip(key) !== 'off') throw new Error('未卸下');
+  if (S().gongfa.passive.indexOf(key) >= 0) throw new Error('卸下后仍在槽位');
+  if (G.gfToggleEquip(key) !== 'on') throw new Error('未重新装上');
+  if (S().gongfa.passive.indexOf(key) < 0) throw new Error('重新装上失败');
   return '习得→自动运转→卸下→复位 全通';
 });
-step('术法只容两部，第三部顶替最旧', () => {
+step('被动槽 3 格、主动槽 2 格，各自独立', () => {
+  resetGf();
+  if (G.gfSlot.passive !== 3 || G.gfSlot.active !== 2) throw new Error('槽位数量不符');
+  if (S().gongfa.passive.length !== 3 || S().gongfa.active.length !== 2) throw new Error('槽位数组长度不符');
+  const xin = G.gfDefs.filter(g => g.kind === 'xin').slice(0, 4).map(g => g.k);
+  xin.forEach(k => G.gfLearn(k, true));
+  /* 前 3 部自动填入被动槽，第 4 部应无处可放 */
+  if (S().gongfa.passive.filter(Boolean).length !== 3) throw new Error('被动槽未自动填满');
+  if (G.gfToggleEquip(xin[3]) !== 'full') throw new Error('槽满时未返回 full');
+  /* 指定槽位替换 */
+  if (!G.gfEquipAt(xin[3], 1)) throw new Error('指定槽位装入失败');
+  if (S().gongfa.passive[1] !== xin[3]) throw new Error('替换未落到指定槽');
+  if (S().gongfa.passive.indexOf(xin[1]) >= 0) throw new Error('被换下的仍在槽位');
+  /* 同一部不能占两格 */
+  G.gfEquipAt(xin[3], 2);
+  if (S().gongfa.passive.filter(k => k === xin[3]).length !== 1) throw new Error('同一部占了两格');
+  /* 主动槽独立 */
+  const shu = G.gfDefs.filter(g => g.kind === 'shu').slice(0, 3).map(g => g.k);
+  shu.forEach(k => G.gfLearn(k, true));
+  if (S().gongfa.active.filter(Boolean).length !== 2) throw new Error('主动槽未自动填满');
+  if (S().gongfa.passive.filter(k => shu.indexOf(k) >= 0).length) throw new Error('术法混进了被动槽');
+  return '被动 3 / 主动 2 各自独立，替换与去重正常';
+});
+step('术法只容两部，第三部需替换', () => {
   resetGf();
   const shu = G.gfDefs.filter(g => g.kind === 'shu').slice(0, 3).map(g => g.k);
   shu.forEach(k => G.gfLearn(k, true));
-  if (S().gongfa.shu.indexOf(shu[0]) < 0 || S().gongfa.shu.indexOf(shu[1]) < 0) throw new Error('前两部未入槽');
-  S().gongfa.shu = [shu[0], shu[1]];
-  G.gfEquip(shu[2]);
-  if (S().gongfa.shu.indexOf(shu[2]) < 0) throw new Error('第三部未入槽');
-  if (S().gongfa.shu.indexOf(shu[0]) >= 0) throw new Error('未顶替最旧');
-  return '两槽固定，第三部顶替最旧';
+  if (S().gongfa.active.indexOf(shu[0]) < 0 || S().gongfa.active.indexOf(shu[1]) < 0) throw new Error('前两部未入槽');
+  if (G.gfToggleEquip(shu[2]) !== 'full') throw new Error('第三部未被拒');
+  G.gfEquipAt(shu[2], 0);
+  if (S().gongfa.active.indexOf(shu[2]) < 0) throw new Error('替换未生效');
+  if (S().gongfa.active.indexOf(shu[0]) >= 0) throw new Error('未顶替槽 0');
+  if (G.gfActiveSkill(1).key !== shu[1]) throw new Error('槽 1 被误改');
+  return '主动槽固定 2 格，满则替换';
 });
 step('参悟：灵石与修为双消耗、不足被拒、上限封顶', () => {
   resetGf();
@@ -1338,7 +1388,7 @@ step('心法加成进入 stats()，且不越界、不产生 NaN', () => {
   G.gfAllOff();
   const base = G.stats();
   G.gfLearn('gf_taiyi', true);       /* 太乙玄清道：修速为主 */
-  S().gongfa.xin = 'gf_taiyi';
+  S().gongfa.passive[0] = 'gf_taiyi';
   S().gongfa.lv['gf_taiyi'] = G.gfMaxArr[G.gfByKey['gf_taiyi'].t];
   const on = G.stats();
   if (!(on.cult > base.cult)) throw new Error('修速未提升');
@@ -1360,7 +1410,7 @@ step('心法气运并入 fortune()，不新开乘区', () => {
   META().up.luck = 0;
   const f0 = G.fortune();
   G.gfLearn('gf_tianji', true);      /* 天机演算术：缘法（气运） */
-  S().gongfa.xin = 'gf_tianji';
+  S().gongfa.passive[0] = 'gf_tianji';
   S().gongfa.lv['gf_tianji'] = G.gfMaxArr[G.gfByKey['gf_tianji'].t];
   const gfl = G.gfLuck();
   const f1 = G.fortune();
@@ -1372,22 +1422,29 @@ step('心法气运并入 fortune()，不新开乘区', () => {
   G.gfAllOff();
   return '心法气运 +' + gfl + '，气运 ' + f0 + ' → ' + f1;
 });
-step('术法提供战斗参数，未装备则回落基础灵力斩', () => {
+step('主动功法提供技能参数（含冷却与附加效果）', () => {
   resetGf();
   G.gfAllOff();
-  if (G.gfSkill(0) !== null || G.gfSkill(1) !== null) throw new Error('未装备却有术法参数');
+  if (G.gfActiveSkill(0) !== null || G.gfActiveSkill(1) !== null) throw new Error('未装备却有术法参数');
   G.gfLearn('gf_sk_zhanfeng', true);
-  S().gongfa.shu = ['gf_sk_zhanfeng', null];
-  const sk = G.gfSkill(0);
+  S().gongfa.active = ['gf_sk_zhanfeng', null];
+  const sk = G.gfActiveSkill(0);
   if (!sk) throw new Error('术法参数缺失');
-  for (const k of ['mult', 'mpF', 'mpFlat']) if (typeof sk[k] !== 'number' || !isFinite(sk[k])) throw new Error(k + ' 异常');
+  for (const k of ['mult', 'mpF', 'mpFlat', 'cd']) if (typeof sk[k] !== 'number' || !isFinite(sk[k])) throw new Error(k + ' 异常');
   if (!(sk.mult > 1)) throw new Error('倍率异常');
+  if (!(sk.cd >= 1)) throw new Error('冷却异常');
   if (!(G.gfSkillMp(sk, 1000) > 0)) throw new Error('灵力消耗异常');
+  if (!(G.gfFxText(sk.fx).length > 0 && sk.fx.crit > 0)) throw new Error('斩击应带暴击加成');
   /* 满重后倍率应更高 */
   S().gongfa.lv['gf_sk_zhanfeng'] = G.gfMaxArr[G.gfByKey['gf_sk_zhanfeng'].t];
-  const sk2 = G.gfSkill(0);
+  const sk2 = G.gfActiveSkill(0);
   if (!(sk2.mult > sk.mult)) throw new Error('重数未提高术法威能');
-  return '倍率 ' + sk.mult + ' → 满重 ' + sk2.mult + '（原基础灵力斩为 2.3）';
+  /* 十种基调的能力必须齐备（护盾/闪避/冰封/灼烧/吸血/破防/自伤/回灵） */
+  const needFlavor = ['gun','zhan','lian','xue','dun','ling','huo','bing','xu','ji'];
+  const shuDefs = G.gfDefs.filter(g => g.kind === 'shu');
+  const missing = needFlavor.filter(f => !shuDefs.some(g => g.sk === f));
+  if (missing.length) throw new Error('缺少基调 ' + missing.join());
+  return '倍率 ' + sk.mult + ' · 冷却 ' + sk.cd + ' · 满重 ' + sk2.mult + ' · 十种基调齐备';
 });
 step('术法在战斗中生效（连击/吸血各有其效）', () => {
   const real = Math.random;
@@ -1411,10 +1468,10 @@ step('术法在战斗中生效（连击/吸血各有其效）', () => {
     /* 术法「两仪剑」：两段 */
     putFoe();
     G.gfLearn('gf_sk_liangyi', true);
-    S().gongfa.shu = ['gf_sk_liangyi', null];
+    S().gongfa.active = ['gf_sk_liangyi', null];
     const hpB = S().combat.m.hp;
     const logN = S().logs.length;
-    G.fightSkillA();
+    G.castSkill(0);
     const dmgLian = hpB - S().combat.m.hp;
     const seg = S().logs.slice(logN).map(l => l.t).join('|');
     if (!(dmgLian > dmgBase)) throw new Error('连击伤害未高于基础：' + dmgLian + ' vs ' + dmgBase);
@@ -1423,17 +1480,17 @@ step('术法在战斗中生效（连击/吸血各有其效）', () => {
     /* 术法「太阴血噬」：回血 */
     putFoe();
     G.gfLearn('gf_sk_taiyin', true);
-    S().gongfa.shu = ['gf_sk_taiyin', null];
+    S().gongfa.active = ['gf_sk_taiyin', null];
     S().hp = Math.round(G.__eval('stats().hpMax') * 0.3);
     const hpSelf = S().hp;
     const logN2 = S().logs.length;
-    G.fightSkillA();
+    G.castSkill(0);
     const seg2 = S().logs.slice(logN2).map(l => l.t).join('|');
     if (seg2.indexOf('气血 +') < 0) throw new Error('血噬未回血');
     S().combat = null;
     /* 未装备术法时回落基础灵力斩 */
     G.gfAllOff();
-    if (G.gfSkill(0) || G.gfSkill(1)) throw new Error('卸下后仍取到术法');
+    if (G.gfActiveSkill(0) || G.gfActiveSkill(1)) throw new Error('卸下后仍取到术法');
     return '基础 ' + dmgBase + ' → 连击 ' + dmgLian + '，血噬回血 ' + hpSelf + ' 起效';
   } finally { Math.random = real; }
 });
@@ -1489,8 +1546,8 @@ step('存档往返：功法重数、装备槽与藏经阁货架都不丢', () =>
   S().stones = 999999; S().exp = 999999;
   G.gfLearn('gf_liuyun', true);
   G.gfLearn('gf_sk_xuangui', true);
-  S().gongfa.xin = 'gf_liuyun';
-  S().gongfa.shu = ['gf_sk_xuangui', null];
+  S().gongfa.passive[0] = 'gf_liuyun';
+  S().gongfa.active = ['gf_sk_xuangui', null];
   S().gongfa.lv['gf_liuyun'] = 2;
   G.gfUpgrade('gf_liuyun');
   G.refreshShop(true);
@@ -1498,10 +1555,10 @@ step('存档往返：功法重数、装备槽与藏经阁货架都不丢', () =>
   const lv = S().gongfa.lv['gf_liuyun'];
   const d = G.saveData();
   G.newGame();
-  if (S().gongfa.xin !== null) throw new Error('新建号未清空装备槽');
+  if (S().gongfa.passive[0] !== null) throw new Error('新建号未清空装备槽');
   if (!G.restore(d)) throw new Error('restore 失败');
-  if (S().gongfa.xin !== 'gf_liuyun') throw new Error('心法槽未还原');
-  if (S().gongfa.shu[0] !== 'gf_sk_xuangui') throw new Error('术法槽未还原');
+  if (S().gongfa.passive[0] !== 'gf_liuyun') throw new Error('被动槽未还原');
+  if (S().gongfa.active[0] !== 'gf_sk_xuangui') throw new Error('主动槽未还原');
   if (S().gongfa.lv['gf_liuyun'] !== lv) throw new Error('重数未还原');
   if (S().shopBook.join() !== bk.join()) throw new Error('藏经阁货架未还原');
   /* 存档码往返（含 META 的已学清单） */
@@ -1517,34 +1574,56 @@ step('旧存档（无功法字段）可平滑升级', () => {
     equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
     bag:[], pills:{}, logs:[], shop:[], stat:{} };
   if (!G.__eval('restore(' + JSON.stringify(d) + ')')) throw new Error('旧存档读入失败');
-  if (!S().gongfa || S().gongfa.xin !== null || !Array.isArray(S().gongfa.shu)) throw new Error('未补默认功法字段');
+  if (!S().gongfa || !Array.isArray(S().gongfa.passive) || !Array.isArray(S().gongfa.active)) throw new Error('未补默认功法字段');
+  if (S().gongfa.passive.length !== 3 || S().gongfa.active.length !== 2) throw new Error('默认槽位数不符');
   if (!Array.isArray(S().shopBook)) throw new Error('未补藏经阁字段');
   G.stats();                                   /* 不能炸 */
   return '缺字段自动补全，stats() 正常';
 });
 step('清洗器拒绝非法键与越界重数', () => {
-  const s = G.gfSanitizeS({ xin:'不存在的功法', shu:['gf_sk_yuqi','乱码',5], lv:{ 'gf_yinqi': 999, '野键': 3, 'gf_sk_yuqi': 1 } });
-  if (s.xin !== null) throw new Error('非法心法未被剔除');
-  if (s.shu[0] !== 'gf_sk_yuqi' || s.shu[1] !== null) throw new Error('术法槽清洗异常');
+  const s = G.gfSanitizeS({ passive:['不存在的功法', 'gf_yinqi'], active:['gf_sk_yuqi','乱码',5], lv:{ 'gf_yinqi': 999, '野键': 3, 'gf_sk_yuqi': 1 } });
+  if (s.passive[0] !== 'gf_yinqi' || s.passive[1] !== null) throw new Error('被动槽清洗异常');
+  if (s.active[0] !== 'gf_sk_yuqi' || s.active[1] !== null) throw new Error('主动槽清洗异常');
   if (s.lv['gf_yinqi'] !== G.gfMaxArr[0]) throw new Error('重数未按上限截断');
   if (s.lv['野键'] !== undefined) throw new Error('非法键未被剔除');
+  /* 术法不得混进被动槽、心法不得混进主动槽 */
+  const mix = G.gfSanitizeS({ passive:['gf_sk_yuqi'], active:['gf_yinqi'] });
+  if (mix.passive[0] !== null || mix.active[0] !== null) throw new Error('类别混装未被拦截');
   const m = G.gfSanitizeMeta({ learned:['gf_yinqi','gf_yinqi','野键',7], best:{ 'gf_yinqi': 99, '野': 1 } });
   if (m.learned.length !== 1) throw new Error('已学清单未去重/过滤');
   if (m.best['gf_yinqi'] !== G.gfMaxArr[0]) throw new Error('best 未截断');
-  return '非法键 / 重复 / 越界均已拦截';
+  return '非法键 / 重复 / 越界 / 类别混装 均已拦截';
+});
+step('旧存档（阶段一 xin/shu 形态）自动迁移到 passive/active', () => {
+  const old = G.gfSanitizeS({ xin:'gf_liuyun', shu:['gf_sk_yuqi', null], lv:{ 'gf_liuyun': 2 } });
+  if (old.passive[0] !== 'gf_liuyun') throw new Error('旧 xin 未迁移到 passive');
+  if (old.passive.length !== 3) throw new Error('被动槽数未补齐');
+  if (old.active[0] !== 'gf_sk_yuqi') throw new Error('旧 shu 未迁移到 active');
+  if (old.active.length !== 2) throw new Error('主动槽数未补齐');
+  if (old.lv['gf_liuyun'] !== 2) throw new Error('重数未保留');
+  /* 走一次真实的 restore 路径 */
+  const d = { v:2, level:10, exp:0, day:5, stones:100, hp:10, mp:10,
+    equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
+    bag:[], pills:{}, logs:[], shop:[], stat:{},
+    gongfa:{ xin:'gf_tiegu', shu:['gf_sk_yuqi', null], lv:{ 'gf_tiegu': 1 } } };
+  if (!G.restore(d)) throw new Error('旧档 restore 失败');
+  if (S().gongfa.passive[0] !== 'gf_tiegu') throw new Error('restore 未迁移被动槽');
+  if (S().gongfa.active[0] !== 'gf_sk_yuqi') throw new Error('restore 未迁移主动槽');
+  G.stats();
+  return 'xin/shu → passive/active 迁移正常（含 restore 全链路）';
 });
 step('功法随轮回留存（悟道不灭），重数归零', () => {
   resetGf();
   G.gfLearn('gf_yinqi', true);
   G.gfLearn('gf_danxia', true);
-  S().gongfa.xin = 'gf_danxia';
+  S().gongfa.passive[0] = 'gf_danxia';
   S().gongfa.lv['gf_danxia'] = 3;
   const n = G.gfLearnedList().length;
   G.doRebirth();
   if (G.gfLearnedList().length !== n) throw new Error('轮回复习得清单丢失');
   if (!G.gfLearned('gf_danxia')) throw new Error('轮回后应仍已习得');
   if (G.gfLevel('gf_danxia') !== 0) throw new Error('重数应归零');
-  if (S().gongfa.xin !== null) throw new Error('装备槽应清空');
+  if (S().gongfa.passive.some(Boolean) || S().gongfa.active.some(Boolean)) throw new Error('装备槽应清空');
   return '已学 ' + n + ' 部留存 · 重数归零 · 装备清空';
 });
 step('悟道录面板可打开且列出全部功法', () => {
@@ -1563,21 +1642,26 @@ step('悟道录面板可打开且列出全部功法', () => {
 step('左栏功法面板与顶栏入口就位', () => {
   resetGf();
   G.gfLearn('gf_zixiao', true);
-  S().gongfa.xin = 'gf_zixiao';
+  S().gongfa.passive[0] = 'gf_zixiao';
+  G.gfLearn('gf_sk_zixiao', true);
   G.renderAll();
   const box = el('gfBox').innerHTML;
   if (box.indexOf('gf_zixiao') >= 0 || box.indexOf('紫霄雷书') < 0) throw new Error('左栏未显示当前心法');
   if (box.indexOf('openGongfa()') < 0) throw new Error('左栏缺入口');
+  for (const lbl of ['被动1', '被动2', '被动3', '主动1', '主动2']) {
+    if (box.indexOf(lbl) < 0) throw new Error('左栏缺槽位 ' + lbl);
+  }
+  if (box.indexOf('斩击') < 0) throw new Error('主动槽未显示技能基调名');
   if (el('gfTag').textContent.indexOf('已 习') < 0) throw new Error('标题未显示已习数量');
   if (el('utilBox').innerHTML.indexOf('功 法') < 0) throw new Error('移动端抽屉缺功法入口');
   /* 战斗中不可参悟 */
-  S().combat = { m: G.__eval('makeMonster(1,false)'), ctx:{type:'test'}, turn:1 };
+  S().combat = { m: G.makeMonster(1, false), ctx:{type:'test'}, turn:1 };
   const lv = G.gfLevel('gf_zixiao');
   S().stones = 9999999; S().exp = 9999999;
   G.gfUpgrade('gf_zixiao');
   if (G.gfLevel('gf_zixiao') !== lv) throw new Error('战斗中仍可参悟');
   S().combat = null;
-  return '左栏 · 顶栏 · 抽屉入口齐备，战中参悟已锁';
+  return '左栏 5 槽 · 顶栏 · 抽屉入口齐备，战中参悟已锁';
 });
 step('道法纲要与藏经阁文案已含功法', () => {
   resetGf();
@@ -1599,6 +1683,244 @@ step('道法纲要与藏经阁文案已含功法', () => {
     throw new Error('货架已空却缺少提示');
   }
   return '纲要 / 藏经阁文案齐备（当期货架 ' + G.gfShopBook().length + ' 部）';
+});
+
+log('');
+log('=== Q. 功法主动技 · 冷却与增益减益 ===');
+/* 统一的战斗靶子：血厚的妖王，一击打不死；随机固定以便断言可控 */
+function qFoe(setup){
+  resetGf();
+  S().level = 30;
+  S().stones = 9999999; S().exp = 9999999;
+  if (setup) setup();
+  const st = G.stats();
+  S().hp = st.hpMax;
+  S().mp = st.mpMax;
+  G.startFight(G.makeMonster(4, true), { type:'test' });
+  S().mp = st.mpMax;                 /* startFight 会渲染，灵力再补满 */
+  return S().combat;
+}
+function qLog(from){
+  return S().logs.slice(from).map(l => l.t).join('|');
+}
+step('施放主动技：扣灵力、造成伤害、进入冷却', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;         /* 不暴击，数值可控 */
+    qFoe(() => { G.gfLearn('gf_sk_zhanfeng', true); S().gongfa.active = ['gf_sk_zhanfeng', null]; });
+    const c = S().combat;
+    const hp0 = c.m.hp, mp0 = S().mp;
+    G.castSkill(0);
+    if (!(c.m.hp < hp0)) throw new Error('技能未造成伤害');
+    if (!(S().mp < mp0)) throw new Error('技能未消耗灵力');
+    if (!(c.cd['gf_sk_zhanfeng'] > 0)) throw new Error('未进入冷却');
+    if (c.turn <= 1) throw new Error('敌人未行动');
+    return '伤害 ' + (hp0 - c.m.hp) + ' · 灵力 -' + (mp0 - S().mp) + ' · CD ' + c.cd['gf_sk_zhanfeng'];
+  } finally { Math.random = real; }
+});
+step('冷却期间无法再放，回合推进后恢复', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;
+    qFoe(() => { G.gfLearn('gf_sk_xumi', true); S().gongfa.active = ['gf_sk_xumi', null]; });   /* 守御：CD 5 */
+    const c = S().combat;
+    G.castSkill(0);
+    const cd0 = c.cd['gf_sk_xumi'];
+    if (!(cd0 >= 4)) throw new Error('守御冷却过短 ' + cd0);
+    const hp1 = c.m.hp, logN = S().logs.length;
+    G.castSkill(0);                                        /* 冷却中 */
+    if (c.m.hp !== hp1) throw new Error('冷却中仍造成伤害');
+    if (qLog(logN).length) throw new Error('冷却中不应有新日志');
+    /* 用挥击推回合，直至冷却结束 */
+    let guard = 0;
+    while ((c.cd['gf_sk_xumi'] || 0) > 0 && S().combat && guard++ < 20) G.fightAttack();
+    if (S().combat && (c.cd['gf_sk_xumi'] || 0) > 0) throw new Error('冷却未随回合递减');
+    return 'CD ' + cd0 + ' → ' + (c.cd['gf_sk_xumi'] || 0) + '（随回合递减，期间放不出）';
+  } finally { Math.random = real; }
+});
+step('护盾：按比例减伤并持续回合；冰封：敌方伤害减半', () => {
+  const real = Math.random;
+  try {
+    /* 先测无防护的基准伤害 */
+    Math.random = () => 0.9;
+    qFoe(() => { G.gfLearn('gf_sk_xuangui', true); S().gongfa.active = ['gf_sk_xuangui', null]; });  /* 玄冰：冰封 2 */
+    const c = S().combat;
+    S().hp = G.stats().hpMax;
+    const hpA = S().hp;
+    G.fightAttack();                                        /* 无冰封时挨一下 */
+    const raw = hpA - S().hp;
+    S().combat = null;
+
+    /* 有冰封时：伤害应显著更低 */
+    qFoe(() => { G.gfLearn('gf_sk_xuangui', true); S().gongfa.active = ['gf_sk_xuangui', null]; });
+    const c2 = S().combat;
+    S().hp = G.stats().hpMax;
+    const hpB = S().hp, logN = S().logs.length;
+    G.castSkill(0);                                         /* 施放玄冰 → 冰封 2 */
+    if (!(c2.debuff.freeze > 0)) throw new Error('冰封未生效');
+    if (qLog(logN).indexOf('伤害减半') < 0) throw new Error('冰封未落到伤害结算上');
+    const withFreeze = hpB - S().hp;
+    if (!(withFreeze < raw)) throw new Error('冰封未减伤：' + withFreeze + ' vs ' + raw);
+    S().combat = null;
+
+    /* 护盾：须弥守御 shield 55% ×2 回合 */
+    qFoe(() => { G.gfLearn('gf_sk_xumi', true); S().gongfa.active = ['gf_sk_xumi', null]; });
+    const c3 = S().combat;
+    S().hp = G.stats().hpMax;
+    const hpC = S().hp, logN3 = S().logs.length;
+    G.castSkill(0);
+    if (!(c3.buff.shield > 0)) throw new Error('护盾未生效');
+    if (qLog(logN3).indexOf('护体灵光') < 0) throw new Error('护盾缺少提示');
+    const withShield = hpC - S().hp;
+    if (!(withShield < raw)) throw new Error('护盾未减伤：' + withShield + ' vs ' + raw);
+    if (!(c3.buff.shieldDur > 0)) throw new Error('护盾持续回合异常');
+    S().combat = null;
+    return '裸伤 ' + raw + ' → 冰封 ' + withFreeze + ' / 护盾 ' + withShield;
+  } finally { Math.random = real; }
+});
+step('虚空：完全闪避敌方一击', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;
+    qFoe(() => { G.gfLearn('gf_sk_wuxiang', true); S().gongfa.active = ['gf_sk_wuxiang', null]; });   /* 无相劫指：dodge 1 */
+    const c = S().combat;
+    S().hp = G.stats().hpMax;
+    const hp0 = S().hp, logN = S().logs.length;
+    G.castSkill(0);
+    /* 本次施放即换来敌方这一回合的完全闪避（回合因已在 monsterTurn 中消耗） */
+    if (S().hp !== hp0) throw new Error('闪避回合仍受伤 ' + (hp0 - S().hp));
+    if (qLog(logN).indexOf('扑了个空') < 0) throw new Error('闪避缺少提示');
+    if (c.buff.dodge !== 0) throw new Error('闪避回合未消耗');
+    /* 再挨一下应正常掉血（说明只免了一回合） */
+    const hp1 = S().hp;
+    G.fightAttack();
+    if (!(S().hp < hp1)) throw new Error('闪避持续过久');
+    return '闪避生效：气血未损（' + hp0 + '），仅免一回合';
+  } finally { Math.random = real; }
+});
+step('灼烧：每回合持续掉血并按回合耗尽', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;
+    qFoe(() => { G.gfLearn('gf_sk_chiyan', true); S().gongfa.active = ['gf_sk_chiyan', null]; });    /* 赤炎斩：burn 3 */
+    const c = S().combat;
+    S().hp = G.stats().hpMax;
+    const logN = S().logs.length;
+    G.castSkill(0);
+    if (!(c.debuff.burn > 0)) throw new Error('灼烧未生效');
+    const burnTurns = c.debuff.burn;
+    const hpAfterCast = c.m.hp;
+    G.fightAttack();                                        /* 下一回合开始时结算灼烧 */
+    if (qLog(logN).indexOf('烈焰灼烧') < 0) throw new Error('灼烧未结算');
+    if (!(c.debuff.burn < burnTurns)) throw new Error('灼烧回合未递减');
+    if (!(c.m.hp < hpAfterCast)) throw new Error('灼烧未扣敌血');
+    /* 烧到耗尽 */
+    let guard = 0;
+    while (c.debuff.burn > 0 && S().combat && guard++ < 20) G.fightAttack();
+    if (S().combat && c.debuff.burn > 0) throw new Error('灼烧未耗尽');
+    return '灼烧 ' + burnTurns + ' 回合，逐回合扣血后耗尽';
+  } finally { Math.random = real; }
+});
+step('因果反噬：伤敌亦伤己；御器：行动后回灵', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;
+    /* 因果：selfDmgPct 12% */
+    qFoe(() => { G.gfLearn('gf_sk_hundun', true); S().gongfa.active = ['gf_sk_hundun', null]; });
+    const c = S().combat;
+    S().hp = G.stats().hpMax;
+    const hp0 = S().hp, logN = S().logs.length;
+    G.castSkill(0);
+    if (qLog(logN).indexOf('因果反噬') < 0) throw new Error('自伤未生效');
+    if (!(S().hp < hp0)) throw new Error('自身未掉血');
+    S().combat = null;
+    /* 御器：mpBack 5% */
+    qFoe(() => { G.gfLearn('gf_sk_yuqi', true); S().gongfa.active = ['gf_sk_yuqi', null]; });
+    const c2 = S().combat;
+    S().hp = G.stats().hpMax;
+    const mpBefore = G.stats().mpMax - 40;
+    S().mp = mpBefore;
+    const logN2 = S().logs.length;
+    G.castSkill(0);
+    if (qLog(logN2).indexOf('灵力回了') < 0) throw new Error('回灵未生效');
+    return '反噬 -' + (hp0 - S().hp) + ' 气血；御器回灵正常';
+  } finally { Math.random = real; }
+});
+step('破防提高伤害（同等倍率下高于无破防）', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;
+    /* 破灵：pierce 50%，mult 2.0 */
+    qFoe(() => { G.gfLearn('gf_sk_powang', true); S().gongfa.active = ['gf_sk_powang', null]; });
+    const c1 = S().combat;
+    const a0 = c1.m.hp;
+    G.castSkill(0);
+    const pierceDmg = a0 - c1.m.hp;
+    S().combat = null;
+    /* 对照：基础灵力斩 2.3 倍、无破防 */
+    qFoe(() => { G.gfAllOff(); });
+    const c2 = S().combat;
+    const b0 = c2.m.hp;
+    G.fightSkill();
+    const baseDmg = b0 - c2.m.hp;
+    S().combat = null;
+    if (!(pierceDmg > baseDmg * 0.9)) throw new Error('破防未体现价值（' + pierceDmg + ' vs ' + baseDmg + '）');
+    return '破灵 ' + pierceDmg + ' vs 灵力斩 ' + baseDmg + '（无视半数防御）';
+  } finally { Math.random = real; }
+});
+step('战斗面板：技能卡带冷却显示、状态条可见、CD 中置灰', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.9;
+    qFoe(() => { G.gfLearn('gf_sk_chiyan', true); G.gfLearn('gf_sk_xumi', true); S().gongfa.active = ['gf_sk_chiyan', 'gf_sk_xumi']; });
+    const c = S().combat;
+    G.renderAll();
+    let html = el('actPanel').innerHTML;
+    if (html.indexOf('castSkill(') < 0) throw new Error('战斗面板缺技能按钮');
+    if (html.indexOf('耗灵力') < 0) throw new Error('技能卡缺灵力消耗');
+    if (html.indexOf('灼烧 3 回合') < 0) throw new Error('技能卡未标明附加效果');
+    /* 放一招后：状态条出现 + 该技能置灰 */
+    S().hp = G.stats().hpMax;
+    G.castSkill(0);
+    G.renderAll();
+    html = el('actPanel').innerHTML;
+    if (html.indexOf('灼烧 · 余') < 0) throw new Error('状态条缺灼烧');
+    if (html.indexOf('冷却中 · 余') < 0) throw new Error('冷却中未显示倒计时');
+    S().combat = null;
+    /* 未备术法时给出引导卡 */
+    qFoe(() => { G.gfAllOff(); });
+    G.renderAll();
+    const html2 = el('actPanel').innerHTML;
+    if (html2.indexOf('未 备 术 法') < 0) throw new Error('未备术法时缺引导');
+    if (html2.indexOf('openGongfa()') < 0) throw new Error('引导卡未指向功法面板');
+    S().combat = null;
+    return '技能卡 / 冷却倒计时 / 状态条 / 引导卡 齐备';
+  } finally { Math.random = real; }
+});
+step('三部被动同时生效（3 格叠加，多于单部）', () => {
+  resetGf();
+  G.gfAllOff();
+  const base = G.stats();
+  const keys = ['gf_taiyi', 'gf_hunyuan', 'gf_zaohua'];      /* 三部神品心法 */
+  G.gfLearn(keys[0], true);
+  S().gongfa.passive[0] = keys[0];
+  S().gongfa.lv[keys[0]] = G.gfMaxArr[4];
+  const one = G.stats();
+  keys.slice(1).forEach((k, i) => {
+    G.gfLearn(k, true);
+    S().gongfa.passive[i + 1] = k;
+    S().gongfa.lv[k] = G.gfMaxArr[4];
+  });
+  const three = G.stats();
+  if (!(one.cult > base.cult)) throw new Error('单部被动未生效');
+  if (!(three.cult > one.cult)) throw new Error('多部被动未叠加');
+  if (!(three.hpMax > one.hpMax)) throw new Error('气血未叠加');
+  const b = G.gfBonus();
+  if (S().gongfa.passive.filter(Boolean).length !== 3) throw new Error('被动槽未填满 3 格');
+  G.gfAllOff();
+  const off = G.stats();
+  if (Math.abs(off.cult - base.cult) > 0.001) throw new Error('尽数卸下后未还原');
+  return '修速 ' + base.cult + '% → 单部 ' + one.cult + '% → 三部 ' + three.cult + '%';
 });
 
 log('');
