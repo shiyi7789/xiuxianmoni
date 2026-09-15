@@ -1,0 +1,46 @@
+=== 远程 main 指向 ===
+d34713f1cf763973562bfd12865a3852674b2be0	refs/heads/main
+
+=== 本地 vs 远程 HEAD ===
+  本地 main        : d34713f1cf763973562bfd12865a3852674b2be0
+  远程 origin/main : d34713f1cf763973562bfd12865a3852674b2be0
+  是否一致         : 是 ✓
+
+=== 远程 main 上的文件（共 20 个）===
+  .github/workflows/ci.yml
+  .github/workflows/pages.yml
+  .gitignore
+  README.md
+  regression-test.js
+  scripts/connect-github.ps1
+  scripts/release.mjs
+  scripts/verify-site.mjs
+  site/.nojekyll
+  site/404.html
+  site/_headers
+  site/index.html
+  site/robots.txt
+  site/sitemap.xml
+  site/version.json
+  site/xiuxian.html
+  vercel.json
+  xiuxian.html
+  修仙模拟器-分析报告.md
+  部署指引.md
+
+=== 差异 ===
+  本地跟踪文件      : 20
+  远程文件          : 20
+  未推上去的文件    : 无 ✓
+
+  私有/临时文件是否误传 : 没有 ✓
+
+=== 远程提交历史 ===
+  d34713f docs: 补充 GitHub 一步连接脚本说明与 Pages 限制
+  3f30a6e chore: 新增 GitHub 连接脚本，并给自检补充工作流校验
+  61d124d chore: 初始化站点 —— 落地页 + 游戏本体 + 部署配置
+
+=== 最新提交改动统计 ===
+d34713f docs: 补充 GitHub 一步连接脚本说明与 Pages 限制
+ 部署指引.md | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
