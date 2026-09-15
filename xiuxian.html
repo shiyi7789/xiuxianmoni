@@ -786,6 +786,11 @@
       </div>
 
       <div class="panel">
+        <div class="ph">材 料 <span id="matTag" style="margin-left:auto;letter-spacing:0;color:var(--ink4)"></span></div>
+        <div class="pb" id="matBox"></div>
+      </div>
+
+      <div class="panel">
         <div class="ph">储 物 袋 <span style="margin-left:auto;letter-spacing:0;color:var(--ink4)" id="bagCount"></span></div>
         <div class="pb" id="bagBox" style="padding:6px 8px"></div>
       </div>
@@ -1052,12 +1057,27 @@ const MAX_LV = REALMS.length - 1;
 
 /* ── data/pills.js ──────────────────────────────────────────────── */
 
-/* ---------------- 丹药 ---------------- */
+/* ---------------- 丹药 ----------------
+   字段：
+   · price  坊市标价（会随大境界上浮，见 sys/pills.js 的 pillPrice）
+   · desc   说明（按钮 title 与坊市卡片用）
+   · craft  可选。true = **只能自己炼，坊市丹药铺不上架**（炼制见 sys/craft.js）
+   ------------------------------------------------------------
+   新增丹药：加一行到 PILLS，并在 sys/pills.js 的 usePill() 里补一个分支。
+   药囊的默认值由 blankPills() 从本表派生，无需别处再列一遍。 */
 const PILLS = [
   { name:'回春丹', price:34,  desc:'恢复气血 45%' },
   { name:'聚灵丹', price:46,  desc:'恢复灵力 65%' },
-  { name:'破境丹', price:260, desc:'提升下次突破成功率，加成随大境界增长；至多连服三枚叠加。每个境界皆可用' }
+  { name:'破境丹', price:260, desc:'提升下次突破成功率，加成随大境界增长；至多连服三枚叠加。每个境界皆可用' },
+  { name:'归元丹', price:0, craft:true, desc:'气血与灵力尽复。坊市不售，须以灵草与妖丹自炼' }
 ];
+
+/* 空药囊：{ 回春丹:0, 聚灵丹:0, 破境丹:0, 归元丹:0 } —— 由表派生，永远与表同步 */
+function blankPills(){
+  const o = {};
+  for(const p of PILLS) o[p.name] = 0;
+  return o;
+}
 
 /* ── data/monsters.js ───────────────────────────────────────────── */
 
@@ -1505,6 +1525,107 @@ const ENCOUNTERS = [
     ]}
 ];
 
+/* ── data/materials.js ──────────────────────────────────────────── */
+
+/* =========================================================
+   材 料 —— 数据层
+   ---------------------------------------------------------
+   规则：本文件只导出常量，不 import 任何东西（防循环依赖的铁律）
+   · t   品阶 0~4，沿用器物的五品配色（.qcN / qName 自带流光）
+   · src 来路提示（仅用于界面展示）
+   追加一种材料 = 在 MATERIALS 与 MAT_ORDER 各加一行
+   ========================================================= */
+const MATERIALS = {
+  lingcao:  { n:'灵草',   t:0, src:'秘境每层 · 历练岩缝 · 材料铺' },
+  shoupi:   { n:'兽皮',   t:0, src:'凡兽起皆可剥取 · 材料铺' },
+  yaodan:   { n:'妖丹',   t:1, src:'凶兽以上妖兽 · 材料铺' },
+  xuantie:  { n:'玄铁',   t:2, src:'秘境 · 高阶历练地岩缝 · 材料铺' },
+  xingchen: { n:'星辰砂', t:3, src:'高阶秘境 · 妖王 · 材料铺不售' },
+  hundun:   { n:'混沌石', t:4, src:'太古战场 · 妖王 · 材料铺不售' }
+};
+
+/* 界面上固定的展示顺序（由低阶到高阶） */
+const MAT_ORDER = ['lingcao','shoupi','yaodan','xuantie','xingchen','hundun'];
+
+/* 材料铺常备货与单价
+   ---------------------------------------------------------
+   定位：**应急补差**，不是主要来源。材料主要靠打怪/秘境捡，近乎免费；
+   买价必然略贵于成品价（例如 3 灵草 36 灵石 ≈ 一枚回春丹 34），
+   这样「缺一味材料不想出门」时可以救急，但不会有人靠买材料刷丹药套利。 */
+const MAT_SHOP = [
+  { k:'lingcao',  price:12 },
+  { k:'shoupi',   price:8  },
+  { k:'yaodan',   price:42 },
+  { k:'xuantie',  price:150 }
+  /* 星辰砂与混沌石不上架：只能自己在秘境与妖王身上找 */
+];
+
+/* ── data/recipes.js ────────────────────────────────────────────── */
+
+/* =========================================================
+   丹 方 · 器 方 —— 数据层
+   ---------------------------------------------------------
+   · need    材料需求 { 材料键: 数量 }
+   · mpF     每次消耗灵力 = mpMax × mpF + 5
+   · days    每次消耗天数
+   · base    基础成功率（再加丹道传承与境界差，见 sys/craft.js）
+   · lv      推荐境界段（realmAt(S.level).group）；低于它按档扣，高于它有加成
+   · out     丹药名（须同时登记在 data/pills.js 的 PILLS 表里）
+   · slot    器物槽位 weapon/armor/treasure
+   · lvBias  炼器时生成器物的等级偏移
+   · qiMin   炼器时的最低品质（0 凡 / 1 灵 / 2 宝 / 3 仙 / 4 神）
+   ========================================================= */
+
+/* ---------- 丹 方 ---------- */
+const PILL_RECIPES = [
+  {
+    k:'r_huichun', out:'回春丹', lv:0,
+    need:{ lingcao:3 },
+    mpF:0.10, days:1, base:0.92,
+    d:'最基础的疗伤丹。灵草捣汁，文火慢熬。'
+  },
+  {
+    k:'r_juling', out:'聚灵丹', lv:0,
+    need:{ lingcao:2, yaodan:1 },
+    mpF:0.15, days:1, base:0.85,
+    d:'以妖丹为引，引动灵草中的木行之气，凝而成丹。'
+  },
+  {
+    k:'r_guijing', out:'归元丹', lv:2,
+    need:{ lingcao:5, yaodan:2 },
+    mpF:0.20, days:2, base:0.72,
+    d:'一次服下，气血与灵力尽复。久战不继时的救命之物——坊市并无此丹出售。'
+  },
+  {
+    k:'r_pojing', out:'破境丹', lv:4,
+    need:{ yaodan:3, lingcao:5, xingchen:1 },
+    mpF:0.35, days:3, base:0.55,
+    d:'此丹重在破境。星辰砂定神、妖丹聚气——成丹率极低，但成则一境可期。'
+  }
+];
+
+/* ---------- 器 方 ---------- */
+const GEAR_RECIPES = [
+  {
+    k:'g_weapon', slot:'weapon', lv:0,
+    need:{ xuantie:3, yaodan:2 },
+    mpF:0.25, days:2, base:0.75, lvBias:1, qiMin:2,
+    d:'以玄铁为骨、妖丹为魂，锻出杀伐之器。品阶由火候与运气决定。'
+  },
+  {
+    k:'g_armor', slot:'armor', lv:0,
+    need:{ xuantie:3, shoupi:5 },
+    mpF:0.25, days:2, base:0.75, lvBias:1, qiMin:2,
+    d:'兽皮为里、玄铁为面，一层层叠上去，甲成而重。'
+  },
+  {
+    k:'g_treasure', slot:'treasure', lv:2,
+    need:{ xingchen:2, yaodan:3 },
+    mpF:0.30, days:3, base:0.65, lvBias:2, qiMin:2,
+    d:'星辰砂是唯一能承载法力的材质。此法难度最高，成则必为宝器以上。'
+  }
+];
+
 /* ── core/meta.js ───────────────────────────────────────────────── */
 
 /* 气运 → 掉落运气（滚品质时叠加到 luck 上），见 fortune() */
@@ -1632,7 +1753,9 @@ function newGame(){
     hp:0, mp:0,
     equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
     bag:[],
-    pills:{ '回春丹':2, '聚灵丹':1, '破境丹':0 },
+    pills: Object.assign(blankPills(), { '回春丹':2, '聚灵丹':1 }),
+    /* 材料：本局所有，轮回清零（掉落与炼制见 sys/craft.js） */
+    materials:{},
     logs:[],
     combat:null,
     dungeon:null,
@@ -2508,6 +2631,7 @@ function pillPrice(p){
 function buyPill(name){
   const p = PILLS.find(x=>x.name===name);
   if(!p) return;
+  if(p.craft){ toast('此丹坊市不售，须自己在丹房炼'); return; }
   if(S.stones < p.price){ toast('灵石不足（需 '+p.price+'）'); return; }
   S.stones -= p.price;
   S.pills[name] = (S.pills[name]||0) + 1;
@@ -2529,13 +2653,22 @@ function usePill(name, force){
     S.pills[name]--;
     S.mp = Math.min(st.mpMax, S.mp + Math.round(st.mpMax*0.65));
     addLog('聚灵丹入喉即化，枯竭的灵力迅速充盈。','gain');
-  }else{
+  }else if(name === '归元丹'){
+    if(S.hp >= st.hpMax && S.mp >= st.mpMax){ toast('气血与灵力皆满'); return; }
+    S.pills[name]--;
+    S.hp = st.hpMax;
+    S.mp = st.mpMax;
+    addLog('归元丹入腹，药力如春水漫过四肢百骸——气血与灵力尽复。','epic');
+  }else if(name === '破境丹'){
     const stack = S.pillStack||0;
     if(stack >= 3){ toast('丹田药力已至极限，再服无益'); return; }
     S.pills[name]--;
     S.pillStack = stack + 1;
     addLog('你服下第 '+(stack+1)+' 枚破境丹，一股雄浑药力沉入丹田，静待突破之时迸发。'
       + '（本次突破 +'+pillBonus()+'%）','epic');
+  }else{
+    toast('此丹尚不知用法');
+    return;
   }
   S.stat.pillUse++;
   after();
@@ -3106,6 +3239,14 @@ function winFight(){
     addLog('你在其巢穴深处发现一枚尚有余温的兽卵——还能驯服。','act');
     addItem(rollMount(clamp(m.tier - 1, 0, 4), 0.10 + m.tier*0.13 + (m.boss?0.25:0)));
   }
+
+  /* 材料：与上面三类掉落**并行**，用独立判定，不挤占既有概率（老玩家收益节奏不变） */
+  const mats = rollMaterialDrop(m.tier, m.boss);
+  if(Object.keys(mats).length){
+    addMaterials(mats, true);
+    addLog('从残骸中剥取：'+matPlain(mats)+'。','dim');
+  }
+
   checkAch();
   endFight('win');
 }
@@ -3177,6 +3318,10 @@ function hunt(gi){
     const it = rollItem(0, 0.15 + g.tier*0.12);
     addLog('涧边一具枯骨半掩于落叶之下，手中犹握一物。','act');
     addItem(it);
+    /* 骨旁还有几块未化的矿石（与上面并行，不占器物判定） */
+    const got = rollSeamMats(g.tier);
+    addMaterials(got, true);
+    addLog('骨旁散落：'+matPlain(got)+'。','dim');
   }else if(r < 98){
     addLog('林间一只受伤的幼兽伏在溪边，见你并不躲闪，反而低鸣着凑了过来。','act');
     addItem(rollMount(clamp(g.tier-1, 0, 4), 0.12 + g.tier*0.13));
@@ -3277,6 +3422,10 @@ function dungeonForward(){
   d.floor++;
   d.searched = false;
   advance(1);
+  /* 每层保底：走一趟总有点收获（与既有分支并行，不改动它们） */
+  const got = rollSearchMats(def.tier);
+  addMaterials(got, true);
+  addLog('沿途采撷：'+matPlain(got)+'。','dim');
   floorIntro();
   if(chance(48)){
     addLog('转角处一道黑影直扑而至！','warn');
@@ -3318,6 +3467,10 @@ function completeDungeon(){
     addLog('妖王尸身前，一头幼兽蜷缩着低鸣——它认你为主了。','act');
     addItem(rollMount(ri(1, def.tier+1), def.luck + 0.22));
   }
+  /* 妖王身上的材料包（与既有掉落并行） */
+  const bm = rollBossMats(def.tier);
+  addMaterials(bm, true);
+  addLog('妖王陨落，尸身中剥出：'+matPlain(bm)+'。','item');
   /* 妖王遗物：必有一部功法石壁（已尽数参透则折算灵石） */
   const gf = gfRollDrop();
   if(gf){
@@ -3801,6 +3954,341 @@ function buyHeritage(k){
 /* 兼容旧调用 */
 function hardReset(){ openRebirth(); }
 
+/* ── sys/craft.js ───────────────────────────────────────────────── */
+
+/* =========================================================
+   材 料 · 炼 制 —— 逻辑层
+   ---------------------------------------------------------
+   设计要点（改之前先读）：
+   1. 材料是**本局**的，不存 META —— 与装备/灵石一致，轮回清零
+   2. 掉落与现有产出**并行**，不挤占既有概率（老玩家的收益节奏不变）
+   3. 炼制消耗**灵力 + 天数**，不消耗灵石 —— 材料本身才是稀缺项，
+      也让「出门打怪」与「留家开炉」形成节奏竞争
+   4. 成功率三路加成：配方基础 + 丹道传承 + 境界差（越级炼有惩罚）
+   5. 失败返还 40% 材料 —— 有痛感，但不劝退
+   6. 炼器出器的品质随机（qiMin 起步，气运与越级加成）→ 把随机产出变成可控产出
+   ========================================================= */
+
+/* ---------- 材料基础操作 ---------- */
+function materialName(k){
+  const m = MATERIALS[k];
+  return m ? m.n : k;
+}
+function materialDef(k){ return MATERIALS[k] || null; }
+
+function countMat(k){
+  if(!S || !S.materials) return 0;
+  return S.materials[k] || 0;
+}
+function totalMats(){
+  if(!S || !S.materials) return 0;
+  let n = 0;
+  for(const k of MAT_ORDER) n += (S.materials[k] || 0);
+  return n;
+}
+function addMaterial(k, n){
+  if(!S || !MATERIALS[k]) return false;
+  n = Math.floor(Number(n) || 0);
+  if(n <= 0) return false;
+  if(!S.materials) S.materials = {};
+  S.materials[k] = clamp((S.materials[k] || 0) + n, 0, 999999);
+  return true;
+}
+function addMaterials(map, quiet){
+  if(!map) return 0;
+  let total = 0;
+  const got = {};
+  for(const k in map){
+    if(addMaterial(k, map[k])){ total += Math.floor(Number(map[k]) || 0); got[k] = Math.floor(Number(map[k]) || 0); }
+  }
+  if(!quiet && total > 0) addLog('获得材料：' + matPlain(got) + '。', 'item');
+  return total;
+}
+function hasMats(need){
+  if(!need) return true;
+  for(const k in need) if(countMat(k) < need[k]) return false;
+  return true;
+}
+function costMats(need){
+  if(!hasMats(need)) return false;
+  for(const k in need) S.materials[k] -= need[k];
+  return true;
+}
+/* 失败返还（默认四成） */
+function refundMats(need, rate){
+  rate = (rate === undefined) ? 0.4 : rate;
+  const back = {};
+  for(const k in need){
+    const n = Math.floor(need[k] * rate);
+    if(n > 0) back[k] = n;
+  }
+  addMaterials(back, true);
+  return back;
+}
+function scaleNeed(need, n){
+  const out = {};
+  for(const k in need) out[k] = need[k] * n;
+  return out;
+}
+
+/* ---------- 文案 ---------- */
+/* { lingcao:3 } → "灵草×3"（不足者标红，界面用） */
+function matText(need){
+  if(!need) return '';
+  const parts = [];
+  for(const k of MAT_ORDER){
+    if(!need[k]) continue;
+    const m = MATERIALS[k];
+    const cnt = need[k];
+    const enough = countMat(k) >= cnt;
+    parts.push('<span' + (enough ? '' : ' style="color:var(--zhu)"') + '>'
+      + (m ? m.n : k) + '×' + cnt + '</span>');
+  }
+  return parts.join(' · ');
+}
+/* 纯文本版（日志用，切勿放进 HTML 位置） */
+function matPlain(need){
+  if(!need) return '';
+  const parts = [];
+  for(const k of MAT_ORDER){
+    if(!need[k]) continue;
+    const m = MATERIALS[k];
+    parts.push((m ? m.n : k) + '×' + need[k]);
+  }
+  return parts.join(' · ');
+}
+/* 带品阶色的材料名（左栏与货架用；仙品以上自带流光） */
+function matLabel(k, n){
+  const m = MATERIALS[k];
+  if(!m) return k;
+  const cnt = (n === undefined) ? countMat(k) : n;
+  return qName(m.n, m.t) + '<span class="muted-sm"> ×' + num(cnt) + '</span>';
+}
+function matTierName(t){
+  return ['凡品','灵品','宝品','仙品','神品'][clamp(t, 0, 4)] || '凡品';
+}
+
+/* ---------- 材料买卖（坊市材料铺：应急补差） ---------- */
+function matPrice(k){
+  const row = MAT_SHOP.find(x => x.k === k);
+  return row ? row.price : 0;
+}
+function buyMaterial(k, n){
+  const gfMat = MATERIALS[k];
+  if(!gfMat) return false;
+  n = Math.max(1, Math.floor(Number(n) || 1));
+  const p = matPrice(k);
+  if(p <= 0){ toast('此物坊市不售'); return false; }
+  const cost = p * n;
+  if(S.stones < cost){ toast('灵石不足（需 ' + num(cost) + '）'); return false; }
+  S.stones -= cost;
+  addMaterial(k, n);
+  addLog('你在材料铺买了 ' + gfMat.n + '×' + n + '，付灵石 ' + num(cost) + ' 枚。', 'item');
+  after();
+  return true;
+}
+
+/* =========================================================
+   掉 落 表（与现有产出并行，独立判定）
+   ========================================================= */
+
+/* 妖兽：击杀后调用一次（不挤占成品掉落分支） */
+function rollMaterialDrop(tier, boss){
+  const got = {};
+  tier = clamp(tier, 0, 4);
+  /* 兽皮：凡兽起就有 */
+  if(chance(boss ? 100 : 70)) got.shoupi = ri(1, 2 + tier) * (boss ? 3 : 1);
+  /* 妖丹：凶兽起 */
+  if(tier >= 1 && chance(boss ? 100 : 45 + tier * 8)) got.yaodan = ri(1, 1 + Math.floor(tier / 2)) * (boss ? 3 : 1);
+  /* 玄铁：妖将起 */
+  if(tier >= 2 && chance(boss ? 90 : 25 + tier * 6)) got.xuantie = ri(1, tier - 1) * (boss ? 2 : 1);
+  /* 星辰砂：妖王/高阶 */
+  if(tier >= 3 && chance(boss ? 70 : 12 + tier * 4)) got.xingchen = boss ? 2 : 1;
+  /* 混沌石：仅最高档妖王 */
+  if(boss && tier >= 4 && chance(35)) got.hundun = 1;
+  return got;
+}
+
+/* 秘境每层保底（在 dungeonForward 里给） */
+function rollSearchMats(tier){
+  const got = {};
+  tier = clamp(tier, 0, 4);
+  got.lingcao = ri(2, 4 + tier);
+  if(tier >= 1 && chance(55)) got.xuantie = ri(1, 1 + tier);
+  if(tier >= 2 && chance(30 + tier * 4)) got.xingchen = 1;
+  return got;
+}
+
+/* 秘境妖王贯通时的大材料包 */
+function rollBossMats(tier){
+  const got = {};
+  tier = clamp(tier, 0, 4);
+  got.shoupi  = ri(4, 8);
+  got.yaodan  = ri(3, 6);
+  got.xuantie = ri(2, 4 + tier);
+  if(tier >= 2) got.xingchen = ri(1, 1 + Math.floor(tier / 2));
+  if(tier >= 4 && chance(45)) got.hundun = 1;
+  return got;
+}
+/* 历练岩缝：额外掉矿 */
+function rollSeamMats(tier){
+  tier = clamp(tier, 0, 4);
+  const got = { lingcao: ri(1, 2) };
+  if(tier >= 1) got.xuantie = ri(1, 1 + tier);
+  return got;
+}
+
+/* =========================================================
+   炼 制 · 通 用 计 算
+   ========================================================= */
+/* 丹道传承（复用既有传承，不新增字段） */
+function heritagePillBonus(){
+  return ((META && META.up && META.up.pill) ? META.up.pill : 0) * 0.015;
+}
+/* 境界差：当前大境界组 - 配方推荐段 */
+function realmDiff(lv){ return realmAt(S.level).group - (lv || 0); }
+
+/* 最终成功率：配方基础 + 丹道 + 境界差 */
+function finalRate(recipe, base){
+  base = (base === undefined) ? recipe.base : base;
+  let r = base + heritagePillBonus();
+  const d = realmDiff(recipe.lv);
+  if(d < 0) r += d * 0.06;                    /* 越级炼：每差一档 -6% */
+  else r += Math.min(0.10, d * 0.02);         /* 高境界炼低配方：至多 +10% */
+  return clamp(r, 0.05, 0.98);
+}
+/* 每次消耗灵力 */
+function craftMp(recipe){
+  const st = stats();
+  return Math.round(st.mpMax * recipe.mpF) + 5;
+}
+/* 境界是否足以驾驭 */
+function craftLocked(recipe){
+  return (recipe.lv || 0) > realmAt(S.level).group + 2;
+}
+function pillCraftRate(k){
+  const r = PILL_RECIPES.find(x => x.k === k);
+  return r ? finalRate(r) : 0;
+}
+function gearCraftRate(k){
+  const r = GEAR_RECIPES.find(x => x.k === k);
+  return r ? finalRate(r) : 0;
+}
+function canCraftPill(k, n){ return canCraft(PILL_RECIPES, k, n); }
+function canCraftGear(k, n){ return canCraft(GEAR_RECIPES, k, n); }
+function canCraft(list, k, n){
+  const r = list.find(x => x.k === k);
+  if(!r || !S) return false;
+  n = Math.max(1, Math.floor(Number(n) || 1));
+  if(craftLocked(r)) return false;
+  if(!hasMats(scaleNeed(r.need, n))) return false;
+  if(S.mp < craftMp(r) * n) return false;
+  return true;
+}
+/* 界面用：给出不能炼的原因 */
+function craftBlockReason(r){
+  if(craftLocked(r)) return '境界不足以驾驭此方（需 ' + realmNameOf(r.lv) + '）';
+  if(!hasMats(r.need)) return '材料不足';
+  if(S.mp < craftMp(r)) return '灵力不足';
+  return '';
+}
+
+/* =========================================================
+   炼 丹
+   ========================================================= */
+function craftPill(k, n){
+  n = Math.max(1, Math.floor(Number(n) || 1));
+  const r = PILL_RECIPES.find(x => x.k === k);
+  if(!r){ toast('无此丹方'); return; }
+  if(busy()){ toast('战中无暇开炉'); return; }
+  const needAll = scaleNeed(r.need, n);
+  if(craftLocked(r)){ toast('境界不足以驾驭此方'); return; }
+  if(!hasMats(needAll)){ toast('材料不足（需 ' + matPlain(needAll) + '）'); return; }
+  const mpCost = craftMp(r) * n;
+  if(S.mp < mpCost){ toast('灵力不足（需 ' + num(mpCost) + '）'); return; }
+
+  S.mp -= mpCost;
+  costMats(needAll);
+  const days = r.days * n;
+  advance(days);
+  addLog('你布下丹炉，以灵力 ' + num(mpCost) + ' 催动真火，炼了 ' + days + ' 日——', 'act');
+
+  const rate = finalRate(r);
+  let ok = 0, bad = 0;
+  for(let i = 0; i < n; i++){ if(chance(rate * 100)) ok++; else bad++; }
+
+  if(ok > 0){
+    S.pills[r.out] = (S.pills[r.out] || 0) + ok;
+    addLog('成丹 ' + ok + ' 枚「' + r.out + '」，炉中清香四溢。', 'item');
+  }
+  if(bad > 0){
+    const back = refundMats(scaleNeed(r.need, bad), 0.4);
+    addLog('炸炉 ' + bad + ' 次，丹毁。残渣中收回：' + matPlain(back) + '。', 'warn');
+  }
+  if(S.stat) S.stat.pillMake = (S.stat.pillMake || 0) + ok;
+  checkAch();
+  after();
+}
+
+/* =========================================================
+   炼 器
+   ========================================================= */
+function craftGear(k, n){
+  n = Math.max(1, Math.floor(Number(n) || 1));
+  const r = GEAR_RECIPES.find(x => x.k === k);
+  if(!r){ toast('无此器方'); return; }
+  if(busy()){ toast('战中无暇开炉'); return; }
+  const needAll = scaleNeed(r.need, n);
+  if(craftLocked(r)){ toast('境界不足以驾驭此方'); return; }
+  if(!hasMats(needAll)){ toast('材料不足（需 ' + matPlain(needAll) + '）'); return; }
+  const mpCost = craftMp(r) * n;
+  if(S.mp < mpCost){ toast('灵力不足（需 ' + num(mpCost) + '）'); return; }
+
+  S.mp -= mpCost;
+  costMats(needAll);
+  const days = r.days * n;
+  advance(days);
+  addLog('你架起炉火，以灵力 ' + num(mpCost) + ' 锤锻 ' + days + ' 日——', 'act');
+
+  const rate = finalRate(r);
+  const over = realmDiff(r.lv) >= 4;                    /* 境界远超配方：火候更纯 */
+  let ok = 0, bad = 0;
+  for(let i = 0; i < n; i++){
+    if(!chance(rate * 100)){ bad++; continue; }
+    /* 品质：qiMin 起步；气运有概率 +1 阶；越级炼器再 +1 阶 */
+    let qi = r.qiMin;
+    if(chance(12 + fortune() * 0.25)) qi++;
+    if(over) qi++;
+    qi = clamp(qi, r.qiMin, 4);
+    const lv = Math.max(0, S.level + (r.lvBias || 0));
+    const item = makeItem(r.slot, lv, qi);
+    addItem(item, true);
+    addLog('器成：' + itemLabel(item), 'item');
+    ok++;
+  }
+  if(bad > 0){
+    const back = refundMats(scaleNeed(r.need, bad), 0.4);
+    addLog('器碎 ' + bad + ' 件。残料收回：' + matPlain(back) + '。', 'warn');
+  }
+  if(S.stat) S.stat.gearMake = (S.stat.gearMake || 0) + ok;
+  checkAch();
+  after();
+}
+
+/* =========================================================
+   存 档 进 出（防御式：undefined / 非法键 / 负数一律剔除）
+   ========================================================= */
+function matSanitize(d){
+  const out = {};
+  if(!d || typeof d !== 'object') return out;
+  for(const k in d){
+    if(!MATERIALS[k]) continue;
+    const v = Math.floor(Number(d[k]) || 0);
+    if(v > 0) out[k] = clamp(v, 0, 999999);
+  }
+  return out;
+}
+
 /* ── ui/theme.js ────────────────────────────────────────────────── */
 
 const THEME_KEY = 'xiuxian_theme_v1';
@@ -3895,7 +4383,7 @@ const slotKey = i => 'xiuxian_slot_'+i+'_v2';
 
 function saveData(){
   return {
-    v:3,                                   /* v3：功法改为 被动 3 格 / 主动 2 格（旧档自动迁移） */
+    v:4,                                   /* v4：新增材料字段（旧档自动补默认，见 restore） */
     level:S.level, exp:S.exp, day:S.day, stones:S.stones,
     hp:S.hp, mp:S.mp, equip:S.equip, bag:S.bag, pills:S.pills,
     shop:S.shop, shopMount:S.shopMount, shopDay:S.shopDay,
@@ -3904,6 +4392,7 @@ function saveData(){
     kills:S.kills, deaths:S.deaths, tab:S.tab,
     stat:S.stat, encDay:S.encDay,
     gongfa:S.gongfa, shopBook:S.shopBook,
+    materials:S.materials,
     logs:S.logs.slice(-90), ended:S.ended,
     t: Date.now()
   };
@@ -3945,7 +4434,10 @@ function restore(d){
       treasures: (eq.treasures || [null,null,null]).map(x => x ? rehydrate(x) : null)
     },
     bag: (d.bag||[]).map(rehydrate),
-    pills: Object.assign({'回春丹':0,'聚灵丹':0,'破境丹':0}, d.pills||{}),
+    /* 药囊默认值由 data/pills.js 的表派生：新增丹药（如归元丹）自动补 0，老档不丢 */
+    pills: Object.assign(blankPills(), d.pills||{}),
+    /* 材料：本局所有；缺字段补空、非法键与负数由 matSanitize 剔除 */
+    materials: matSanitize(d.materials),
     logs: d.logs||[],
     combat:null,
     dungeon:null,
@@ -4104,6 +4596,12 @@ function showHelp(){
     + '来路有二：<b>秘境妖王</b>必遗一部、坊市<b>藏经阁</b>可购。'
     + '已习得的功法<b>刻入道基、轮回不灭</b>，但重数与装备归本局，须重新参悟；参悟同时耗<b>灵石与修为</b>，'
     + '故「冲境界」与「厚积功法」需自行权衡。<br><br>'
+    + '<b>材 料 · 炼 制</b>　斩妖剥皮、秘境采撷、岩缝拾矿，可得六种材料：灵草、兽皮、妖丹、玄铁、星辰砂、混沌石。'
+    + '坊市页内有<b>丹房</b>（回春 · 聚灵 · 归元 · 破境）与<b>器坊</b>（兵器 · 护甲 · 法宝），另有<b>材料铺</b>可应急补货。'
+    + '炼制消耗<b>灵力与天数</b>（不耗灵石），失败返还四成材料。成丹率受<b>丹道传承</b>与<b>境界差</b>影响'
+    + '——高境界炼低配方有加成，越级炼则每差一档 -6%。所炼之器品质随机，最低宝品，'
+    + '<b>气运</b>与越级炼器可再提一阶。坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。'
+    + '材料归本局所有，不随轮回带走。<br><br>'
     + '<b>奇 遇</b>　打坐、灵石修炼、闭关与历练之后，你有机会撞上奇遇——共 <b>25 段</b>，按大境界分五段，'
     + '每段内容各不相同。奇遇弹出数条选项，<b>各有得失、不可兼得</b>：稳妥的拿小利，冒险的可能翻倍，'
     + '也可能重伤。两次奇遇至少相隔 5 日，不会反复打断你。<br><br>',
@@ -4124,6 +4622,7 @@ function renderAll(){
   renderEquip();
   renderGongfa();
   renderPills();
+  renderMaterials();
   renderMount();
   renderBag();
   renderTabs();
@@ -4579,6 +5078,7 @@ function actionsShop(){
   h += '<div class="tip" style="margin-top:14px">丹药铺 · 常备三味</div>';
   h += '<div class="actgrid">';
   for(const p of PILLS){
+    if(p.craft) continue;                      /* 只能自炼的丹药不上架（如归元丹） */
     const pr = pillPrice(p);
     h += card(p.name, p.desc, pr+' 灵石', "buyPill('"+p.name+"')", S.stones<pr?{lock:true}:{});
   }
@@ -4605,6 +5105,15 @@ function actionsShop(){
   h += card('悟 道 录','心法一格、术法两格——习得多寡不等同于强弱，如何取舍才是关键。',
     '已习得 '+learnedN+' / '+GONGFA.length+' 部', "openGongfa()", {hot:true});
   h += '</div>';
+
+  /* ---------- 丹房 · 炼丹 ---------- */
+  h += renderPillSection();
+
+  /* ---------- 器坊 · 炼器 ---------- */
+  h += renderGearSection();
+
+  /* ---------- 材料铺 ---------- */
+  h += renderMatShopSection();
 
   /* ---------- 出售台 ---------- */
   h += '<div class="tip" style="margin-top:18px">出 售 台 · 以 器 易 石</div>';
@@ -4949,6 +5458,143 @@ function gfUiPick(key){
   h += '</div>';
   showModal('选 择 槽 位', h, [{ label: '取 消', fn: () => openGongfa() }], 'wide');
 }
+
+/* ── ui/panels/craft.js ─────────────────────────────────────────── */
+
+/* =========================================================
+   材 料 · 炼 制 —— 界面层
+   ---------------------------------------------------------
+   规则：
+   · 面板操作函数一律 crUi 前缀（构建后同作用域，重名会静默覆盖 sys 层）
+   · **不用命名空间导入**（`import * as CR` 会被构建器整行剥掉，运行时 CR 就没了）
+   · 不新增配色：品阶走 qName()/.qcN，面板行复用 .slot/.heritage/.card 等既有类
+   ========================================================= */
+
+/* ---------- 左栏「材 料」面板 ---------- */
+function renderMaterials(){
+  const box = $('matBox');
+  if(!box) return;
+  const owned = MAT_ORDER.filter(k => countMat(k) > 0);
+
+  const tag = $('matTag');
+  if(tag) tag.textContent = owned.length + ' / ' + MAT_ORDER.length;
+
+  if(!owned.length){
+    box.innerHTML = '<div class="empty-note">囊 中 尚 无 材 料</div>'
+      + '<div class="hint-mini">斩妖剥皮、秘境采撷、岩缝拾矿皆有所得。'
+      + '材料可在「坊 市」页炼丹与炼器。</div>';
+    return;
+  }
+
+  let h = '';
+  for(const k of owned){
+    const m = MATERIALS[k];
+    const n = countMat(k);
+    h += '<div class="slot'+godCls(m.t)+'">'
+      + '<span class="k" style="flex:0 0 58px">'+m.n+'</span>'
+      + '<span class="v">'+qName('×'+num(n), m.t)+'</span>'
+      + '<span class="q qc'+m.t+'">'+matTierName(m.t)+'</span>'
+      + '</div>';
+  }
+  h += '<div class="hint-mini">材料归本局所有，不随轮回带走。炼制请至「坊 市」页。</div>';
+  box.innerHTML = h;
+}
+
+/* =========================================================
+   坊市页 · 三段
+   ========================================================= */
+
+/* ---------- 丹 房 ---------- */
+function renderPillSection(){
+  let h = '<div class="tip" style="margin-top:18px">丹 房 · 炼 丹'
+    + ((S.pillStack || 0) > 0 ? '　<span class="muted-sm">丹田已蓄破境丹药力 '+S.pillStack+' 枚</span>' : '')
+    + '</div>';
+  h += '<div class="actgrid">';
+  for(const r of PILL_RECIPES) h += crRecipeCard(r, 'pill');
+  h += '</div>';
+  h += '<div class="tip" style="font-size:11px">炼制消耗<b>灵力与天数</b>（不耗灵石）；失败返还四成材料。'
+    + '丹道传承与境界优势可提升成丹率——越级炼则每差一档 -6%。</div>';
+  return h;
+}
+
+/* ---------- 器 坊 ---------- */
+function renderGearSection(){
+  let h = '<div class="tip" style="margin-top:18px">器 坊 · 炼 器</div>';
+  h += '<div class="actgrid">';
+  for(const r of GEAR_RECIPES) h += crRecipeCard(r, 'gear');
+  h += '</div>';
+  h += '<div class="tip" style="font-size:11px">所成之器品质随机，至少为'
+    + ' <span class="qname qc2">宝品</span>；<b>气运</b>与<b>越级炼器</b>可再提一阶，'
+    + '最高 <span class="flow q4">神品</span>。'
+    + '坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。</div>';
+  return h;
+}
+
+/* ---------- 材 料 铺 ---------- */
+function renderMatShopSection(){
+  let h = '<div class="tip" style="margin-top:18px">材 料 铺</div>';
+  h += '<div class="actgrid">';
+  for(const row of MAT_SHOP){
+    const m = MATERIALS[row.k];
+    if(!m) continue;
+    const can = S.stones >= row.price;
+    h += '<div class="card'+(can ? '' : ' lock')+'"'
+      + (can ? ' onclick="crUiBuyMat(\''+row.k+'\',1)"' : '')+'>'
+      + '<div class="t">'+qName(m.n, m.t)+' <span class="tier-tag">'+matTierName(m.t)+'</span></div>'
+      + '<div class="d">来路：'+m.src+'</div>'
+      + '<div class="cost">'+row.price+' 灵石 · 已有 '+countMat(row.k)+'</div>'
+      + '</div>';
+  }
+  h += '</div>';
+  h += '<div class="tip" style="font-size:11px">材料主要靠<b>打怪与探秘境</b>捡，近乎免费；'
+    + '材料铺只是<b>应急补差</b>，故标价略高于成品。'
+    + '星辰砂与混沌石不上架——只能自己去高阶秘境与妖王身上找。</div>';
+  return h;
+}
+
+/* =========================================================
+   配方卡片
+   ========================================================= */
+function crRecipeCard(r, type){
+  const isPill = (type === 'pill');
+  const rate = Math.round((isPill ? pillCraftRate(r.k) : gearCraftRate(r.k)) * 100);
+  const mp = craftMp(r);
+  const canOne = isPill ? canCraftPill(r.k, 1) : canCraftGear(r.k, 1);
+  const canFive = isPill ? canCraftPill(r.k, 5) : canCraftGear(r.k, 5);
+  const fn = isPill ? 'crUiCraftPill' : 'crUiCraftGear';
+  const title = isPill
+    ? '《'+r.out+'》'
+    : ({ weapon:'铸 · 兵 器', armor:'铸 · 护 甲', treasure:'铸 · 法 宝' }[r.slot] || '铸 器');
+  const lvTag = (r.lv > 0) ? ' <span class="tier-tag">需 '+realmNameOf(r.lv)+'</span>' : '';
+
+  let h = '<div class="card'+(canOne ? ' hot' : ' lock')+'">';
+  h += '<div class="t">'+title+lvTag+'</div>';
+  h += '<div class="d">'+r.d+'</div>';
+  h += '<div class="d" style="margin-top:4px">用料：'+matText(r.need)+'</div>';
+  h += '<div class="cost">成率 '+rate+'% · 灵力 '+num(mp)+' · '+r.days+' 日/次'
+    + (isPill ? '' : ' · 最低 '+matTierName(r.qiMin))+'</div>';
+
+  if(canOne){
+    h += '<div style="display:flex;gap:6px;margin-top:7px">'
+      + '<button class="mbtn" style="flex:1;padding:5px 0;font-size:11.5px;letter-spacing:.06em"'
+      + ' onclick="'+fn+'(\''+r.k+'\',1)">炼 一 次</button>'
+      + (canFive ? '<button class="mbtn" style="padding:5px 12px;font-size:11.5px;letter-spacing:.06em"'
+          + ' onclick="'+fn+'(\''+r.k+'\',5)">×5</button>' : '')
+      + '</div>';
+  }else{
+    const why = craftBlockReason(r) || '暂无余裕';
+    h += '<div class="hint-mini" style="margin-top:6px">'+why+'</div>';
+  }
+  h += '</div>';
+  return h;
+}
+
+/* =========================================================
+   按 钮（crUi 前缀，必须是顶层 function 声明）
+   ========================================================= */
+function crUiCraftPill(k, n){ craftPill(k, n); }
+function crUiCraftGear(k, n){ craftGear(k, n); }
+function crUiBuyMat(k, n){ buyMaterial(k, n); }
 
 /* ── main.js ────────────────────────────────────────────────────── */
 

@@ -7,6 +7,7 @@ import { checkAch } from './achievement.js';
 import { addItem, rollItem, stats } from './character.js';
 import { expNeed, gainExp } from './cultivate.js';
 import { completeDungeon } from './dungeon.js';
+import { addMaterials, matPlain, rollMaterialDrop } from './craft.js';
 import { gfActiveSkill, gfSkillByKey, gfSkillMp } from './gongfa.js';
 import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
@@ -319,6 +320,14 @@ export function winFight(){
     addLog('你在其巢穴深处发现一枚尚有余温的兽卵——还能驯服。','act');
     addItem(rollMount(clamp(m.tier - 1, 0, 4), 0.10 + m.tier*0.13 + (m.boss?0.25:0)));
   }
+
+  /* 材料：与上面三类掉落**并行**，用独立判定，不挤占既有概率（老玩家收益节奏不变） */
+  const mats = rollMaterialDrop(m.tier, m.boss);
+  if(Object.keys(mats).length){
+    addMaterials(mats, true);
+    addLog('从残骸中剥取：'+matPlain(mats)+'。','dim');
+  }
+
   checkAch();
   endFight('win');
 }

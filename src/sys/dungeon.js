@@ -6,6 +6,7 @@ import { checkAch } from './achievement.js';
 import { addItem, rollItem, stats } from './character.js';
 import { makeMonster, startFight } from './combat.js';
 import { expNeed, gainExp, realmAt } from './cultivate.js';
+import { addMaterials, matPlain, rollBossMats, rollSearchMats } from './craft.js';
 import { gfGrant, gfRollDrop } from './gongfa.js';
 import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
@@ -88,6 +89,10 @@ export function dungeonForward(){
   d.floor++;
   d.searched = false;
   advance(1);
+  /* 每层保底：走一趟总有点收获（与既有分支并行，不改动它们） */
+  const got = rollSearchMats(def.tier);
+  addMaterials(got, true);
+  addLog('沿途采撷：'+matPlain(got)+'。','dim');
   floorIntro();
   if(chance(48)){
     addLog('转角处一道黑影直扑而至！','warn');
@@ -129,6 +134,10 @@ export function completeDungeon(){
     addLog('妖王尸身前，一头幼兽蜷缩着低鸣——它认你为主了。','act');
     addItem(rollMount(ri(1, def.tier+1), def.luck + 0.22));
   }
+  /* 妖王身上的材料包（与既有掉落并行） */
+  const bm = rollBossMats(def.tier);
+  addMaterials(bm, true);
+  addLog('妖王陨落，尸身中剥出：'+matPlain(bm)+'。','item');
   /* 妖王遗物：必有一部功法石壁（已尽数参透则折算灵石） */
   const gf = gfRollDrop();
   if(gf){

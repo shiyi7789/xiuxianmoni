@@ -4,6 +4,7 @@ import { chance, clamp, num, rf } from '../core/utils.js';
 import { GROUNDS } from '../data/grounds.js';
 import { checkAch } from './achievement.js';
 import { addItem, rollItem, stats } from './character.js';
+import { addMaterials, matPlain, rollSeamMats } from './craft.js';
 import { makeMonster, startFight } from './combat.js';
 import { realmAt } from './cultivate.js';
 import { tryEncounter } from './encounter.js';
@@ -34,6 +35,10 @@ export function hunt(gi){
     const it = rollItem(0, 0.15 + g.tier*0.12);
     addLog('涧边一具枯骨半掩于落叶之下，手中犹握一物。','act');
     addItem(it);
+    /* 骨旁还有几块未化的矿石（与上面并行，不占器物判定） */
+    const got = rollSeamMats(g.tier);
+    addMaterials(got, true);
+    addLog('骨旁散落：'+matPlain(got)+'。','dim');
   }else if(r < 98){
     addLog('林间一只受伤的幼兽伏在溪边，见你并不躲闪，反而低鸣着凑了过来。','act');
     addItem(rollMount(clamp(g.tier-1, 0, 4), 0.12 + g.tier*0.13));

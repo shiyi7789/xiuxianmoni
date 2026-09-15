@@ -15,6 +15,7 @@ export function pillPrice(p){
 export function buyPill(name){
   const p = PILLS.find(x=>x.name===name);
   if(!p) return;
+  if(p.craft){ toast('此丹坊市不售，须自己在丹房炼'); return; }
   if(S.stones < p.price){ toast('灵石不足（需 '+p.price+'）'); return; }
   S.stones -= p.price;
   S.pills[name] = (S.pills[name]||0) + 1;
@@ -36,13 +37,22 @@ export function usePill(name, force){
     S.pills[name]--;
     S.mp = Math.min(st.mpMax, S.mp + Math.round(st.mpMax*0.65));
     addLog('聚灵丹入喉即化，枯竭的灵力迅速充盈。','gain');
-  }else{
+  }else if(name === '归元丹'){
+    if(S.hp >= st.hpMax && S.mp >= st.mpMax){ toast('气血与灵力皆满'); return; }
+    S.pills[name]--;
+    S.hp = st.hpMax;
+    S.mp = st.mpMax;
+    addLog('归元丹入腹，药力如春水漫过四肢百骸——气血与灵力尽复。','epic');
+  }else if(name === '破境丹'){
     const stack = S.pillStack||0;
     if(stack >= 3){ toast('丹田药力已至极限，再服无益'); return; }
     S.pills[name]--;
     S.pillStack = stack + 1;
     addLog('你服下第 '+(stack+1)+' 枚破境丹，一股雄浑药力沉入丹田，静待突破之时迸发。'
       + '（本次突破 +'+pillBonus()+'%）','epic');
+  }else{
+    toast('此丹尚不知用法');
+    return;
   }
   S.stat.pillUse++;
   after();

@@ -26,6 +26,7 @@ import { SELL, SELL_Q, SELL_TYPES, matchSell, sellBagItem, sellBatch, sellEquipp
 import { buyItem, refreshShop } from '../sys/shop.js';
 import { travelDays } from '../sys/time.js';
 import { showHelp } from './panels/notice.js';
+import { renderMaterials, renderGearSection, renderMatShopSection, renderPillSection } from './panels/craft.js';
 import { openSavePanel } from './panels/save.js';
 import { closeSheet } from './sheet.js';
 import { toggleTheme } from './theme.js';
@@ -42,6 +43,7 @@ export function renderAll(){
   renderEquip();
   renderGongfa();
   renderPills();
+  renderMaterials();
   renderMount();
   renderBag();
   renderTabs();
@@ -497,6 +499,7 @@ export function actionsShop(){
   h += '<div class="tip" style="margin-top:14px">丹药铺 · 常备三味</div>';
   h += '<div class="actgrid">';
   for(const p of PILLS){
+    if(p.craft) continue;                      /* 只能自炼的丹药不上架（如归元丹） */
     const pr = pillPrice(p);
     h += card(p.name, p.desc, pr+' 灵石', "buyPill('"+p.name+"')", S.stones<pr?{lock:true}:{});
   }
@@ -523,6 +526,15 @@ export function actionsShop(){
   h += card('悟 道 录','心法一格、术法两格——习得多寡不等同于强弱，如何取舍才是关键。',
     '已习得 '+learnedN+' / '+GONGFA.length+' 部', "openGongfa()", {hot:true});
   h += '</div>';
+
+  /* ---------- 丹房 · 炼丹 ---------- */
+  h += renderPillSection();
+
+  /* ---------- 器坊 · 炼器 ---------- */
+  h += renderGearSection();
+
+  /* ---------- 材料铺 ---------- */
+  h += renderMatShopSection();
 
   /* ---------- 出售台 ---------- */
   h += '<div class="tip" style="margin-top:18px">出 售 台 · 以 器 易 石</div>';

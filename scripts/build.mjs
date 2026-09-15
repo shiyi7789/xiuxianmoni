@@ -22,7 +22,7 @@ const SRC = path.join(ROOT, 'src');
 const OUT = path.join(ROOT, 'xiuxian.html');
 const REPORT = path.join(ROOT, '_build_report.txt');
 
-const read = p => fs.readFileSync(p, 'utf8');
+const read = p => fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '');   /* 容忍 Windows 编辑器写入的 BOM */
 const lines = [];
 
 /* ---------- 1. 读清单与模板 ---------- */
@@ -36,10 +36,10 @@ const openPart = read(path.join(SRC, scriptOpen));
 const tailPart = read(path.join(SRC, tail));
 
 /* ---------- 2. 模块 → 脚本片段 ---------- */
-/* 剥掉 import：支持跨行写法
+/* 剥掉 import：支持跨行写法，并容忍 CRLF（Windows 编辑器/git autocrlf 会带来 \r）
    import { a, b } from './x.js';     ← 常见
    import {\n a, b\n} from './x.js';  ← 多行也要剥（曾经漏过，构建后残留 import 直接语法错误） */
-const stripImports = body => body.replace(/^[ \t]*import\b[\s\S]*?\bfrom\s+['"][^'"]*['"];?[ \t]*$/gm, '');
+const stripImports = body => body.replace(/^[ \t]*import\b[\s\S]*?\bfrom\s+['"][^'"]*['"];?[ \t]*\r?$/gm, '');
 
 const stripExports = body => body
   .replace(/^export\s+(?=(?:async\s+)?function\s|const\s|let\s|var\s)/gm, '');
@@ -51,7 +51,17 @@ const missing = [];
 for (const mod of manifest.order) {
   const file = path.join(SRC, mod);
   if (!fs.existsSync(file)) { missing.push(mod); continue; }
-  let body = stripExports(stripImports(read(file)))
+  const raw = read(file);
+  /* 命名空间 / 默认导入在本构建里必然失效：整行会被剥掉，而用法（CR.xxx / X.xxx）留在代码里，
+     于是构建能过、运行到那条路径才炸。这里直接在构建期拦下。 */
+  const bad = raw.match(/^[ \t]*import\s+(\*\s+as\s+(\w+)|(\w+)\s*,?\s*\{?)/m);
+  if (bad) {
+    const hint = /\*/.test(bad[1]) ? '命名空间导入（import * as）' : '默认导入（import X from）';
+    throw new Error(mod + ' 使用了' + hint + '，单文件构建无法支持：\n'
+      + '   ' + bad[0].trim() + '\n'
+      + '   → 改为具名导入：import { a, b } from \'...\'');
+  }
+  let body = stripExports(stripImports(raw))
     .replace(/^\n+/, '')
     .replace(/\s+$/, '');
   chunks.push({ mod, body });

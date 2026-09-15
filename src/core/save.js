@@ -2,6 +2,8 @@ import { META, applyMeta, blankStat } from './meta.js';
 import { S } from './state.js';
 import { clamp, ri } from './utils.js';
 import { GF_BY_KEY } from '../data/gongfa.js';
+import { blankPills } from '../data/pills.js';
+import { matSanitize } from '../sys/craft.js';
 import { gfRollBook, gfSanitizeS } from '../sys/gongfa.js';
 import { clampVitals } from '../sys/character.js';
 import { addLog, toast } from '../sys/log.js';
@@ -21,7 +23,7 @@ export const slotKey = i => 'xiuxian_slot_'+i+'_v2';
 
 export function saveData(){
   return {
-    v:3,                                   /* v3：功法改为 被动 3 格 / 主动 2 格（旧档自动迁移） */
+    v:4,                                   /* v4：新增材料字段（旧档自动补默认，见 restore） */
     level:S.level, exp:S.exp, day:S.day, stones:S.stones,
     hp:S.hp, mp:S.mp, equip:S.equip, bag:S.bag, pills:S.pills,
     shop:S.shop, shopMount:S.shopMount, shopDay:S.shopDay,
@@ -30,6 +32,7 @@ export function saveData(){
     kills:S.kills, deaths:S.deaths, tab:S.tab,
     stat:S.stat, encDay:S.encDay,
     gongfa:S.gongfa, shopBook:S.shopBook,
+    materials:S.materials,
     logs:S.logs.slice(-90), ended:S.ended,
     t: Date.now()
   };
@@ -71,7 +74,10 @@ export function restore(d){
       treasures: (eq.treasures || [null,null,null]).map(x => x ? rehydrate(x) : null)
     },
     bag: (d.bag||[]).map(rehydrate),
-    pills: Object.assign({'回春丹':0,'聚灵丹':0,'破境丹':0}, d.pills||{}),
+    /* 药囊默认值由 data/pills.js 的表派生：新增丹药（如归元丹）自动补 0，老档不丢 */
+    pills: Object.assign(blankPills(), d.pills||{}),
+    /* 材料：本局所有；缺字段补空、非法键与负数由 matSanitize 剔除 */
+    materials: matSanitize(d.materials),
     logs: d.logs||[],
     combat:null,
     dungeon:null,

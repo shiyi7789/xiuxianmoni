@@ -259,7 +259,53 @@ const boot = new Function(
   startFight: startFight,
   endFight: endFight,
   winFight: winFight,
-  monsterTurn: monsterTurn
+  monsterTurn: monsterTurn,
+  /* --- 材料 · 炼制 --- */
+  matDefs: MATERIALS,
+  matOrder: MAT_ORDER,
+  matShop: MAT_SHOP,
+  pillRecipes: PILL_RECIPES,
+  gearRecipes: GEAR_RECIPES,
+  blankPills: blankPills,
+  materialName: materialName,
+  materialDef: materialDef,
+  countMat: countMat,
+  totalMats: totalMats,
+  addMaterial: addMaterial,
+  addMaterials: addMaterials,
+  hasMats: hasMats,
+  costMats: costMats,
+  refundMats: refundMats,
+  matText: matText,
+  matPlain: matPlain,
+  matLabel: matLabel,
+  matTierName: matTierName,
+  matPrice: matPrice,
+  buyMaterial: buyMaterial,
+  rollMaterialDrop: rollMaterialDrop,
+  rollSearchMats: rollSearchMats,
+  rollBossMats: rollBossMats,
+  rollSeamMats: rollSeamMats,
+  craftMp: craftMp,
+  craftLocked: craftLocked,
+  craftBlockReason: craftBlockReason,
+  canCraftPill: canCraftPill,
+  canCraftGear: canCraftGear,
+  craftPill: craftPill,
+  craftGear: craftGear,
+  pillCraftRate: pillCraftRate,
+  gearCraftRate: gearCraftRate,
+  finalRate: finalRate,
+  matSanitize: matSanitize,
+  renderMaterials: renderMaterials,
+  renderPillSection: renderPillSection,
+  renderGearSection: renderGearSection,
+  renderMatShopSection: renderMatShopSection,
+  crUiCraftPill: crUiCraftPill,
+  crUiCraftGear: crUiCraftGear,
+  crUiBuyMat: crUiBuyMat,
+  buyPill: buyPill,
+  usePill: usePill
 };`
 );
 
@@ -1921,6 +1967,278 @@ step('三部被动同时生效（3 格叠加，多于单部）', () => {
   const off = G.stats();
   if (Math.abs(off.cult - base.cult) > 0.001) throw new Error('尽数卸下后未还原');
   return '修速 ' + base.cult + '% → 单部 ' + one.cult + '% → 三部 ' + three.cult + '%';
+});
+
+log('');
+log('=== R. 材料 · 炼丹 · 炼器 ===');
+/* 材料是本局的：每次自备状态 */
+step('材料表结构（6 种 / 品阶齐备 / 材料铺只上 4 种）', () => {
+  const order = G.matOrder;
+  if (order.length !== 6) throw new Error('材料应为 6 种，实为 ' + order.length);
+  const tiers = new Set();
+  for (const k of order) {
+    const m = G.matDefs[k];
+    if (!m) throw new Error('缺定义 ' + k);
+    if (!m.n || !m.src) throw new Error('缺名称或来路 ' + k);
+    if (m.t < 0 || m.t > 4) throw new Error('品阶越界 ' + k);
+    tiers.add(m.t);
+  }
+  if (tiers.size < 5) throw new Error('品阶应覆盖 5 档');
+  if (G.matShop.length !== 4) throw new Error('材料铺应上 4 种，实为 ' + G.matShop.length);
+  for (const row of G.matShop) {
+    if (!G.matDefs[row.k]) throw new Error('货架含非法键 ' + row.k);
+    if (!(row.price > 0)) throw new Error('货架价应为正 ' + row.k);
+  }
+  if (G.matPrice('xingchen') !== 0 || G.matPrice('hundun') !== 0) throw new Error('星辰砂/混沌石不应上架');
+  return '6 种材料 · 五档品阶 · 材料铺 4 种（星辰砂/混沌石不售）';
+});
+step('新档材料为空；增删与非法键校验', () => {
+  G.newGame();
+  if (G.totalMats() !== 0) throw new Error('新档材料应为 0');
+  G.addMaterial('lingcao', 5);
+  if (G.countMat('lingcao') !== 5) throw new Error('加材料失败');
+  G.addMaterials({ yaodan: 3, xuantie: 2 }, true);
+  if (G.countMat('yaodan') !== 3 || G.countMat('xuantie') !== 2) throw new Error('批量加材料失败');
+  if (!G.hasMats({ lingcao: 3, yaodan: 2 })) throw new Error('材料应充足');
+  if (G.hasMats({ lingcao: 99 })) throw new Error('材料应不足');
+  if (!G.costMats({ lingcao: 3, yaodan: 2 })) throw new Error('扣材料失败');
+  if (G.countMat('lingcao') !== 2 || G.countMat('yaodan') !== 1) throw new Error('扣减数量不对');
+  if (G.costMats({ lingcao: 999 })) throw new Error('不足时不应扣减');
+  if (G.countMat('lingcao') !== 2) throw new Error('失败扣减污染了存量');
+  G.addMaterial('fake_mat', 99);
+  if (G.countMat('fake_mat') !== 0) throw new Error('非法键应被拒');
+  G.addMaterial('lingcao', -5);
+  if (G.countMat('lingcao') !== 2) throw new Error('负数应被拒');
+  return '增删/校验/非法键/负数 全部正确';
+});
+step('掉落表：随机不崩，且低阶不给高阶材料', () => {
+  G.newGame();
+  const real = Math.random;
+  try {
+    Math.random = () => 0.01;                    /* 强制命中所有概率 */
+    const low = G.rollMaterialDrop(0, false);
+    if (low.xingchen || low.hundun || low.yaodan) throw new Error('凡兽不应给高阶材料');
+    if (!low.shoupi) throw new Error('凡兽应剥到兽皮');
+    const mid = G.rollMaterialDrop(2, false);
+    if (mid.hundun) throw new Error('非最高阶不应给混沌石');
+    if (!mid.shoupi || !mid.yaodan || !mid.xuantie) throw new Error('妖将应给兽皮/妖丹/玄铁');
+    const top = G.rollMaterialDrop(4, true);
+    if (!top.hundun) throw new Error('最高档妖王应给混沌石');
+    /* 保底与妖王包 */
+    const s = G.rollSearchMats(4);
+    if (!(s.lingcao >= 2)) throw new Error('秘境保底灵草不足');
+    const b = G.rollBossMats(4);
+    if (!(b.shoupi > 0 && b.yaodan > 0 && b.xuantie > 0)) throw new Error('妖王材料包缺项');
+    const seam = G.rollSeamMats(2);
+    if (!(seam.lingcao > 0 && seam.xuantie > 0)) throw new Error('岩缝应给灵草与玄铁');
+    /* 遍历所有 tier × boss 组合都不崩 */
+    for (let t = 0; t <= 4; t++) { G.rollMaterialDrop(t, false); G.rollMaterialDrop(t, true); }
+  } finally { Math.random = real; }
+  return '凡兽→兽皮、妖将→玄铁、妖王→混沌石；五档组合均不崩';
+});
+step('材料铺：买不起被拒、买得起按价扣款', () => {
+  G.newGame();
+  S().stones = 0;
+  if (G.buyMaterial('lingcao', 1)) throw new Error('灵石不足仍买下');
+  if (G.countMat('lingcao') !== 0) throw new Error('被拒仍加了材料');
+  const p = G.matPrice('lingcao');
+  S().stones = p * 3;
+  if (!G.buyMaterial('lingcao', 3)) throw new Error('买得起却失败');
+  if (S().stones !== 0) throw new Error('未按价扣款，余 ' + S().stones);
+  if (G.countMat('lingcao') !== 3) throw new Error('材料未入囊');
+  if (G.buyMaterial('xingchen', 1)) throw new Error('不上架之物不应可买');
+  return '价 ' + p + ' × 3 = ' + (p * 3) + ' 灵石，不上架者被拒';
+});
+step('炼丹：材料不足被拒且不扣任何东西', () => {
+  G.newGame();
+  if (G.canCraftPill('r_huichun', 1)) throw new Error('无材料却报可炼');
+  const mp0 = S().mp, day0 = S().day;
+  G.craftPill('r_huichun', 1);
+  if (S().mp !== mp0 || S().day !== day0) throw new Error('被拒却消耗了灵力或天数');
+  if ((S().pills['回春丹'] || 0) !== 2) throw new Error('被拒却改了丹药');
+  return '材料不足时零副作用';
+});
+step('炼丹：扣材料扣灵力过天数、成丹入囊', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.01;                    /* 必成 */
+    G.newGame();
+    G.addMaterials({ lingcao: 30, yaodan: 20, xingchen: 5 }, true);
+    S().mp = G.stats().mpMax;
+    const mat0 = G.countMat('lingcao'), mp0 = S().mp, day0 = S().day, pill0 = S().pills['回春丹'];
+    if (!G.canCraftPill('r_huichun', 1)) throw new Error('应可炼');
+    G.craftPill('r_huichun', 1);
+    if (G.countMat('lingcao') !== mat0 - 3) throw new Error('灵草未按方扣除');
+    if (!(S().mp < mp0)) throw new Error('灵力未消耗');
+    if (!(S().day > day0)) throw new Error('天数未推进');
+    if (!(S().pills['回春丹'] > pill0)) throw new Error('未成丹');
+    /* 批量 ×3 */
+    S().mp = G.stats().mpMax;
+    const mat1 = G.countMat('lingcao');
+    G.craftPill('r_huichun', 3);
+    if (G.countMat('lingcao') !== mat1 - 9) throw new Error('批量未按倍率扣材料');
+    return '单次与 ×3 批量扣料正确，天数与灵力一并消耗';
+  } finally { Math.random = real; }
+});
+step('炼丹：归元丹可炼可用，且坊市不售', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.01;
+    G.newGame();
+    G.addMaterials({ lingcao: 20, yaodan: 10 }, true);
+    S().mp = G.stats().mpMax;
+    G.craftPill('r_guijing', 1);
+    if (!(S().pills['归元丹'] > 0)) throw new Error('归元丹未炼出');
+    /* 只能炼，不可买 */
+    const st = G.stats();
+    S().stones = 999999;
+    const n0 = S().pills['归元丹'];
+    G.buyPill('归元丹');
+    if (S().pills['归元丹'] !== n0) throw new Error('坊市不应出售归元丹');
+    /* 服用：气血与灵力尽复 */
+    S().hp = 1; S().mp = 0;
+    G.usePill('归元丹');
+    if (S().hp !== st.hpMax || S().mp !== st.mpMax) throw new Error('归元丹未尽复气血灵力');
+    /* 新档药囊由表派生，归元丹自动在列 */
+    const bp = G.blankPills();
+    if (bp['归元丹'] !== 0 || bp['回春丹'] !== 0) throw new Error('blankPills 未与表同步');
+    return '归元丹：可炼、不可买、服之尽复';
+  } finally { Math.random = real; }
+});
+step('炼器：出器品质不低于配方下限、不高于神品', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.01;                    /* 必成 + 品质加成全中 */
+    G.newGame();
+    S().level = 40;
+    G.addMaterials({ xuantie: 40, yaodan: 40, shoupi: 40, xingchen: 20 }, true);
+    S().mp = G.stats().mpMax;
+    S().bag = [];
+    G.craftGear('g_weapon', 1);
+    if (!S().bag.length && !S().equip.weapon) throw new Error('未出器');
+    const it = S().equip.weapon || S().bag[S().bag.length - 1];
+    if (it.q < 2) throw new Error('品质低于配方下限 ' + it.q);
+    if (it.q > 4) throw new Error('品质越界 ' + it.q);
+    if (it.slot !== 'weapon') throw new Error('槽位不对 ' + it.slot);
+    /* 法宝配方 */
+    S().mp = G.stats().mpMax;
+    const bag0 = S().bag.length, eqT = S().equip.treasures.filter(Boolean).length;
+    G.craftGear('g_treasure', 1);
+    if (S().bag.length === bag0 && S().equip.treasures.filter(Boolean).length === eqT) throw new Error('法宝未出');
+    return '武器 q=' + it.q + '（下限 2、上限 4），法宝亦成';
+  } finally { Math.random = real; }
+});
+step('炼制失败：返还四成材料，日志可读', () => {
+  const real = Math.random;
+  try {
+    Math.random = () => 0.999;                   /* 全失败 */
+    G.newGame();
+    G.addMaterials({ lingcao: 30 }, true);
+    S().mp = G.stats().mpMax;
+    const pill0 = S().pills['回春丹'] || 0;
+    const logN = S().logs.length;
+    G.craftPill('r_huichun', 1);                 /* 用 3 灵草 → 失败返 1 */
+    if ((S().pills['回春丹'] || 0) !== pill0) throw new Error('失败却成丹');
+    if (G.countMat('lingcao') !== 28) throw new Error('应花 3 收 1，实为 ' + G.countMat('lingcao'));
+    const seg = S().logs.slice(logN).map(l => l.t).join('|');
+    if (seg.indexOf('炸炉') < 0) throw new Error('失败日志缺失');
+    return '花 3 收 1（四成向下取整），日志含「炸炉」';
+  } finally { Math.random = real; }
+});
+step('境界不足时锁定配方（越级两档以上）', () => {
+  G.newGame();
+  S().level = 0;                                  /* 段 0 */
+  const r = G.pillRecipes.find(x => x.k === 'r_pojing');   /* 推荐段 4 */
+  if (!G.craftLocked(r)) throw new Error('越级两档以上应锁定');
+  if (G.canCraftPill('r_pojing', 1)) throw new Error('锁定的配方不应可炼');
+  G.addMaterials({ yaodan: 30, lingcao: 30, xingchen: 10 }, true);
+  S().mp = G.stats().mpMax;
+  const n0 = S().pills['破境丹'];
+  G.craftPill('r_pojing', 1);
+  if (S().pills['破境丹'] !== n0) throw new Error('锁定配方仍炼出了丹');
+  const why = G.craftBlockReason(r);
+  if (why.indexOf('境界') < 0) throw new Error('锁定原因未说明境界');
+  /* 境界够了应解锁 */
+  S().level = 40;
+  if (G.craftLocked(r)) throw new Error('高境界不应锁定');
+  return '越级锁定 + 原因可见 + 境界够即解锁';
+});
+step('存档：v4 / 材料往返 / 老档补默认 / 清洗非法键', () => {
+  G.newGame();
+  G.addMaterials({ lingcao: 7, yaodan: 3, hundun: 1 }, true);
+  const d = G.saveData();
+  if (d.v !== 4) throw new Error('saveData 应为 v4，实为 ' + d.v);
+  if (d.materials.lingcao !== 7) throw new Error('存档未带材料');
+  G.newGame();
+  if (G.totalMats() !== 0) throw new Error('新建号未清空材料');
+  if (!G.restore(d)) throw new Error('restore 失败');
+  if (G.countMat('lingcao') !== 7 || G.countMat('hundun') !== 1) throw new Error('读档未还原材料');
+  /* 老档（v2、无 materials）*/
+  const old = { v:2, level:5, exp:100, day:10, stones:100, hp:5, mp:5,
+    equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
+    bag:[], pills:{ '回春丹':1 }, logs:[], shop:[], stat:{} };
+  if (!G.restore(old)) throw new Error('老档读入失败');
+  if (!S().materials || G.totalMats() !== 0) throw new Error('老档材料应为空对象');
+  if (S().pills['归元丹'] !== 0) throw new Error('老档应补新丹药默认值');
+  /* 清洗器 */
+  const bad = G.matSanitize({ lingcao: 5, fake: 99, yaodan: 'x', xuantie: -3, shoupi: 2.7 });
+  if (bad.lingcao !== 5) throw new Error('正常值被误删');
+  if (bad.fake !== undefined) throw new Error('非法键未剔除');
+  if (bad.yaodan !== undefined) throw new Error('NaN 未剔除');
+  if (bad.xuantie !== undefined) throw new Error('负数未剔除');
+  if (bad.shoupi !== 2) throw new Error('小数未取整');
+  if (Object.keys(G.matSanitize(undefined)).length !== 0) throw new Error('undefined 应返回空对象');
+  return 'v4 往返正常 · 老档补默认 · 清洗器拦截非法值';
+});
+step('轮回：材料归零（与装备/灵石同轴）', () => {
+  G.newGame();
+  G.addMaterials({ lingcao: 20, yaodan: 5 }, true);
+  if (G.totalMats() === 0) throw new Error('前置材料未给上');
+  G.doRebirth();
+  if (G.totalMats() !== 0) throw new Error('轮回后材料应清零');
+  if (Object.keys(S().materials).length !== 0) throw new Error('materials 应重置为空对象');
+  return '入轮回后材料归零';
+});
+step('界面：左栏材料面板 + 坊市三段 + 引导文案', () => {
+  G.newGame();
+  /* 空囊提示 */
+  G.renderAll();
+  let box = el('matBox').innerHTML;
+  if (box.indexOf('尚 无 材 料') < 0) throw new Error('空囊提示缺失');
+  /* 有材料后的列表（含品阶色与流光） */
+  G.addMaterials({ lingcao: 9, hundun: 2 }, true);
+  G.renderAll();
+  box = el('matBox').innerHTML;
+  if (box.indexOf('灵草') < 0 || box.indexOf('混沌石') < 0) throw new Error('材料未列出');
+  if (box.indexOf('qc0') < 0) throw new Error('缺少品阶色类名');
+  if (box.indexOf('flow q4') < 0) throw new Error('神品材料应带流光');
+  if (el('matTag').textContent.indexOf('2 / 6') < 0) throw new Error('标题未显示持有种类');
+  /* 坊市三段：先看「材料不足 → 置灰并给原因」 */
+  S().level = 30; S().stones = 99999;
+  G.switchTab('shop');
+  let shop = el('actPanel').innerHTML;
+  for (const key of ['丹 房', '器 坊', '材 料 铺']) {
+    if (shop.indexOf(key) < 0) throw new Error('坊市缺段落 ' + key);
+  }
+  if (shop.indexOf('材料不足') < 0) throw new Error('材料不足时应给出原因');
+  if (shop.indexOf('crUiCraftPill(') >= 0) throw new Error('材料不足时不应渲染炼制按钮');
+  /* 备齐材料后：按钮出现 */
+  G.addMaterials({ lingcao: 40, yaodan: 40, xuantie: 40, shoupi: 40, xingchen: 20 }, true);
+  S().mp = G.stats().mpMax;
+  G.switchTab('cult'); G.switchTab('shop');
+  shop = el('actPanel').innerHTML;
+  for (const fn of ['crUiCraftPill(', 'crUiCraftGear(', 'crUiBuyMat(']) {
+    if (shop.indexOf(fn) < 0) throw new Error('坊市缺按钮 ' + fn);
+  }
+  if (shop.indexOf('炼 一 次') < 0) throw new Error('缺炼制按钮文案');
+  if (shop.indexOf('×5') < 0) throw new Error('材料充足时应出现批量 ×5');
+  /* 道法纲要 */
+  G.showHelp();
+  const help = el('modalRoot').innerHTML;
+  if (help.indexOf('材 料 · 炼 制') < 0) throw new Error('道法纲要缺材料章节');
+  if (help.indexOf('可控产出') < 0) throw new Error('未说明「随机产出变可控」的设计意图');
+  G.closeModal();
+  return '左栏材料面板 · 坊市三段 · 纲要章节 齐备';
 });
 
 log('');

@@ -1,5 +1,6 @@
 import { META, blankStat, heritageSummary } from './meta.js';
 import { num } from './utils.js';
+import { blankPills } from '../data/pills.js';
 import { stats } from '../sys/character.js';
 import { addLog, toast } from '../sys/log.js';
 import { refreshShop } from '../sys/shop.js';
@@ -21,7 +22,9 @@ export function newGame(){
     hp:0, mp:0,
     equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
     bag:[],
-    pills:{ '回春丹':2, '聚灵丹':1, '破境丹':0 },
+    pills: Object.assign(blankPills(), { '回春丹':2, '聚灵丹':1 }),
+    /* 材料：本局所有，轮回清零（掉落与炼制见 sys/craft.js） */
+    materials:{},
     logs:[],
     combat:null,
     dungeon:null,
