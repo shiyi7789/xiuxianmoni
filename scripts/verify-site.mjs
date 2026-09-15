@@ -162,6 +162,16 @@ chk('robots.txt 指向 sitemap', /Sitemap:/.test(bodies['/robots.txt'].text), ''
 chk('sitemap.xml 为合法 XML 头', /^<\?xml/.test(bodies['/sitemap.xml'].text.trim()), '');
 chk('404 页面已就位', /此 地 无 路/.test(bodies['/404.html'].text), '');
 
+/* GitHub Actions 工作流：YAML 不允许用制表符缩进，且必须有 on / jobs 顶层键 */
+for (const wf of ['ci.yml', 'pages.yml']) {
+  const p = join(root, '.github', 'workflows', wf);
+  if (!existsSync(p)) { bad('workflow ' + wf, '文件缺失'); continue; }
+  const t = readFileSync(p, 'utf8');
+  chk('workflow ' + wf + ' 结构合法', !/^\t/m.test(t) && /^on:/m.test(t) && /^jobs:/m.test(t),
+    /^\t/m.test(t) ? '含制表符缩进（YAML 非法）' : 'on/jobs 齐备，无制表符');
+}
+chk('GitHub 连接脚本已就位', existsSync(join(root, 'scripts', 'connect-github.ps1')), 'scripts/connect-github.ps1');
+
 server.close();
 out('');
 out('================ 汇总 ================');

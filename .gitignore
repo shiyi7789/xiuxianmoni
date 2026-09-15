@@ -19,6 +19,7 @@ UE5-技术美术优化方案.md
 _probe.txt
 _release_out.txt
 _site_check.txt
+_commitmsg.txt
 
 # 回归测试的人类可读输出（结果会在对话里给用户，不入库）
 回归测试结果.txt
