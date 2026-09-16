@@ -5,6 +5,7 @@ import { clamp, num, pick } from '../core/utils.js';
 import { BASE_NAMES } from '../data/items.js';
 import { QUALITIES, Q_FLOW } from '../data/qualities.js';
 import { achBonus } from './achievement.js';
+import { cvBonus } from './cave.js';
 import { gfBonus } from './gongfa.js';
 import { addLog } from './log.js';
 import { mountLabel } from './mount.js';
@@ -118,7 +119,7 @@ export function stats(){
   st.atk *= (1 + ab.atk/100) * (1 + gb.atk/100);
   st.def *= (1 + ab.def/100) * (1 + gb.def/100);
   st.crit += gb.crit;
-  st.cult += heritageCult() + ab.cult + gb.cult;            /* 悟性传承 + 轮回印记 + 成就 + 心法 */
+  st.cult += heritageCult() + ab.cult + gb.cult + cvBonus().cult;   /* 悟性传承 + 轮回印记 + 成就 + 心法 + 洞府 */
   st.atk = Math.round(st.atk);
   st.def = Math.round(st.def);
   st.crit = +st.crit.toFixed(1);

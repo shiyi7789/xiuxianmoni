@@ -25,6 +25,8 @@ export function newGame(){
     pills: Object.assign(blankPills(), { '回春丹':2, '聚灵丹':1 }),
     /* 材料：本局所有，轮回清零（掉落与炼制见 sys/craft.js） */
     materials:{},
+    /* 洞府：本局所有，轮回清零（五处设施 + 上次离线结算时刻，见 sys/cave.js） */
+    cave:{ facs:{}, lastTick: Date.now() },
     logs:[],
     combat:null,
     dungeon:null,

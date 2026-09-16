@@ -27,6 +27,7 @@ import { buyItem, refreshShop } from '../sys/shop.js';
 import { travelDays } from '../sys/time.js';
 import { showHelp } from './panels/notice.js';
 import { renderMaterials, renderGearSection, renderMatShopSection, renderPillSection } from './panels/craft.js';
+import { renderCave } from './panels/cave.js';
 import { openSavePanel } from './panels/save.js';
 import { closeSheet } from './sheet.js';
 import { toggleTheme } from './theme.js';
@@ -44,6 +45,7 @@ export function renderAll(){
   renderGongfa();
   renderPills();
   renderMaterials();
+  renderCave();
   renderMount();
   renderBag();
   renderTabs();

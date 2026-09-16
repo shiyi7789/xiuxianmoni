@@ -305,7 +305,32 @@ const boot = new Function(
   crUiCraftGear: crUiCraftGear,
   crUiBuyMat: crUiBuyMat,
   buyPill: buyPill,
-  usePill: usePill
+  usePill: usePill,
+  /* --- 洞府 · 离线收益 --- */
+  CAVE_FACILITIES: CAVE_FACILITIES,
+  CAVE_OFFLINE_BASE: CAVE_OFFLINE_BASE,
+  caveFullCost: caveFullCost,
+  caveEnsure: caveEnsure,
+  cvFacDef: cvFacDef,
+  cvFacMax: cvFacMax,
+  cvFacLv: cvFacLv,
+  cvTotalLv: cvTotalLv,
+  cvTotalMax: cvTotalMax,
+  cvUpgradeCost: cvUpgradeCost,
+  cvUpgrade: cvUpgrade,
+  cvBonus: cvBonus,
+  cvOfflineCapHours: cvOfflineCapHours,
+  cvOfflineCapMs: cvOfflineCapMs,
+  cvSettleOffline: cvSettleOffline,
+  cvFacSummary: cvFacSummary,
+  cvFacName: cvFacName,
+  cvFmtDuration: cvFmtDuration,
+  cvSanitize: cvSanitize,
+  cvSnapshot: cvSnapshot,
+  renderCave: renderCave,
+  cvUiOpen: cvUiOpen,
+  cvUiUp: cvUiUp,
+  cvShowOfflineReport: cvShowOfflineReport
 };`
 );
 
@@ -2163,11 +2188,11 @@ step('境界不足时锁定配方（越级两档以上）', () => {
   if (G.craftLocked(r)) throw new Error('高境界不应锁定');
   return '越级锁定 + 原因可见 + 境界够即解锁';
 });
-step('存档：v4 / 材料往返 / 老档补默认 / 清洗非法键', () => {
+step('存档：v5 / 材料往返 / 老档补默认 / 清洗非法键', () => {
   G.newGame();
   G.addMaterials({ lingcao: 7, yaodan: 3, hundun: 1 }, true);
   const d = G.saveData();
-  if (d.v !== 4) throw new Error('saveData 应为 v4，实为 ' + d.v);
+  if (d.v !== 5) throw new Error('saveData 应为 v5，实为 ' + d.v);
   if (d.materials.lingcao !== 7) throw new Error('存档未带材料');
   G.newGame();
   if (G.totalMats() !== 0) throw new Error('新建号未清空材料');
@@ -2239,6 +2264,276 @@ step('界面：左栏材料面板 + 坊市三段 + 引导文案', () => {
   if (help.indexOf('可控产出') < 0) throw new Error('未说明「随机产出变可控」的设计意图');
   G.closeModal();
   return '左栏材料面板 · 坊市三段 · 纲要章节 齐备';
+});
+
+/* ============ S. 洞府 · 离线收益 ============ */
+log('=== S. 洞府 · 离线收益 ===');
+step('设施表结构（五处 / 键齐备 / max·cost·eff 齐备）', () => {
+  const F = G.CAVE_FACILITIES;
+  if (F.length !== 5) throw new Error('设施应为 5 处，实为 ' + F.length);
+  const keys = F.map(f => f.k);
+  for (const k of ['lingtian', 'juling', 'danfang', 'qifang', 'jingshi']) {
+    if (keys.indexOf(k) < 0) throw new Error('缺少设施 ' + k);
+  }
+  for (const f of F) {
+    if (!(f.max > 0)) throw new Error(f.k + ' 应有 max');
+    if (typeof f.cost !== 'function') throw new Error(f.k + ' 应有 cost');
+    if (typeof f.eff !== 'function') throw new Error(f.k + ' 应有 eff');
+    if (!f.n || !f.d) throw new Error(f.k + ' 应有名称与描述');
+    for (let lv = 1; lv <= f.max; lv++) {
+      const c = f.cost(lv);
+      if (!(c.stones > 0) || !(c.days > 0)) throw new Error(f.k + ' lv' + lv + ' 成本异常');
+    }
+    /* 成本必须随等级递增 */
+    if (!(f.cost(f.max).stones > f.cost(1).stones)) throw new Error(f.k + ' 成本未递增');
+  }
+  return '五处设施 · 成本随级递增 · 满级共约 ' + G.caveFullCost().stones + ' 灵石 / ' + G.caveFullCost().days + ' 日';
+});
+step('新档洞府全空、加成全为零', () => {
+  G.newGame();
+  if (G.cvTotalLv() !== 0) throw new Error('新档设施等级应为 0');
+  if (G.cvTotalMax() !== 45) throw new Error('总上限应为 5×9=45');
+  const b = G.cvBonus();
+  for (const k of ['herb', 'stone', 'cult', 'pillRate', 'gearRate', 'offlineCap']) {
+    if (b[k] !== 0) throw new Error('新档 ' + k + ' 应为 0，实为 ' + b[k]);
+  }
+  return '五处皆未建，六项加成全为 0';
+});
+step('升级：扣灵石、推进天数、写日志', () => {
+  G.newGame();
+  G.S().stones = 100000;
+  const day0 = G.S().day, logN = G.S().logs.length;
+  if (!G.cvUpgrade('lingtian')) throw new Error('升级应成功');
+  if (G.cvFacLv('lingtian') !== 1) throw new Error('应升到 1 级');
+  if (!(G.S().day > day0)) throw new Error('天数应推进');
+  if (!(G.S().stones < 100000)) throw new Error('灵石应扣除');
+  if (G.S().stones !== 100000 - 200) throw new Error('扣款数不对：' + G.S().stones);
+  const added = G.S().logs.slice(logN).map(l => l.t).join('|');
+  if (added.indexOf('整修') < 0) throw new Error('缺整修日志');
+  return '灵田 1 级 · 扣 200 灵石 · 天数 ' + day0 + ' → ' + G.S().day;
+});
+step('灵石不足被拒，且天数与等级均无副作用', () => {
+  G.newGame();
+  G.S().stones = 0;
+  const day0 = G.S().day;
+  if (G.cvUpgrade('lingtian')) throw new Error('灵石不足应被拒');
+  if (G.cvFacLv('lingtian') !== 0) throw new Error('不应升级');
+  if (G.S().day !== day0) throw new Error('不应推进天数');
+  if (G.S().stones !== 0) throw new Error('不应扣款');
+  return '被拒且天数/等级/灵石均无变化';
+});
+step('满级后拒绝继续升级，成本置空', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  for (let i = 0; i < 20; i++) G.cvUpgrade('lingtian');
+  if (G.cvFacLv('lingtian') !== 9) throw new Error('应为满级 9，实为 ' + G.cvFacLv('lingtian'));
+  if (G.cvUpgradeCost('lingtian') !== null) throw new Error('满级后成本应为 null');
+  if (G.cvUpgrade('lingtian')) throw new Error('满级后不应升级成功');
+  return '满级 9 级锁定，再点不生效';
+});
+step('加成汇总：灵田/聚灵阵/丹房/器坊/静室各管一条线', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  for (const k of ['lingtian', 'juling', 'danfang', 'qifang', 'jingshi']) G.cvUpgrade(k);
+  const b = G.cvBonus();
+  if (!(b.herb > 0)) throw new Error('灵田应产灵草');
+  if (!(b.cult > 0)) throw new Error('聚灵阵应加修速');
+  if (!(b.stone > 0)) throw new Error('聚灵阵应凝灵石');
+  if (!(b.pillRate > 0)) throw new Error('丹房应加成丹率');
+  if (!(b.gearRate > 0)) throw new Error('器坊应加成器率');
+  if (b.offlineCap !== 2) throw new Error('静室 1 级应 +2 时，实为 ' + b.offlineCap);
+  return '灵草 ' + b.herb + '/时 · 灵石 ' + b.stone + '/时 · 修速 +' + b.cult
+    + '% · 成丹 +' + Math.round(b.pillRate * 100) + '% · 离线上限 +' + b.offlineCap + ' 时';
+});
+step('聚灵阵修速并入 stats()', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  const c0 = G.stats().cult;
+  for (let i = 0; i < 5; i++) G.cvUpgrade('juling');
+  const c1 = G.stats().cult;
+  if (!(c1 > c0)) throw new Error('修速应提升（' + c0 + ' → ' + c1 + '）');
+  if (Math.abs((c1 - c0) - 5) > 0.001) throw new Error('五级应恰好 +5%，实为 +' + (c1 - c0));
+  return '修速 ' + c0 + '% → ' + c1 + '%（五级聚灵阵 +5%）';
+});
+step('丹房并入 pillCraftRate、器坊并入 gearCraftRate', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  /* 用低基础成率的配方（破境丹 0.55）验证，避免撞上 0.98 的成率上限 */
+  const p0 = G.pillCraftRate('r_pojing'), g0 = G.gearCraftRate('g_weapon');
+  for (let i = 0; i < 5; i++) { G.cvUpgrade('danfang'); G.cvUpgrade('qifang'); }
+  const p1 = G.pillCraftRate('r_pojing'), g1 = G.gearCraftRate('g_weapon');
+  if (!(p1 > p0)) throw new Error('成丹率应提升（' + p0 + ' → ' + p1 + '）');
+  if (!(g1 > g0)) throw new Error('成器率应提升（' + g0 + ' → ' + g1 + '）');
+  if (Math.abs((p1 - p0) - 0.10) > 0.001) throw new Error('五级丹房应 +10%，实为 ' + (p1 - p0).toFixed(3));
+  if (Math.abs((g1 - g0) - 0.10) > 0.001) throw new Error('五级器坊应 +10%，实为 ' + (g1 - g0).toFixed(3));
+  /* 未建时不应改变既有成率 */
+  G.newGame();
+  const p2 = G.pillCraftRate('r_pojing');
+  if (Math.abs(p2 - p0) > 0.001) throw new Error('未建设施改变了成率');
+  /* 成率上限 0.98：丹房对「本就好炼」的配方收益会被封顶吃掉——这是刻意的 */
+  G.S().stones = 99999999;
+  for (let i = 0; i < 9; i++) G.cvUpgrade('danfang');
+  if (G.pillCraftRate('r_huichun') > 0.98) throw new Error('成率不应超过 0.98');
+  return '成丹 ' + (p0 * 100).toFixed(0) + '% → ' + (p1 * 100).toFixed(0)
+    + '% · 成器 ' + (g0 * 100).toFixed(0) + '% → ' + (g1 * 100).toFixed(0) + '%（上限 98%）';
+});
+step('离线结算：短于 1 分钟不算', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  G.cvUpgrade('lingtian');
+  G.caveEnsure().lastTick = Date.now() - 30 * 1000;
+  const r = G.cvSettleOffline();
+  if (r !== null) throw new Error('少于 1 分钟不应结算');
+  return '30 秒不结算（避免刷新页面就弹窗）';
+});
+step('离线结算：2 小时应有灵草与灵石入账', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  for (let i = 0; i < 5; i++) G.cvUpgrade('lingtian');
+  G.cvUpgrade('juling');
+  G.S().stones = 0;                              /* 归零以便核对灵石产出 */
+  G.caveEnsure().lastTick = Date.now() - 2 * 3600 * 1000;
+  const r = G.cvSettleOffline();
+  if (!r) throw new Error('应返回报告');
+  if (!(r.herb > 0)) throw new Error('应有灵草产出');
+  if (!(r.stone > 0)) throw new Error('应有灵石产出');
+  if (G.countMat('lingcao') !== r.herb) throw new Error('灵草未入账');
+  if (G.S().stones !== r.stone) throw new Error('灵石未入账');
+  if (r.capped) throw new Error('2 小时不应触顶');
+  return '2 小时 → 灵草 ' + r.herb + ' 株 · 灵石 ' + r.stone + ' 枚';
+});
+step('离线结算：超出上限被截断（超出部分丢弃）', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  G.cvUpgrade('lingtian');
+  G.caveEnsure().lastTick = Date.now() - 48 * 3600 * 1000;   /* 48 小时，静室 0 级上限 8 */
+  const r = G.cvSettleOffline();
+  if (!r) throw new Error('应返回报告');
+  if (r.capped !== true) throw new Error('应标记为已达上限');
+  if (r.hours > 8.01) throw new Error('计入时长应 ≤ 8 小时，实为 ' + r.hours);
+  return '48 小时 → 按 8 小时计（' + r.hours.toFixed(2) + '），超出丢弃';
+});
+step('静室延长离线上限（8 + lv×2）', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  if (G.cvOfflineCapHours() !== 8) throw new Error('未建时上限应为 8');
+  for (let i = 0; i < 5; i++) G.cvUpgrade('jingshi');
+  if (G.cvOfflineCapHours() !== 18) throw new Error('五级静室应为 18，实为 ' + G.cvOfflineCapHours());
+  for (let i = 0; i < 4; i++) G.cvUpgrade('jingshi');
+  if (G.cvOfflineCapHours() !== 26) throw new Error('满级应为 26，实为 ' + G.cvOfflineCapHours());
+  return '8 → 18 → 26 小时（满级静室）';
+});
+step('存档往返：v5 / 设施等级保留 / lastTick 打上此刻', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  for (const k of ['lingtian', 'juling', 'danfang']) G.cvUpgrade(k);
+  const d = G.saveData();
+  if (d.v !== 5) throw new Error('saveData 应为 v5，实为 ' + d.v);
+  if (!d.cave || !d.cave.facs) throw new Error('cave 字段应存在');
+  if (d.cave.facs.lingtian !== 1 || d.cave.facs.juling !== 1 || d.cave.facs.danfang !== 1) {
+    throw new Error('等级未写入存档');
+  }
+  if (!(d.cave.lastTick > Date.now() - 60000)) throw new Error('lastTick 应打上存档时刻（防在线挂机刷收益）');
+  G.newGame();
+  if (G.cvTotalLv() !== 0) throw new Error('新档应清空');
+  G.restore(d);
+  if (G.cvFacLv('lingtian') !== 1) throw new Error('读档后灵田未还原');
+  if (G.cvFacLv('juling') !== 1) throw new Error('读档后聚灵阵未还原');
+  if (G.cvFacLv('danfang') !== 1) throw new Error('读档后丹房未还原');
+  return 'v5 · 三处等级往返一致 · lastTick 已刷新';
+});
+step('老存档（v4 无 cave）平滑升级且不给白嫖', () => {
+  const old = { v: 4, level: 5, exp: 100, day: 10, stones: 100,
+                equip: { weapon: null, armor: null, mount: null, treasures: [null, null, null] },
+                bag: [], pills: {}, logs: [], stat: {}, materials: {} };
+  G.newGame();
+  if (!G.restore(old)) throw new Error('老档应能读');
+  if (G.cvTotalLv() !== 0) throw new Error('老档洞府应为空');
+  if (!G.S().cave) throw new Error('cave 字段应补默认');
+  if (typeof G.S().cave.lastTick !== 'number') throw new Error('lastTick 应为数字');
+  if (G.cvSettleOffline() !== null) throw new Error('老档首次读取不应给离线收益');
+  return 'cave 补空 · lastTick=此刻 · 首次结算返回 null（不给白嫖）';
+});
+step('清洗器：非法键 / 负数 / NaN / 越界 / 未来时间戳', () => {
+  const bad = G.cvSanitize({
+    facs: { lingtian: 5, fake: 99, juling: -3, danfang: 'x', qifang: 99 },
+    lastTick: Date.now() + 999 * 86400000
+  });
+  if (bad.facs.lingtian !== 5) throw new Error('合法值应保留');
+  if (bad.facs.fake !== undefined) throw new Error('非法键应剔除');
+  if (bad.facs.juling !== undefined) throw new Error('负数应剔除');
+  if (bad.facs.danfang !== undefined) throw new Error('NaN 应剔除');
+  if (bad.facs.qifang !== 9) throw new Error('越界应截断到 9，实为 ' + bad.facs.qifang);
+  if (bad.lastTick > Date.now() + 1000) throw new Error('未来时间戳应被丢弃');
+  if (G.cvSanitize(undefined).lastTick <= 0) throw new Error('undefined 应补 lastTick');
+  return '五类脏数据全部拦截';
+});
+step('轮回后洞府清零（归本局）', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  G.cvUpgrade('lingtian');
+  G.cvUpgrade('juling');
+  if (G.cvTotalLv() !== 2) throw new Error('应有 2 级，实为 ' + G.cvTotalLv());
+  G.doRebirth();
+  G.closeModal();
+  if (G.cvTotalLv() !== 0) throw new Error('轮回后应归零，实为 ' + G.cvTotalLv());
+  return '轮回后五处归零（与装备/灵石/材料同轴）';
+});
+step('战中禁止整修洞府', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  G.startFight(G.makeMonster(0, false), { type: 'hunt' });
+  if (G.cvUpgrade('lingtian')) throw new Error('战中应被拒');
+  if (G.cvTotalLv() !== 0) throw new Error('战中不应升级');
+  G.S().combat = null;
+  G.closeModal();
+  return '战中整修被拒，等级与灵石不变';
+});
+step('界面：左栏洞府面板 + 经营弹层 + 离线归来', () => {
+  G.newGame();
+  G.S().stones = 99999999;
+  G.cvUpgrade('lingtian');
+  G.cvUpgrade('juling');
+  G.renderAll();
+  const box = el('caveBox').innerHTML;
+  if (!box || box.length === 0) throw new Error('左栏洞府面板应有内容');
+  if (box.indexOf('cvUiOpen()') < 0) throw new Error('缺「整修洞府」入口');
+  if (box.indexOf('灵草') < 0) throw new Error('摘要应显示灵草产出');
+  if (el('caveTag').textContent.indexOf('2 / 45') < 0) {
+    throw new Error('标题未显示总等级，实为 ' + el('caveTag').textContent);
+  }
+  /* 弹层 */
+  G.closeModal();
+  G.cvUiOpen();
+  const root = el('modalRoot').innerHTML;
+  if (root.indexOf('洞 府') < 0) throw new Error('弹层标题应含「洞 府」');
+  for (const n of ['灵 田', '聚 灵 阵', '丹 房', '器 坊', '静 室']) {
+    if (root.indexOf(n) < 0) throw new Error('弹层缺设施 ' + n);
+  }
+  if (root.indexOf('cvUiUp(') < 0) throw new Error('弹层缺整修按钮');
+  if (root.indexOf('已 圆 满') >= 0) throw new Error('未满级不应显示圆满');
+  G.closeModal();
+  /* 离线归来 */
+  G.caveEnsure().lastTick = Date.now() - 3 * 3600 * 1000;
+  const r = G.cvSettleOffline();
+  if (!r) throw new Error('3 小时应有结算');
+  G.cvShowOfflineReport(r);
+  const rep = el('modalRoot').innerHTML;
+  if (rep.indexOf('闭 关 归 来') < 0) throw new Error('缺「闭关归来」面板');
+  if (rep.indexOf('灵 田') < 0) throw new Error('面板应显示灵田产出');
+  if (rep.indexOf('聚 灵 阵') < 0) throw new Error('面板应显示聚灵阵产出');
+  G.closeModal();
+  return '左栏面板 · 经营弹层五处 · 闭关归来 齐备';
+});
+step('道法纲要含洞府章节', () => {
+  G.newGame();
+  G.showHelp();
+  const help = el('modalRoot').innerHTML;
+  if (help.indexOf('洞 府</b>') < 0) throw new Error('道法纲要缺洞府章节');
+  if (help.indexOf('闭关归来') < 0) throw new Error('未说明离线结算方式');
+  if (help.indexOf('轮回清零') < 0) throw new Error('未说明洞府归本局');
+  G.closeModal();
+  return '纲要已含洞府 / 离线结算 / 轮回清零';
 });
 
 log('');

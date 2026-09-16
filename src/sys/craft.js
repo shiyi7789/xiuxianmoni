@@ -4,6 +4,7 @@ import { MATERIALS, MAT_ORDER, MAT_SHOP } from '../data/materials.js';
 import { GEAR_RECIPES, PILL_RECIPES } from '../data/recipes.js';
 import { chance, clamp, num, ri } from '../core/utils.js';
 import { addItem, itemLabel, makeItem, qName, stats } from './character.js';
+import { cvBonus } from './cave.js';
 import { checkAch } from './achievement.js';
 import { realmAt, realmNameOf } from './cultivate.js';
 import { addLog, toast } from './log.js';
@@ -202,10 +203,10 @@ function heritagePillBonus(){
 /* 境界差：当前大境界组 - 配方推荐段 */
 function realmDiff(lv){ return realmAt(S.level).group - (lv || 0); }
 
-/* 最终成功率：配方基础 + 丹道 + 境界差 */
-export function finalRate(recipe, base){
-  base = (base === undefined) ? recipe.base : base;
-  let r = base + heritagePillBonus();
+/* 最终成功率：配方基础 + 丹道 + 洞府（丹房/器坊）+ 境界差
+   extra 是外部加成（洞府设施），不是基础率 */
+export function finalRate(recipe, extra){
+  let r = (recipe.base || 0) + heritagePillBonus() + (extra || 0);
   const d = realmDiff(recipe.lv);
   if(d < 0) r += d * 0.06;                    /* 越级炼：每差一档 -6% */
   else r += Math.min(0.10, d * 0.02);         /* 高境界炼低配方：至多 +10% */
@@ -222,11 +223,11 @@ export function craftLocked(recipe){
 }
 export function pillCraftRate(k){
   const r = PILL_RECIPES.find(x => x.k === k);
-  return r ? finalRate(r) : 0;
+  return r ? finalRate(r, cvBonus().pillRate) : 0;        /* 洞府 · 丹房 */
 }
 export function gearCraftRate(k){
   const r = GEAR_RECIPES.find(x => x.k === k);
-  return r ? finalRate(r) : 0;
+  return r ? finalRate(r, cvBonus().gearRate) : 0;        /* 洞府 · 器坊 */
 }
 export function canCraftPill(k, n){ return canCraft(PILL_RECIPES, k, n); }
 export function canCraftGear(k, n){ return canCraft(GEAR_RECIPES, k, n); }
@@ -267,7 +268,7 @@ export function craftPill(k, n){
   advance(days);
   addLog('你布下丹炉，以灵力 ' + num(mpCost) + ' 催动真火，炼了 ' + days + ' 日——', 'act');
 
-  const rate = finalRate(r);
+  const rate = finalRate(r, cvBonus().pillRate);
   let ok = 0, bad = 0;
   for(let i = 0; i < n; i++){ if(chance(rate * 100)) ok++; else bad++; }
 
@@ -304,7 +305,7 @@ export function craftGear(k, n){
   advance(days);
   addLog('你架起炉火，以灵力 ' + num(mpCost) + ' 锤锻 ' + days + ' 日——', 'act');
 
-  const rate = finalRate(r);
+  const rate = finalRate(r, cvBonus().gearRate);
   const over = realmDiff(r.lv) >= 4;                    /* 境界远超配方：火候更纯 */
   let ok = 0, bad = 0;
   for(let i = 0; i < n; i++){

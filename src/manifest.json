@@ -17,6 +17,7 @@
     "data/encounters.js",
     "data/materials.js",
     "data/recipes.js",
+    "data/cave.js",
     "core/meta.js",
     "core/state.js",
     "sys/log.js",
@@ -36,6 +37,7 @@
     "sys/achievement.js",
     "sys/rebirth.js",
     "sys/craft.js",
+    "sys/cave.js",
     "ui/theme.js",
     "ui/sheet.js",
     "ui/modal.js",
@@ -45,6 +47,7 @@
     "ui/panels/save.js",
     "ui/panels/gongfa.js",
     "ui/panels/craft.js",
+    "ui/panels/cave.js",
     "main.js"
   ],
   "template": {

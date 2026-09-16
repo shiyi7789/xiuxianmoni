@@ -4,6 +4,7 @@ import { clamp, ri } from './utils.js';
 import { GF_BY_KEY } from '../data/gongfa.js';
 import { blankPills } from '../data/pills.js';
 import { matSanitize } from '../sys/craft.js';
+import { cvSanitize, cvSnapshot } from '../sys/cave.js';
 import { gfRollBook, gfSanitizeS } from '../sys/gongfa.js';
 import { clampVitals } from '../sys/character.js';
 import { addLog, toast } from '../sys/log.js';
@@ -23,7 +24,7 @@ export const slotKey = i => 'xiuxian_slot_'+i+'_v2';
 
 export function saveData(){
   return {
-    v:4,                                   /* v4：新增材料字段（旧档自动补默认，见 restore） */
+    v:5,                                   /* v5：新增洞府字段（旧档自动补默认，见 restore） */
     level:S.level, exp:S.exp, day:S.day, stones:S.stones,
     hp:S.hp, mp:S.mp, equip:S.equip, bag:S.bag, pills:S.pills,
     shop:S.shop, shopMount:S.shopMount, shopDay:S.shopDay,
@@ -33,6 +34,8 @@ export function saveData(){
     stat:S.stat, encDay:S.encDay,
     gongfa:S.gongfa, shopBook:S.shopBook,
     materials:S.materials,
+    /* 洞府：lastTick 打上「此刻」，使离线时长 = 从最后活跃到下次打开的间隔 */
+    cave: cvSnapshot(),
     logs:S.logs.slice(-90), ended:S.ended,
     t: Date.now()
   };
@@ -78,6 +81,8 @@ export function restore(d){
     pills: Object.assign(blankPills(), d.pills||{}),
     /* 材料：本局所有；缺字段补空、非法键与负数由 matSanitize 剔除 */
     materials: matSanitize(d.materials),
+    /* 洞府：本局所有；老档缺字段时 lastTick 取「此刻」——不给白嫖 */
+    cave: cvSanitize(d.cave),
     logs: d.logs||[],
     combat:null,
     dungeon:null,

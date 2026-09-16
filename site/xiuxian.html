@@ -791,6 +791,11 @@
       </div>
 
       <div class="panel">
+        <div class="ph">洞 府 <span id="caveTag" style="margin-left:auto;letter-spacing:0;color:var(--ink4)"></span></div>
+        <div class="pb" id="caveBox"></div>
+      </div>
+
+      <div class="panel">
         <div class="ph">储 物 袋 <span style="margin-left:auto;letter-spacing:0;color:var(--ink4)" id="bagCount"></span></div>
         <div class="pb" id="bagBox" style="padding:6px 8px"></div>
       </div>
@@ -1626,6 +1631,77 @@ const GEAR_RECIPES = [
   }
 ];
 
+/* ── data/cave.js ───────────────────────────────────────────────── */
+
+/* =========================================================
+   洞 府 —— 数据层
+   ---------------------------------------------------------
+   规则：本文件只导出常量，不 import 任何东西（防循环依赖的铁律）
+
+   · max       最高等级
+   · cost(lv)  升到 lv 级所需（stones 灵石 · days 天数）
+   · eff(lv)   该级效果，字段由 sys/cave.js 的 cvBonus() 汇总
+               可用字段：herb 灵草/时 · stone 灵石/时 · cult 修速%
+               pillRate 成丹率 · gearRate 成器率 · offlineCap 离线上限(时)
+
+   追加一处设施 = 在 CAVE_FACILITIES 加一行，其余代码自动跟上。
+   ========================================================= */
+
+const CAVE_FACILITIES = [
+  {
+    k:'lingtian', n:'灵 田', max:9,
+    cost: lv => ({ stones: 200*lv*lv, days:1 }),
+    eff:  lv => ({ herb: +(0.5 + lv*0.35).toFixed(2) }),      /* 灵草 / 时 */
+    d:'引地脉水气灌溉，灵草自生。离线时它仍在生长——洞府收益的第一条腿。'
+  },
+  {
+    k:'juling', n:'聚 灵 阵', max:9,
+    cost: lv => ({ stones: 300*lv*lv, days:2 }),
+    eff:  lv => ({ cult: +(lv*1.0).toFixed(1), stone: lv*4 }), /* 修速 % · 灵石 / 时 */
+    d:'以灵石为基、阵纹为骨，聚拢天地灵气。修行更快，且能自行凝出灵石。'
+  },
+  {
+    k:'danfang', n:'丹 房', max:9,
+    cost: lv => ({ stones: 400*lv*lv, days:2 }),
+    eff:  lv => ({ pillRate: +(lv*0.02).toFixed(3) }),         /* 成丹率 */
+    d:'丹房越是齐整，火候便越稳。炼丹成率随之提升。'
+  },
+  {
+    k:'qifang', n:'器 坊', max:9,
+    cost: lv => ({ stones: 400*lv*lv, days:2 }),
+    eff:  lv => ({ gearRate: +(lv*0.02).toFixed(3) }),         /* 成器率 */
+    d:'器坊内炉火长明，锻打事半功倍。'
+  },
+  {
+    k:'jingshi', n:'静 室', max:9,
+    cost: lv => ({ stones: 500*lv*lv, days:3 }),
+    eff:  lv => ({ offlineCap: lv*2 }),                        /* 离线上限 + 小时 */
+    d:'静室能隔绝外扰，延长离线可累积的时长。上限越高，闭关越久。'
+  }
+];
+
+/* 基础离线上限（小时）；实际上限 = 它 + 静室等级 × 2（满级 8+18 = 26 时） */
+const CAVE_OFFLINE_BASE = 8;
+
+/* 离线结算的下限（毫秒）：短于此不算一次结算，避免刷新页面就弹窗 */
+const CAVE_OFFLINE_MIN_MS = 60 * 1000;
+
+/* 键 → 定义 的索引 */
+const CAVE_BY_KEY = {};
+for(const f of CAVE_FACILITIES) CAVE_BY_KEY[f.k] = f;
+
+/* 五处全满的总耗（灵石 / 天数），仅用于界面提示 */
+function caveFullCost(){
+  let stones = 0, days = 0;
+  for(const f of CAVE_FACILITIES){
+    for(let lv = 1; lv <= f.max; lv++){
+      const c = f.cost(lv);
+      stones += c.stones; days += c.days;
+    }
+  }
+  return { stones, days };
+}
+
 /* ── core/meta.js ───────────────────────────────────────────────── */
 
 /* 气运 → 掉落运气（滚品质时叠加到 luck 上），见 fortune() */
@@ -1756,6 +1832,8 @@ function newGame(){
     pills: Object.assign(blankPills(), { '回春丹':2, '聚灵丹':1 }),
     /* 材料：本局所有，轮回清零（掉落与炼制见 sys/craft.js） */
     materials:{},
+    /* 洞府：本局所有，轮回清零（五处设施 + 上次离线结算时刻，见 sys/cave.js） */
+    cave:{ facs:{}, lastTick: Date.now() },
     logs:[],
     combat:null,
     dungeon:null,
@@ -1945,7 +2023,7 @@ function stats(){
   st.atk *= (1 + ab.atk/100) * (1 + gb.atk/100);
   st.def *= (1 + ab.def/100) * (1 + gb.def/100);
   st.crit += gb.crit;
-  st.cult += heritageCult() + ab.cult + gb.cult;            /* 悟性传承 + 轮回印记 + 成就 + 心法 */
+  st.cult += heritageCult() + ab.cult + gb.cult + cvBonus().cult;   /* 悟性传承 + 轮回印记 + 成就 + 心法 + 洞府 */
   st.atk = Math.round(st.atk);
   st.def = Math.round(st.def);
   st.crit = +st.crit.toFixed(1);
@@ -4148,10 +4226,10 @@ function heritagePillBonus(){
 /* 境界差：当前大境界组 - 配方推荐段 */
 function realmDiff(lv){ return realmAt(S.level).group - (lv || 0); }
 
-/* 最终成功率：配方基础 + 丹道 + 境界差 */
-function finalRate(recipe, base){
-  base = (base === undefined) ? recipe.base : base;
-  let r = base + heritagePillBonus();
+/* 最终成功率：配方基础 + 丹道 + 洞府（丹房/器坊）+ 境界差
+   extra 是外部加成（洞府设施），不是基础率 */
+function finalRate(recipe, extra){
+  let r = (recipe.base || 0) + heritagePillBonus() + (extra || 0);
   const d = realmDiff(recipe.lv);
   if(d < 0) r += d * 0.06;                    /* 越级炼：每差一档 -6% */
   else r += Math.min(0.10, d * 0.02);         /* 高境界炼低配方：至多 +10% */
@@ -4168,11 +4246,11 @@ function craftLocked(recipe){
 }
 function pillCraftRate(k){
   const r = PILL_RECIPES.find(x => x.k === k);
-  return r ? finalRate(r) : 0;
+  return r ? finalRate(r, cvBonus().pillRate) : 0;        /* 洞府 · 丹房 */
 }
 function gearCraftRate(k){
   const r = GEAR_RECIPES.find(x => x.k === k);
-  return r ? finalRate(r) : 0;
+  return r ? finalRate(r, cvBonus().gearRate) : 0;        /* 洞府 · 器坊 */
 }
 function canCraftPill(k, n){ return canCraft(PILL_RECIPES, k, n); }
 function canCraftGear(k, n){ return canCraft(GEAR_RECIPES, k, n); }
@@ -4213,7 +4291,7 @@ function craftPill(k, n){
   advance(days);
   addLog('你布下丹炉，以灵力 ' + num(mpCost) + ' 催动真火，炼了 ' + days + ' 日——', 'act');
 
-  const rate = finalRate(r);
+  const rate = finalRate(r, cvBonus().pillRate);
   let ok = 0, bad = 0;
   for(let i = 0; i < n; i++){ if(chance(rate * 100)) ok++; else bad++; }
 
@@ -4250,7 +4328,7 @@ function craftGear(k, n){
   advance(days);
   addLog('你架起炉火，以灵力 ' + num(mpCost) + ' 锤锻 ' + days + ' 日——', 'act');
 
-  const rate = finalRate(r);
+  const rate = finalRate(r, cvBonus().gearRate);
   const over = realmDiff(r.lv) >= 4;                    /* 境界远超配方：火候更纯 */
   let ok = 0, bad = 0;
   for(let i = 0; i < n; i++){
@@ -4287,6 +4365,175 @@ function matSanitize(d){
     if(v > 0) out[k] = clamp(v, 0, 999999);
   }
   return out;
+}
+
+/* ── sys/cave.js ────────────────────────────────────────────────── */
+
+/* =========================================================
+   洞 府 —— 逻辑层
+   ---------------------------------------------------------
+   设计要点（改之前先读）：
+   1. 五处设施：灵田（灵草）· 聚灵阵（修速+凝石）· 丹房（成丹率）
+      · 器坊（成器率）· 静室（离线上限）
+   2. 升级消耗灵石 + 天数（天数走 advance，与出门打怪形成节奏竞争）
+   3. 离线收益由 lastTick 差值折算，上限 = 8 + 静室等级×2 小时；
+      超出部分**丢弃**（不打折），这样升静室才有意义
+   4. 洞府归本局（S.cave），轮回清零
+   5. 老存档首次读取时 lastTick 设为当前时刻 —— **不给白嫖**
+   ========================================================= */
+
+/* ---------- 安全访问 ---------- */
+function caveEnsure(){
+  if(!S) return null;
+  if(!S.cave || typeof S.cave !== 'object') S.cave = { facs:{}, lastTick: Date.now() };
+  if(!S.cave.facs || typeof S.cave.facs !== 'object') S.cave.facs = {};
+  if(typeof S.cave.lastTick !== 'number' || S.cave.lastTick <= 0) S.cave.lastTick = Date.now();
+  return S.cave;
+}
+function cvFacDef(k){ return CAVE_BY_KEY[k] || null; }
+function cvFacMax(k){ const f = cvFacDef(k); return f ? f.max : 0; }
+
+function cvFacLv(k){
+  const c = caveEnsure();
+  if(!c) return 0;
+  return clamp(Math.floor(Number(c.facs[k]) || 0), 0, cvFacMax(k));
+}
+function cvTotalLv(){
+  let n = 0;
+  for(const f of CAVE_FACILITIES) n += cvFacLv(f.k);
+  return n;
+}
+function cvTotalMax(){
+  let n = 0;
+  for(const f of CAVE_FACILITIES) n += f.max;
+  return n;
+}
+
+/* ---------- 升级 ---------- */
+function cvUpgradeCost(k){
+  const f = cvFacDef(k);
+  if(!f) return null;
+  const lv = cvFacLv(k);
+  if(lv >= f.max) return null;
+  return f.cost(lv + 1);
+}
+function cvUpgrade(k){
+  if(!S) return false;
+  if(busy()){ toast('此刻无暇整修洞府'); return false; }
+  const f = cvFacDef(k);
+  if(!f) return false;
+  const lv = cvFacLv(k);
+  if(lv >= f.max){ toast('此设施已至圆满'); return false; }
+  const cost = f.cost(lv + 1);
+  if(S.stones < cost.stones){ toast('灵石不足（需 '+num(cost.stones)+'）'); return false; }
+  S.stones -= cost.stones;
+  advance(cost.days);
+  caveEnsure().facs[k] = lv + 1;
+  addLog('你整修「'+f.n+'」，已至 '+(lv+1)+' 级——'+cvFacSummary(f, lv+1)+'。','act');
+  after();
+  return true;
+}
+
+/* ---------- 效果汇总 ---------- */
+function cvBonus(){
+  const z = { cult:0, stone:0, herb:0, pillRate:0, gearRate:0, offlineCap:0 };
+  if(!S || !S.cave) return z;
+  for(const f of CAVE_FACILITIES){
+    const lv = cvFacLv(f.k);
+    if(!lv) continue;
+    const e = f.eff(lv);
+    for(const k in e) if(z[k] !== undefined) z[k] += e[k];
+  }
+  z.cult     = +z.cult.toFixed(1);
+  z.herb     = +z.herb.toFixed(2);
+  z.pillRate = +z.pillRate.toFixed(3);
+  z.gearRate = +z.gearRate.toFixed(3);
+  return z;
+}
+
+/* ---------- 离线结算 ---------- */
+/* 可累积时长上限（小时） */
+function cvOfflineCapHours(){ return CAVE_OFFLINE_BASE + cvBonus().offlineCap; }
+function cvOfflineCapMs(){ return cvOfflineCapHours() * 3600 * 1000; }
+
+/* 返回 null（无需结算）或一份 report。调用方负责弹面板。 */
+function cvSettleOffline(){
+  const c = caveEnsure();
+  if(!c || !S) return null;
+  const now = Date.now();
+  const elapsed = now - c.lastTick;
+  c.lastTick = now;                                  /* 先写回，无论是否结算都不重复计入 */
+  if(!(elapsed >= CAVE_OFFLINE_MIN_MS)) return null; /* 短于 1 分钟（含时钟回拨）不算 */
+
+  const capMs = cvOfflineCapMs();
+  const usedMs = Math.min(elapsed, capMs);
+  const capped = elapsed > capMs;
+  const hours = usedMs / 3600000;
+
+  const b = cvBonus();
+  const report = { elapsedMs: elapsed, hours, capped, herb:0, stone:0 };
+
+  if(b.herb > 0){
+    report.herb = Math.floor(b.herb * hours);
+    if(report.herb > 0) addMaterial('lingcao', report.herb);
+  }
+  if(b.stone > 0){
+    report.stone = Math.floor(b.stone * hours);
+    if(report.stone > 0){
+      S.stones += report.stone;
+      if(S.stat) S.stat.stones = (S.stat.stones||0) + report.stone;
+    }
+  }
+  if(report.herb === 0 && report.stone === 0) return null;
+  return report;
+}
+
+/* ---------- 文案 ---------- */
+function cvFacSummary(f, lv){
+  if(!lv) return '未 建';
+  const e = f.eff(lv);
+  const parts = [];
+  if(e.herb)       parts.push('灵草 '+e.herb.toFixed(2)+' /时');
+  if(e.stone)      parts.push('灵石 '+e.stone+' /时');
+  if(e.cult)       parts.push('修速 +'+e.cult+'%');
+  if(e.pillRate)   parts.push('成丹 +'+Math.round(e.pillRate*100)+'%');
+  if(e.gearRate)   parts.push('成器 +'+Math.round(e.gearRate*100)+'%');
+  if(e.offlineCap) parts.push('离线上限 +'+e.offlineCap+' 时');
+  return parts.join(' · ');
+}
+function cvFacName(k){ const f = cvFacDef(k); return f ? f.n : k; }
+
+function cvFmtDuration(ms){
+  const mins = Math.floor(ms / 60000);
+  if(mins < 60) return mins + ' 分';
+  const hh = Math.floor(mins / 60);
+  const mm = mins % 60;
+  if(hh < 24) return hh + ' 时 ' + mm + ' 分';
+  return Math.floor(hh / 24) + ' 日 ' + (hh % 24) + ' 时';
+}
+
+/* ---------- 存档进出 ---------- */
+function cvSanitize(d){
+  const out = { facs:{}, lastTick: Date.now() };
+  if(!d || typeof d !== 'object') return out;
+  const src = (d.facs && typeof d.facs === 'object') ? d.facs : {};
+  for(const f of CAVE_FACILITIES){
+    const v = Math.floor(Number(src[f.k]) || 0);
+    if(v > 0) out.facs[f.k] = clamp(v, 0, f.max);
+  }
+  /* 未来的时间戳一律丢弃（系统时钟被改时 now - lastTick 会变负数） */
+  if(typeof d.lastTick === 'number' && d.lastTick > 0 && d.lastTick <= Date.now() + 86400000){
+    out.lastTick = d.lastTick;
+  }
+  return out;
+}
+
+/* 存档输出：lastTick 打上「此刻」，使离线时长 = 从最后活跃到下次打开的间隔。
+   若沿用旧值，玩家在线挂机数小时后刷新也会算成离线收益 —— 这是可刷的漏洞。 */
+function cvSnapshot(){
+  const c = caveEnsure();
+  if(!c) return { facs:{}, lastTick: Date.now() };
+  return { facs: Object.assign({}, c.facs), lastTick: Date.now() };
 }
 
 /* ── ui/theme.js ────────────────────────────────────────────────── */
@@ -4383,7 +4630,7 @@ const slotKey = i => 'xiuxian_slot_'+i+'_v2';
 
 function saveData(){
   return {
-    v:4,                                   /* v4：新增材料字段（旧档自动补默认，见 restore） */
+    v:5,                                   /* v5：新增洞府字段（旧档自动补默认，见 restore） */
     level:S.level, exp:S.exp, day:S.day, stones:S.stones,
     hp:S.hp, mp:S.mp, equip:S.equip, bag:S.bag, pills:S.pills,
     shop:S.shop, shopMount:S.shopMount, shopDay:S.shopDay,
@@ -4393,6 +4640,8 @@ function saveData(){
     stat:S.stat, encDay:S.encDay,
     gongfa:S.gongfa, shopBook:S.shopBook,
     materials:S.materials,
+    /* 洞府：lastTick 打上「此刻」，使离线时长 = 从最后活跃到下次打开的间隔 */
+    cave: cvSnapshot(),
     logs:S.logs.slice(-90), ended:S.ended,
     t: Date.now()
   };
@@ -4438,6 +4687,8 @@ function restore(d){
     pills: Object.assign(blankPills(), d.pills||{}),
     /* 材料：本局所有；缺字段补空、非法键与负数由 matSanitize 剔除 */
     materials: matSanitize(d.materials),
+    /* 洞府：本局所有；老档缺字段时 lastTick 取「此刻」——不给白嫖 */
+    cave: cvSanitize(d.cave),
     logs: d.logs||[],
     combat:null,
     dungeon:null,
@@ -4602,6 +4853,12 @@ function showHelp(){
     + '——高境界炼低配方有加成，越级炼则每差一档 -6%。所炼之器品质随机，最低宝品，'
     + '<b>气运</b>与越级炼器可再提一阶。坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。'
     + '材料归本局所有，不随轮回带走。<br><br>'
+    + '<b>洞 府</b>　左栏「洞 府」面板进入。五处设施：<b>灵田</b>产灵草、<b>聚灵阵</b>加修速并自动凝灵石、'
+    + '<b>丹房</b>加成丹率、<b>器坊</b>加成器率、<b>静室</b>延长离线可累积时长。'
+    + '升级消耗<b>灵石与天数</b>——天数即时光流逝，与出门打怪形成节奏竞争。'
+    + '<b>离线时灵田与聚灵阵仍在运转</b>，可累积上限为 <b>8 小时 + 静室等级 × 2</b>（满级 26 小时），'
+    + '超出的部分不再计入，故升静室才有意义。离线收益在下次打开时以「闭关归来」面板一次性结算。'
+    + '洞府归本局所有，<b>轮回清零</b>。<br><br>'
     + '<b>奇 遇</b>　打坐、灵石修炼、闭关与历练之后，你有机会撞上奇遇——共 <b>25 段</b>，按大境界分五段，'
     + '每段内容各不相同。奇遇弹出数条选项，<b>各有得失、不可兼得</b>：稳妥的拿小利，冒险的可能翻倍，'
     + '也可能重伤。两次奇遇至少相隔 5 日，不会反复打断你。<br><br>',
@@ -4623,6 +4880,7 @@ function renderAll(){
   renderGongfa();
   renderPills();
   renderMaterials();
+  renderCave();
   renderMount();
   renderBag();
   renderTabs();
@@ -5596,6 +5854,135 @@ function crUiCraftPill(k, n){ craftPill(k, n); }
 function crUiCraftGear(k, n){ craftGear(k, n); }
 function crUiBuyMat(k, n){ buyMaterial(k, n); }
 
+/* ── ui/panels/cave.js ──────────────────────────────────────────── */
+
+/* =========================================================
+   洞 府 · 面 板
+   ---------------------------------------------------------
+   规则：
+   · 面板操作函数一律 cvUi 前缀（构建后同作用域，重名会静默覆盖）
+   · 只用具名导入（禁止 import * as / 默认导入，构建器会剥掉整行）
+   · 不新增配色：面板行复用 .heritage / .hr / .hn / .hl / .dots / .hd / .hb
+   · 弹层而非新页签（#tabs 移动端写死 5 等分，加第 6 个会破坏布局）
+   ========================================================= */
+
+/* ---------- 左栏摘要 ---------- */
+function renderCave(){
+  const box = $('caveBox');
+  if(!box) return;
+  if(!caveEnsure()){ box.innerHTML = ''; return; }
+
+  const tag = $('caveTag');
+  if(tag) tag.textContent = cvTotalLv() + ' / ' + cvTotalMax();
+
+  const b = cvBonus();
+  const parts = [];
+  if(b.herb)     parts.push('灵草 ' + b.herb.toFixed(2) + '/时');
+  if(b.stone)    parts.push('灵石 ' + b.stone + '/时');
+  if(b.cult)     parts.push('修速 +' + b.cult + '%');
+  if(b.pillRate) parts.push('成丹 +' + Math.round(b.pillRate*100) + '%');
+  if(b.gearRate) parts.push('成器 +' + Math.round(b.gearRate*100) + '%');
+
+  let h = '<div class="hint-mini">'
+    + (parts.length ? parts.join(' · ') : '洞府尚未开垦，点下方开始布置。')
+    + '</div>';
+  h += '<div style="margin-top:8px">'
+    + '<button class="mbtn" style="width:100%;padding:6px 0;font-size:11.5px;letter-spacing:.08em"'
+    + ' onclick="cvUiOpen()">整 修 洞 府</button></div>';
+  box.innerHTML = h;
+}
+
+/* ---------- 弹层 ---------- */
+function cvUiOpen(){
+  const capH = cvOfflineCapHours();
+  const full = caveFullCost();
+  let h = '<div class="meta-note" style="margin-bottom:10px">'
+    + '洞府五处：<b>灵田</b>产灵草、<b>聚灵阵</b>加修速并自动凝石、<b>丹房</b>加成丹率、'
+    + '<b>器坊</b>加成器率、<b>静室</b>延长离线可累积时长。<br>'
+    + '升级消耗<b>灵石与天数</b>（天数即时光流逝，与出门打怪形成节奏竞争）。'
+    + '离线时灵田与聚灵阵仍在运转 —— 可累积时长上限为 <b>' + capH + ' 小时</b>，超出的部分不再计入。<br>'
+    + '洞府归本局所有，<b>轮回清零</b>（与装备、灵石、材料同轴）。'
+    + '<span class="muted-sm">五处全满约需 ' + num(full.stones) + ' 灵石 · ' + full.days + ' 日。</span>'
+    + '</div>';
+
+  h += '<div class="pb-scroll">';
+  for(const f of CAVE_FACILITIES) h += cvFacRow(f);
+  h += '</div>';
+
+  showModal('洞 府 · 经 营', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide');
+}
+
+function cvFacRow(f){
+  const lv = cvFacLv(f.k);
+  const max = f.max;
+  const full = lv >= max;
+  const cost = full ? null : f.cost(lv + 1);
+  const can = !!(cost && S && S.stones >= cost.stones);
+  const eff = lv > 0 ? cvFacSummary(f, lv) : '未 建';
+  const nextEff = full ? null : cvFacSummary(f, lv + 1);
+
+  let dots = '<span class="dots">';
+  for(let i = 0; i < max; i++) dots += '<i class="' + (i < lv ? 'f' : '') + '"></i>';
+  dots += '</span>';
+
+  let acts;
+  if(full){
+    acts = '<button class="hb dis" style="margin-left:0;padding:4px 10px">已 圆 满</button>';
+  }else{
+    const price = num(cost.stones);
+    const onclick = can
+      ? 'cvUiUp(\'' + f.k + '\')'
+      : 'toast(\'灵石不足（需 ' + price + '）\')';
+    acts = '<button class="hb' + (can ? '' : ' dis') + '"'
+      + ' style="margin-left:0;padding:4px 10px"'
+      + ' onclick="' + onclick + '">整 修 · ' + price + '</button>';
+  }
+
+  return '<div class="heritage">'
+    + '<div class="hr">'
+    +   '<span class="hn">' + f.n + '</span>'
+    +   '<span class="hl">' + lv + ' / ' + max + '</span>'
+    +   dots
+    +   '<span style="margin-left:auto">' + acts + '</span>'
+    + '</div>'
+    + '<div class="hd">' + f.d + '</div>'
+    + '<div class="hd">当前 <b>' + eff + '</b>'
+    +   (nextEff ? '　→　下级 <b>' + nextEff + '</b>' : '')
+    +   (cost ? '　（费 ' + num(cost.stones) + ' 灵石 · ' + cost.days + ' 日）' : '')
+    + '</div>'
+    + '</div>';
+}
+
+function cvUiUp(k){
+  if(cvUpgrade(k)) cvUiOpen();
+}
+
+/* ---------- 离线归来 ---------- */
+function cvShowOfflineReport(report){
+  if(!report) return;
+  const timeTxt = cvFmtDuration(report.elapsedMs);
+  let h = '<div class="encintro">'
+    + '你自入定中醒来，洞府一切如常。离山 <b>' + timeTxt + '</b>'
+    + (report.capped ? '（已达上限）' : '')
+    + '，灵田与聚灵阵一日未曾停歇。</div>';
+  h += '<div class="heritage">';
+  if(report.herb > 0){
+    h += '<div class="hr"><span class="hn">灵 田</span>'
+      + '<span class="hl" style="margin-left:auto">已收 <b>' + report.herb + '</b> 株灵草</span></div>';
+  }
+  if(report.stone > 0){
+    h += '<div class="hr"><span class="hn">聚 灵 阵</span>'
+      + '<span class="hl" style="margin-left:auto">已凝 <b>' + num(report.stone) + '</b> 枚灵石</span></div>';
+  }
+  h += '</div>';
+  if(report.capped){
+    h += '<div class="meta-note" style="margin-top:10px">'
+      + '离线累积已达 <b>' + cvOfflineCapHours() + ' 小时</b>上限，超出的部分不再计入。'
+      + '升级「静 室」可延长可累积时长。</div>';
+  }
+  showModal('闭 关 归 来', h, [{ label:'收 下', primary:true, fn: closeModal }], 'wide');
+}
+
 /* ── main.js ────────────────────────────────────────────────────── */
 
 /* =========================================================
@@ -5606,13 +5993,24 @@ function crUiBuyMat(k, n){ buyMaterial(k, n); }
   applyTheme();
   watchSystemTheme();
   loadMeta();
-  if(!load()) newGame();
-  else renderAll();
+
+  /* 读档 / 新号 + 离线结算
+     结算必须在 renderAll 之前——它会改灵石与材料，先算后画才能一次画对 */
+  let offlineReport = null;
+  if(load()){
+    offlineReport = cvSettleOffline();
+    renderAll();
+  }else{
+    newGame();
+  }
+
   /* 首次进入：先请玩家阅读游玩声明（点「我已知晓」后才记录） */
   if(!noticeAccepted()) showNotice();
   /* 老玩家回归：补发历史上其实已经达成的成就 */
   const got = checkAch();
   if(got.length) renderAll();
+  /* 闭关归来：放在声明与成就之后，免得打断它们 */
+  if(offlineReport) cvShowOfflineReport(offlineReport);
   window.addEventListener('beforeunload', () => { try{ save(); saveMeta(); }catch(e){} });
 })();
 </script>
