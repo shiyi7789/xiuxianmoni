@@ -28,6 +28,9 @@ import { travelDays } from '../sys/time.js';
 import { showHelp } from './panels/notice.js';
 import { renderMaterials, renderGearSection, renderMatShopSection, renderPillSection } from './panels/craft.js';
 import { renderCave } from './panels/cave.js';
+import { codexCount, codexTotal } from '../sys/codex.js';
+import { titleActiveKey, titleOwnedList } from '../sys/titles.js';
+import { TITLES } from '../data/titles.js';
 import { openSavePanel } from './panels/save.js';
 import { closeSheet } from './sheet.js';
 import { toggleTheme } from './theme.js';
@@ -46,6 +49,8 @@ export function renderAll(){
   renderPills();
   renderMaterials();
   renderCave();
+  renderCodexTag();
+  renderTitleTag();
   renderMount();
   renderBag();
   renderTabs();
@@ -53,6 +58,17 @@ export function renderAll(){
   renderUtil();
   renderLog();
   save();
+}
+
+/* 左栏「图 鉴 · 称 号」两个按钮上的计数标签 */
+export function renderCodexTag(){
+  const el = $('cdTag');
+  if(el) el.textContent = codexCount() + '/' + codexTotal();
+}
+export function renderTitleTag(){
+  const el = $('ttTag');
+  if(!el) return;
+  el.textContent = titleOwnedList().length + '/' + TITLES.length + (titleActiveKey() ? ' · 佩' : '');
 }
 
 export function renderTop(){

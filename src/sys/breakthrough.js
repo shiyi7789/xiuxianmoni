@@ -6,8 +6,10 @@ import { achBonus } from './achievement.js';
 import { stats } from './character.js';
 import { expNeed, isGroupStart, realmAt, realmName } from './cultivate.js';
 import { gfBonus } from './gongfa.js';
+import { titleBonus } from './titles.js';
 import { addLog, addSep, toast } from './log.js';
 import { doRebirth, rebirthGain } from './rebirth.js';
+import { fbBreak } from '../ui/feedback.js';
 import { closeModal, showModal } from '../ui/modal.js';
 import { after } from '../ui/render.js';
 
@@ -33,6 +35,7 @@ export function breakChance(){
   c += META.up.pill * 1.5;
   c += achBonus().brk;                                      /* 成就加成 */
   c += gfBonus().brk;                                       /* 心法「悟道」类加成 */
+  c += titleBonus().brk;                                    /* 称号效果（独立乘区，手动并入） */
   c += Math.min(20, stats().cultGear * 0.28);
   c += pillBonus();
   c -= Math.min(12, (S.breakStreak||0) * 3);
@@ -75,6 +78,8 @@ export function breakthroughOnce(quiet){
       addLog('周身灵气如潮水倒灌，经脉节节拓宽，骨骼发出细密脆响。你于剧痛中睁开双眼，眸中精光一闪而逝。','epic');
     }
     addLog('★ 突破成功，境界晋升为【'+realmName()+'】！' + (quiet ? '' : '气血灵力尽复。'),'epic');
+    /* 反馈：大境界首层 → L3，其余 → L2（连破 quiet 时也该被看见） */
+    fbBreak(isGroupStart(S.level), realmName());
     if(isGroupStart(S.level)) addLog('你踏入「'+gname+'」——天地在你眼中骤然不同。','sys');
     if(grp >= 10 && realmAt(S.level).i === 0){
       addLog(grp === 10 ? '仙道之上再无阶可循。至此，你已是准圣之姿，一念可断山河。'
@@ -148,4 +153,5 @@ export function ascend(){
     [{ label:'入 轮 回（+'+g+' 点）', primary:true, fn:()=>doRebirth() },
      { label:'留 于 此 界', fn:closeModal }]
   );
+  fbAscend();                          /* 只放一声长音，不重复弹窗（上面已有专属弹层） */
 }

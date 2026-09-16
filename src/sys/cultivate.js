@@ -8,6 +8,7 @@ import { tryEncounter } from './encounter.js';
 import { addLog, toast } from './log.js';
 import { advance } from './time.js';
 import { after } from '../ui/render.js';
+import { fbExpDelta } from '../ui/feedback.js';
 
 export function realmAt(lv){ return REALMS[clamp(lv,0,MAX_LV)]; }
 export function realmName(){ return realmAt(S.level).name; }
@@ -22,7 +23,10 @@ export function realmNameOf(lv){ return REALMS[clamp(lv||0,0,MAX_LV)].name; }
 /* ---------------- 修为 ---------------- */
 export function gainExp(v, silent){
   S.exp += v;
-  if(!silent && v > 0) addLog('修为 +' + num(v), 'gain');
+  if(!silent && v > 0){
+    addLog('修为 +' + num(v), 'gain');
+    fbExpDelta(v);                 /* L0 · 顶栏数字浮动（内部 120ms 节流合并） */
+  }
 }
 
 /* =========================================================

@@ -102,6 +102,18 @@
         <div class="ph">储 物 袋 <span style="margin-left:auto;letter-spacing:0;color:var(--ink4)" id="bagCount"></span></div>
         <div class="pb" id="bagBox" style="padding:6px 8px"></div>
       </div>
+
+      <div class="panel">
+        <div class="ph">图 鉴 · 称 号</div>
+        <div class="pb" style="display:flex;gap:8px">
+          <button class="mbtn" style="flex:1;padding:8px 0;font-size:12px;letter-spacing:.08em" onclick="openCodex()">
+            图 鉴 <span id="cdTag" class="muted-sm">0/0</span>
+          </button>
+          <button class="mbtn" style="flex:1;padding:8px 0;font-size:12px;letter-spacing:.08em" onclick="openTitles()">
+            称 号 <span id="ttTag" class="muted-sm">0/0</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 右栏 -->
@@ -117,6 +129,11 @@
 </div>
 <div id="veil" onclick="closeSheet()"></div>
 <input type="file" id="impFile" accept=".txt,.json,text/plain" style="display:none" onchange="onImportFile(this)">
+<!-- 移动端浮动反馈条：底部导航上方常驻，实时显示最新一条关键日志（桌面隐藏） -->
+<div id="fbStrip" class="fb-strip only-m" onclick="fbStripClick()">
+  <span class="fb-strip-txt">—</span>
+  <span class="fb-strip-hint">天 机 录</span>
+</div>
 <div id="modalRoot"></div>
 
 <script>

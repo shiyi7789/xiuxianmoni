@@ -4,6 +4,7 @@ import { blankPills } from '../data/pills.js';
 import { stats } from '../sys/character.js';
 import { addLog, toast } from '../sys/log.js';
 import { refreshShop } from '../sys/shop.js';
+import { titleBonus } from '../sys/titles.js';
 import { renderAll } from '../ui/render.js';
 
 
@@ -18,7 +19,7 @@ export function noBusy(msg){ if(busy()){ toast(msg || '此刻无暇他顾'); ret
 
 export function newGame(){
   S = {
-    level:0, exp:0, day:1, stones:40 + META.up.stone*200,
+    level:0, exp:0, day:1, stones:40 + META.up.stone*200 + titleBonus().stone,   /* 称号「万世轮回」另给初始灵石 */
     hp:0, mp:0,
     equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
     bag:[],

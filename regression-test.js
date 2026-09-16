@@ -57,7 +57,10 @@ const doc = {
   getElementById(id) { if (!elCache[id]) elCache[id] = mkEl('#' + id); return elCache[id]; },
   createElement(t) { return mkEl(t); },
   body: mkEl('body'),
-  execCommand() { return true; }
+  execCommand() { return true; },
+  /* 阶段五：boot 里挂了音频唤醒的 click / touchstart 监听 */
+  addEventListener() {},
+  removeEventListener() {}
 };
 const win = { addEventListener() {} };
 const nav = {};
@@ -330,7 +333,81 @@ const boot = new Function(
   renderCave: renderCave,
   cvUiOpen: cvUiOpen,
   cvUiUp: cvUiUp,
-  cvShowOfflineReport: cvShowOfflineReport
+  cvShowOfflineReport: cvShowOfflineReport,
+  /* --- 反馈层 --- */
+  fbLevelOfItem: fbLevelOfItem,
+  fbLevelOfMat: fbLevelOfMat,
+  fbLevelOfPill: fbLevelOfPill,
+  fbLevelOfBreak: fbLevelOfBreak,
+  fbAudioOn: fbAudioOn,
+  fbToggleAudio: fbToggleAudio,
+  fbInitAudio: fbInitAudio,
+  fbDelta: fbDelta,
+  fbExpDelta: fbExpDelta,
+  fbStoneDelta: fbStoneDelta,
+  fbToastQueue: fbToastQueue,
+  fbCenterQueue: fbCenterQueue,
+  fbGain: fbGain,
+  fbGainMat: fbGainMat,
+  fbGainPill: fbGainPill,
+  fbGrantGongfa: fbGrantGongfa,
+  fbBreak: fbBreak,
+  fbAscend: fbAscend,
+  fbAchievement: fbAchievement,
+  fbDungeon: fbDungeon,
+  fbRebirth: fbRebirth,
+  fbCodexMilestone: fbCodexMilestone,
+  fbClearAll: fbClearAll,
+  fbStripUpdate: fbStripUpdate,
+  fbStripText: fbStripText,
+  fbStripClick: fbStripClick,
+  fbDebugCounts: fbDebugCounts,
+  renderLog: renderLog,
+  /* --- 图鉴 --- */
+  CODEX_CATS: CODEX_CATS,
+  CODEX_TIER_NAME: CODEX_TIER_NAME,
+  CODEX_MILESTONE_STEP: CODEX_MILESTONE_STEP,
+  codexAll: codexAll,
+  codexTotal: codexTotal,
+  codexByKey: codexByKey,
+  codexGrouped: codexGrouped,
+  codexCountByCat: codexCountByCat,
+  codexKeyByItemName: codexKeyByItemName,
+  codexKeyByMonName: codexKeyByMonName,
+  codexKeyByMountName: codexKeyByMountName,
+  codexOwnedList: codexOwnedList,
+  codexOwned: codexOwned,
+  codexCount: codexCount,
+  codexUnlock: codexUnlock,
+  codexUnlockItem: codexUnlockItem,
+  codexUnlockMount: codexUnlockMount,
+  codexUnlockMon: codexUnlockMon,
+  codexUnlockMat: codexUnlockMat,
+  codexUnlockPill: codexUnlockPill,
+  codexUnlockGf: codexUnlockGf,
+  codexUnlockSec: codexUnlockSec,
+  codexUnlockEnc: codexUnlockEnc,
+  codexLuck: codexLuck,
+  codexSanitizeMeta: codexSanitizeMeta,
+  openCodex: openCodex,
+  cdUiJump: cdUiJump,
+  /* --- 称号 --- */
+  TITLES: TITLES,
+  titleDefOf: titleDefOf,
+  titleOwnedList: titleOwnedList,
+  titleOwned: titleOwned,
+  titleActiveKey: titleActiveKey,
+  titleActiveDef: titleActiveDef,
+  checkTitles: checkTitles,
+  titleEquip: titleEquip,
+  titleUnequip: titleUnequip,
+  titleBonus: titleBonus,
+  titleSanitizeMeta: titleSanitizeMeta,
+  openTitles: openTitles,
+  ttUiEquip: ttUiEquip,
+  ttUiUnequip: ttUiUnequip,
+  renderCodexTag: renderCodexTag,
+  renderTitleTag: renderTitleTag
 };`
 );
 
@@ -827,6 +904,7 @@ step('解锁只记一次并写入 META', () => {
 });
 step('成就属性加成汇总并生效到 stats()', () => {
   META().ach = []; META().up.luck = 0;
+  META().codex = { unlocked: [], milestones: 0 };   /* 图鉴气运有 U 节专属断言，此处须清零 */
   G.newGame();
   const base = G.stats();
   META().ach = G.achDefs.map(d => d.k);
@@ -842,6 +920,7 @@ step('成就属性加成汇总并生效到 stats()', () => {
 });
 step('高品质成就提供气运', () => {
   META().ach = []; META().up.luck = 0;
+  META().codex = { unlocked: [], milestones: 0 };   /* 图鉴气运有 U 节专属断言，此处须清零 */
   if (G.fortune() !== 0) throw new Error('初始气运应为 0');
   const byTier = [0, 0, 0, 0, 0];
   for (const d of G.achDefs) if (d.t >= 3) byTier[d.t]++;
@@ -856,6 +935,7 @@ step('高品质成就提供气运', () => {
 });
 step('气运三处同时生效（品质·灵石·掉落）', () => {
   META().ach = []; META().up.luck = 0;
+  META().codex = { unlocked: [], milestones: 0 };   /* 图鉴气运有 U 节专属断言，此处须清零 */
   const l0 = G.luckBoost(), s0 = G.fortStone(10000), d0 = G.fortDrop(100);
   META().up.luck = 8;                       /* 气运传承 8 重 = 40 气运 */
   const f1 = G.fortune();
@@ -868,6 +948,7 @@ step('气运三处同时生效（品质·灵石·掉落）', () => {
 });
 step('气运确实作用于实际掉落与收益', () => {
   META().ach = []; META().up.luck = 0;
+  META().codex = { unlocked: [], milestones: 0 };   /* 图鉴气运有 U 节专属断言，此处须清零 */
   G.newGame();
   S().level = 10;
   const real = Math.random;
@@ -2534,6 +2615,379 @@ step('道法纲要含洞府章节', () => {
   if (help.indexOf('轮回清零') < 0) throw new Error('未说明洞府归本局');
   G.closeModal();
   return '纲要已含洞府 / 离线结算 / 轮回清零';
+});
+
+/* ============ T. 反馈系统 ============ */
+log('=== T. 反馈系统 ===');
+
+step('反馈 · 分档正确（器物按品质 / 材料按品阶 / 丹药按名 / 突破按大境界）', () => {
+  G.newGame();
+  if (G.fbLevelOfItem(G.makeItem('weapon', 0, 0)) !== 1) throw new Error('凡品应为 L1');
+  if (G.fbLevelOfItem(G.makeItem('weapon', 0, 1)) !== 1) throw new Error('灵品应为 L1');
+  if (G.fbLevelOfItem(G.makeItem('weapon', 0, 2)) !== 2) throw new Error('宝品应为 L2');
+  if (G.fbLevelOfItem(G.makeItem('weapon', 0, 3)) !== 2) throw new Error('仙品应为 L2');
+  if (G.fbLevelOfItem(G.makeItem('weapon', 0, 4)) !== 3) throw new Error('神品应为 L3');
+  if (G.fbLevelOfMat('lingcao') !== 1) throw new Error('灵草应为 L1');
+  if (G.fbLevelOfMat('yaodan') !== 1) throw new Error('妖丹应为 L1');
+  if (G.fbLevelOfMat('xuantie') !== 2) throw new Error('玄铁应为 L2');
+  if (G.fbLevelOfMat('hundun') !== 3) throw new Error('混沌石应为 L3');
+  if (G.fbLevelOfPill('回春丹') !== 1) throw new Error('回春丹应为 L1');
+  if (G.fbLevelOfPill('破境丹') !== 2) throw new Error('破境丹应为 L2');
+  if (G.fbLevelOfPill('归元丹') !== 2) throw new Error('归元丹应为 L2');
+  if (G.fbLevelOfBreak(false) !== 2) throw new Error('普通层突破应为 L2');
+  if (G.fbLevelOfBreak(true) !== 3) throw new Error('大境界首层应为 L3');
+  return '器物 L1/L1/L2/L2/L3 · 材料 / 丹药 / 突破 分档全对';
+});
+
+step('反馈 · toast 队列上限 3 条', () => {
+  G.newGame();
+  G.fbClearAll();
+  for (let i = 0; i < 9; i++) G.fbToastQueue('测试 ' + i);
+  const c = G.fbDebugCounts();
+  if (c.toasts > 3) throw new Error('同时显示不应超过 3 条，实为 ' + c.toasts);
+  if (c.toasts < 1) throw new Error('队列应仍有内容');
+  G.fbClearAll();
+  if (G.fbDebugCounts().toasts !== 0) throw new Error('fbClearAll 未清空 toast');
+  return '连发 9 条后在屏 ' + c.toasts + ' 条（≤3）· 清理归零';
+});
+
+step('反馈 · 中央浮层独占且排队', () => {
+  G.newGame();
+  G.fbClearAll();
+  G.fbCenterQueue({ tier: 2, title: 'A', body: 'a', autoMs: 10 });
+  G.fbCenterQueue({ tier: 2, title: 'B', body: 'b', autoMs: 10 });
+  const c = G.fbDebugCounts();
+  if (!c.showing) throw new Error('首个应立即展示');
+  if (c.queue !== 1) throw new Error('第二个应排队，实为 ' + c.queue);
+  G.fbClearAll();
+  const d = G.fbDebugCounts();
+  if (d.queue !== 0 || d.showing) throw new Error('fbClearAll 未复位中央浮层');
+  return '同屏 1 个 + 排队 1 个 · 清理后复位';
+});
+
+step('反馈 · 获得器物按档位走不同通道', () => {
+  G.newGame();
+  G.fbClearAll();
+  G.fbGain(G.makeItem('weapon', 0, 1));            /* 灵品 → L1 toast */
+  const a = G.fbDebugCounts();
+  if (a.toasts !== 1) throw new Error('L1 应产生 1 条 toast，实为 ' + a.toasts);
+  if (a.showing) throw new Error('L1 不应弹中央浮层');
+  G.fbGain(G.makeItem('weapon', 0, 4));            /* 神品 → L3 中央浮层 */
+  const b = G.fbDebugCounts();
+  if (!b.showing) throw new Error('L3 应弹中央浮层');
+  G.fbClearAll();
+  return '灵品走 toast · 神品走中央浮层';
+});
+
+step('反馈 · 音效开关可切换且写入 META.prefs', () => {
+  G.newGame();
+  if (typeof G.fbAudioOn() !== 'boolean') throw new Error('fbAudioOn 应返回布尔');
+  const on0 = G.fbAudioOn();
+  const on1 = G.fbToggleAudio();
+  if (on1 === on0) throw new Error('切换后状态未变');
+  if (G.fbAudioOn() !== on1) throw new Error('fbAudioOn 未跟随');
+  if (META().prefs.audio !== on1) throw new Error('未写入 META.prefs.audio');
+  G.fbToggleAudio();                                /* 切回 */
+  return '音效开关可用且持久化（' + on0 + ' → ' + on1 + ' → 复原）';
+});
+
+step('反馈 · 浮动反馈条可更新与清空', () => {
+  G.newGame();
+  const strip = el('fbStrip');
+  if (!strip) throw new Error('浮动反馈条锚点缺失');
+  G.fbStripUpdate('一 条 测 试');
+  if (G.fbStripText() !== '一 条 测 试') throw new Error('文本未记录');
+  if (!el('fbStrip').classList.contains('on')) throw new Error('未加 .on');
+  G.fbStripUpdate('');
+  if (el('fbStrip').classList.contains('on')) throw new Error('空文本应隐藏');
+  return '浮动条写值 / 加 .on / 空值隐藏 全通';
+});
+
+/* ============ U. 图鉴系统 ============ */
+log('=== U. 图鉴系统 ===');
+
+function cdReset() {                                /* 图鉴 / 气运基线归零 */
+  G.newGame();
+  META().codex = { unlocked: [], milestones: 0 };
+  META().ach = []; META().up.luck = 0;
+}
+
+step('图鉴 · 条目由既有数据表派生（≥150 项、8 类齐全）', () => {
+  G.newGame();
+  const all = G.codexAll();
+  if (all.length < 150) throw new Error('条目数应 ≥150，实为 ' + all.length);
+  const cats = {};
+  for (const e of all) cats[e.c] = (cats[e.c] || 0) + 1;
+  for (const k of ['mon', 'item', 'gf', 'mount', 'mat', 'pill', 'sec', 'enc']) {
+    if (!cats[k]) throw new Error('缺少分类：' + k);
+  }
+  if (cats.mat !== 6) throw new Error('材料应为 6，实为 ' + cats.mat);
+  if (cats.pill !== 4) throw new Error('丹药应为 4，实为 ' + cats.pill);
+  /* 派生一致性：加一只妖兽就多一项，不另建表 */
+  if (cats.mon !== G.__eval('MONSTERS.reduce((a,b)=>a+b.length,0)')) throw new Error('妖兽条目未与 MONSTERS 同步');
+  if (cats.gf !== G.__eval('GONGFA.length')) throw new Error('功法条目未与 GONGFA 同步');
+  return all.length + ' 项 = 妖兽 ' + cats.mon + ' · 器物 ' + cats.item + ' · 功法 ' + cats.gf
+    + ' · 坐骑 ' + cats.mount + ' · 材料 ' + cats.mat + ' · 丹药 ' + cats.pill
+    + ' · 秘境 ' + cats.sec + ' · 奇遇 ' + cats.enc;
+});
+
+step('图鉴 · 新档为空、气运为 0', () => {
+  cdReset();
+  if (G.codexCount() !== 0) throw new Error('新档图鉴应为空');
+  if (G.codexLuck() !== 0) throw new Error('新档图鉴气运应为 0');
+  return '0 项 · +0 气运';
+});
+
+step('图鉴 · 解锁返回首次标记、重复被拒、非法键被拒', () => {
+  cdReset();
+  const k = G.codexAll()[0].k;
+  if (!G.codexUnlock(k)) throw new Error('首次解锁应返回 true');
+  if (G.codexUnlock(k)) throw new Error('重复解锁应返回 false');
+  if (G.codexCount() !== 1) throw new Error('计数应为 1');
+  if (G.codexUnlock('不存在的图鉴键')) throw new Error('非法键应被拒');
+  if (G.codexCount() !== 1) throw new Error('非法键不应计数');
+  return '首次 true / 重复 false / 非法键拒绝';
+});
+
+step('图鉴 · 按类型便捷解锁（器物 / 材料 / 丹药 / 功法）', () => {
+  cdReset();
+  G.codexUnlockItem(G.makeItem('weapon', 0, 2));
+  G.codexUnlockMat('lingcao');
+  G.codexUnlockPill('回春丹');
+  G.codexUnlockGf('gf_yinqi');
+  if (G.codexCount() !== 4) throw new Error('应解锁 4 项，实为 ' + G.codexCount());
+  return '器物 · 材料 · 丹药 · 功法 各 1 项';
+});
+
+step('图鉴 · 每 10 项 +1 气运，且并入 fortune()', () => {
+  cdReset();
+  const f0 = G.fortune();
+  const all = G.codexAll();
+  for (let i = 0; i < 30; i++) G.codexUnlock(all[i].k);
+  const luck = G.codexLuck();
+  if (luck !== 3) throw new Error('30 项应 +3 气运，实为 ' + luck);
+  const f1 = G.fortune();
+  if (!(f1 > f0)) throw new Error('气运未并入 fortune()（' + f0 + ' → ' + f1 + '）');
+  /* 未建图鉴时不应改变既有气运 */
+  cdReset();
+  if (G.fortune() !== f0) throw new Error('清空图鉴后气运未回落');
+  return '30 项 → +' + luck + ' 气运，fortune ' + f0 + ' → ' + f1;
+});
+
+step('图鉴 · 里程碑每 25 项触发一次', () => {
+  cdReset();
+  const all = G.codexAll();
+  for (let i = 0; i < 25; i++) G.codexUnlock(all[i].k);
+  if (META().codex.milestones !== 1) throw new Error('25 项应触发 1 次，实为 ' + META().codex.milestones);
+  for (let i = 25; i < 49; i++) G.codexUnlock(all[i].k);
+  if (META().codex.milestones !== 1) throw new Error('未到 50 项不应再触发');
+  for (let i = 49; i < 50; i++) G.codexUnlock(all[i].k);
+  if (META().codex.milestones !== 2) throw new Error('50 项应触发 2 次，实为 ' + META().codex.milestones);
+  return '25 → 1 次 · 50 → 2 次';
+});
+
+step('图鉴 · 清洗器剔除非法键与重复、截断小数', () => {
+  const d = G.codexSanitizeMeta({
+    unlocked: ['mon_' + G.__eval('MONSTERS[0][0]'), 'mon_' + G.__eval('MONSTERS[0][0]'), '假键', 123, null],
+    milestones: 2.9
+  });
+  if (d.unlocked.length !== 1) throw new Error('应只保留 1 项，实为 ' + d.unlocked.length);
+  if (d.milestones !== 2) throw new Error('里程碑应取整，实为 ' + d.milestones);
+  const e = G.codexSanitizeMeta(undefined);
+  if (!e || !Array.isArray(e.unlocked) || e.unlocked.length !== 0) throw new Error('undefined 应返回空结构');
+  return '去重 / 剔非法 / 取整 / 兜底 全通';
+});
+
+step('图鉴 · 轮回不灭', () => {
+  cdReset();
+  const all = G.codexAll();
+  G.codexUnlock(all[0].k); G.codexUnlock(all[1].k);
+  const n0 = G.codexCount();
+  G.doRebirth();
+  if (G.codexCount() !== n0) throw new Error('轮回后图鉴应保留（' + n0 + ' → ' + G.codexCount() + '）');
+  return '轮回前后均为 ' + n0 + ' 项';
+});
+
+step('图鉴 · 面板与左栏标签', () => {
+  cdReset();
+  G.codexUnlock(G.codexAll()[0].k);
+  G.renderCodexTag();
+  if (el('cdTag').textContent.indexOf('/') < 0) throw new Error('左栏图鉴标签未渲染');
+  G.openCodex();
+  const h = el('modalRoot').innerHTML;
+  if (h.indexOf('图 鉴') < 0) throw new Error('面板标题缺「图 鉴」');
+  for (const c of G.CODEX_CATS) {
+    if (h.indexOf(c.n) < 0) throw new Error('面板缺分类：' + c.n);
+  }
+  G.closeModal();
+  return '左栏标签 · 弹层 ' + G.CODEX_CATS.length + ' 个分类齐备';
+});
+
+step('道法纲要含图鉴与称号章节', () => {
+  G.newGame();
+  G.showHelp();
+  const help = el('modalRoot').innerHTML;
+  if (help.indexOf('图 鉴</b>') < 0) throw new Error('纲要缺图鉴章节');
+  if (help.indexOf('称 号</b>') < 0) throw new Error('纲要缺称号章节');
+  if (help.indexOf('每 10 项') < 0) throw new Error('未说明气运换算');
+  G.closeModal();
+  return '纲要已含图鉴 / 称号 / 气运换算';
+});
+
+/* ============ V. 称号系统 ============ */
+log('=== V. 称号系统 ===');
+
+function ttReset() {
+  G.newGame();
+  META().titles = { owned: [], active: null };
+  META().best.lv = 0;
+}
+
+step('称号 · 表结构完整（键唯一 / 有 cond / 有 ef）', () => {
+  if (G.TITLES.length < 8) throw new Error('称号应 ≥8 个，实为 ' + G.TITLES.length);
+  const seen = {};
+  for (const t of G.TITLES) {
+    if (!t.k || !t.n || !t.d) throw new Error('字段缺失：' + t.k);
+    if (seen[t.k]) throw new Error('键重复：' + t.k);
+    seen[t.k] = 1;
+    if (typeof t.cond !== 'function') throw new Error('缺 cond：' + t.k);
+    if (!t.ef || typeof t.ef !== 'object') throw new Error('缺 ef：' + t.k);
+    if (!(t.t >= 0 && t.t <= 4)) throw new Error('品阶越界：' + t.k);
+  }
+  return G.TITLES.length + ' 个称号 · 五品齐备 · 键唯一';
+});
+
+step('称号 · 新档未解锁、未佩戴', () => {
+  ttReset();
+  if (G.titleOwnedList().length !== 0) throw new Error('新档不应有已解锁称号');
+  if (G.titleActiveKey() !== null) throw new Error('新档不应有佩戴称号');
+  return '0 个已解锁 · 未佩戴';
+});
+
+step('称号 · 条件满足即解锁（初 学）', () => {
+  ttReset();
+  S().level = 5;
+  const got = G.checkTitles();
+  if (!G.titleOwned('t_chuxue')) throw new Error('应解锁「初 学」');
+  if (!got.length) throw new Error('checkTitles 应返回本次新解锁');
+  return '新解锁 ' + got.length + ' 个：' + got.map(t => t.n).join(' · ');
+});
+
+step('称号 · 未解锁不能佩戴、已解锁可佩戴与卸下', () => {
+  ttReset();
+  if (G.titleEquip('t_daoxin')) throw new Error('未解锁应被拒');
+  S().level = 5;
+  G.checkTitles();
+  if (!G.titleEquip('t_chuxue')) throw new Error('已解锁应可佩戴');
+  if (G.titleActiveKey() !== 't_chuxue') throw new Error('佩戴未生效');
+  G.titleUnequip();
+  if (G.titleActiveKey() !== null) throw new Error('卸下未生效');
+  return '未解锁拒绝 · 佩戴 / 卸下 全通';
+});
+
+step('称号 · 同时只戴一个（再戴自动切换）', () => {
+  ttReset();
+  S().level = 5;
+  G.checkTitles();
+  G.titleEquip('t_chuxue');
+  META().titles.owned.push('t_zhanzhe');
+  G.titleEquip('t_zhanzhe');
+  if (G.titleActiveKey() !== 't_zhanzhe') throw new Error('第二次佩戴未切换');
+  if (G.titleActiveDef().k !== 't_zhanzhe') throw new Error('titleActiveDef 未跟随');
+  return '佩戴新称号自动切换，同时仅 1 个';
+});
+
+step('称号 · 加成生效且并入 stats()', () => {
+  ttReset();
+  S().level = 5;
+  G.checkTitles();
+  const c0 = G.stats().cult;
+  G.titleEquip('t_chuxue');                      /* 初学：修速 +1% */
+  const c1 = G.stats().cult;
+  if (!(c1 > c0)) throw new Error('修速应提升（' + c0 + ' → ' + c1 + '）');
+  const b = G.titleBonus();
+  if (!(b.cult >= 1)) throw new Error('titleBonus 未返回效果');
+  G.titleUnequip();
+  if (G.stats().cult !== c0) throw new Error('卸下后应回落');
+  return '修速 ' + c0 + ' → ' + c1 + ' → 回落 ' + c0;
+});
+
+step('称号 · 存档清洗（剔非法 / 去重 / active 校验）', () => {
+  const d = G.titleSanitizeMeta({ owned: ['t_chuxue', '假称号', 't_chuxue', 7], active: 't_chuxue' });
+  if (d.owned.length !== 1) throw new Error('应只保留 1 个，实为 ' + d.owned.length);
+  if (d.active !== 't_chuxue') throw new Error('合法 active 应保留');
+  const e = G.titleSanitizeMeta({ owned: [], active: 't_daoxin' });
+  if (e.active !== null) throw new Error('未拥有的 active 应清空');
+  const f = G.titleSanitizeMeta(undefined);
+  if (!f || f.owned.length !== 0 || f.active !== null) throw new Error('undefined 应返回空结构');
+  return '剔非法 / 去重 / active 校验 / 兜底 全通';
+});
+
+step('称号 · 轮回不灭', () => {
+  ttReset();
+  S().level = 5;
+  G.checkTitles();
+  const n0 = G.titleOwnedList().length;
+  if (!n0) throw new Error('应有已解锁称号');
+  G.doRebirth();
+  if (G.titleOwnedList().length !== n0) throw new Error('轮回后称号应保留');
+  return '轮回前后均为 ' + n0 + ' 个';
+});
+
+step('称号 · 面板与左栏标签', () => {
+  ttReset();
+  S().level = 5;
+  G.checkTitles();
+  G.renderTitleTag();
+  if (el('ttTag').textContent.indexOf('/') < 0) throw new Error('左栏称号标签未渲染');
+  G.openTitles();
+  const h = el('modalRoot').innerHTML;
+  if (h.indexOf('称 号') < 0) throw new Error('面板标题缺「称 号」');
+  if (h.indexOf('初 学') < 0) throw new Error('面板未列出已解锁称号');
+  if (h.indexOf('未 解 锁') < 0) throw new Error('面板未标注未解锁');
+  G.closeModal();
+  return '左栏标签 · 弹层列出全部称号';
+});
+
+/* ============ W. 移动端反馈与布局 ============ */
+log('=== W. 移动端反馈与布局 ===');
+
+step('移动端 · renderLog 会把最新一条日志写进浮动条', () => {
+  G.newGame();
+  S().logs = [{ t: '一 行 关 键 日 志', c: 'item' }];
+  G.renderLog();
+  if (G.fbStripText() !== '一 行 关 键 日 志') throw new Error('浮动条未同步最新日志');
+  return '浮动条已同步（' + G.fbStripText() + '）';
+});
+
+step('移动端 · 点击浮动条展开「天机录」', () => {
+  G.newGame();
+  G.fbStripUpdate('有 内 容');
+  G.fbStripClick();
+  const h = el('modalRoot').innerHTML;
+  if (h.indexOf('天 机 录') < 0) throw new Error('未展开天机录');
+  G.closeModal();
+  return '点击浮动条 → 展开完整日志弹层';
+});
+
+step('移动端 · 布局：导航与点击目标收紧、反馈条样式就位', () => {
+  if (!/--tap:\s*40px/.test(src)) throw new Error('移动端 --tap 未收紧到 40px');
+  if (!/--navh:\s*52px/.test(src)) throw new Error('移动端 --navh 未收紧到 52px');
+  if (src.indexOf('.fb-strip') < 0) throw new Error('缺浮动反馈条样式');
+  if (src.indexOf('.fb-toast-root') < 0) throw new Error('缺 toast 队列样式');
+  if (src.indexOf('.fb-center-mask') < 0) throw new Error('缺中央浮层样式');
+  /* 浮动条靠 .only-m 在窄屏启用；桌面端必须仍然隐藏 */
+  if (!/\.only-m\{display:none!important\}/.test(src)) throw new Error('桌面端未隐藏 .only-m');
+  if (!/\.only-m\{display:flex!important\}/.test(src)) throw new Error('窄屏未启用 .only-m');
+  if (!/\.fb-strip\{[^}]*display:flex/.test(src)) throw new Error('浮动条未声明 display:flex');
+  return '--tap 40px · --navh 52px · 反馈三件套样式齐备';
+});
+
+step('不变量 · 反馈与图鉴未引入外部资源请求', () => {
+  if (/\bnew\s+Audio\s*\(/.test(src)) throw new Error('不得用 new Audio 加载外部音频');
+  if (/https?:\/\/[^\s"']+\.(mp3|ogg|wav)/i.test(src)) throw new Error('不得引用外部音频文件');
+  if (!/AudioContext|webkitAudioContext/.test(src)) throw new Error('应走 Web Audio 现场合成');
+  return '音效为 Web Audio 合成，零外部请求';
 });
 
 log('');

@@ -5,7 +5,10 @@ import { GEAR_RECIPES, PILL_RECIPES } from '../data/recipes.js';
 import { chance, clamp, num, ri } from '../core/utils.js';
 import { addItem, itemLabel, makeItem, qName, stats } from './character.js';
 import { cvBonus } from './cave.js';
+import { codexUnlockMat, codexUnlockPill } from './codex.js';
+import { titleBonus } from './titles.js';
 import { checkAch } from './achievement.js';
+import { fbGainMat, fbGainPill } from '../ui/feedback.js';
 import { realmAt, realmNameOf } from './cultivate.js';
 import { addLog, toast } from './log.js';
 import { advance } from './time.js';
@@ -47,6 +50,8 @@ export function addMaterial(k, n){
   if(n <= 0) return false;
   if(!S.materials) S.materials = {};
   S.materials[k] = clamp((S.materials[k] || 0) + n, 0, 999999);
+  codexUnlockMat(k);          /* 图鉴 */
+  fbGainMat(k, n);            /* L1 toast（高阶材料带品质描边） */
   return true;
 }
 export function addMaterials(map, quiet){
@@ -223,7 +228,8 @@ export function craftLocked(recipe){
 }
 export function pillCraftRate(k){
   const r = PILL_RECIPES.find(x => x.k === k);
-  return r ? finalRate(r, cvBonus().pillRate) : 0;        /* 洞府 · 丹房 */
+  /* 洞府丹房 + 称号（独立乘区，叠加而非相乘） */
+  return r ? finalRate(r, cvBonus().pillRate + (titleBonus().pill || 0) / 100) : 0;
 }
 export function gearCraftRate(k){
   const r = GEAR_RECIPES.find(x => x.k === k);
@@ -268,13 +274,16 @@ export function craftPill(k, n){
   advance(days);
   addLog('你布下丹炉，以灵力 ' + num(mpCost) + ' 催动真火，炼了 ' + days + ' 日——', 'act');
 
-  const rate = finalRate(r, cvBonus().pillRate);
+  const rate = finalRate(r, cvBonus().pillRate + (titleBonus().pill || 0) / 100);
+  S.stat.pillMake = (S.stat.pillMake || 0) + n;          /* 称号「丹 痴」按开炉次数 */
   let ok = 0, bad = 0;
   for(let i = 0; i < n; i++){ if(chance(rate * 100)) ok++; else bad++; }
 
   if(ok > 0){
     S.pills[r.out] = (S.pills[r.out] || 0) + ok;
     addLog('成丹 ' + ok + ' 枚「' + r.out + '」，炉中清香四溢。', 'item');
+    codexUnlockPill(r.out);
+    fbGainPill(r.out, ok);
   }
   if(bad > 0){
     const back = refundMats(scaleNeed(r.need, bad), 0.4);

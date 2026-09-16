@@ -543,7 +543,7 @@
   .top-acts{display:flex;align-items:center;gap:6px;flex:0 0 auto}
 
   @media (max-width:820px){
-    :root{--gap:10px;--navh:58px}
+    :root{--gap:9px;--navh:52px;--tap:40px}   /* 阶段五：压缩触摸目标与导航，给内容腾出一屏 */
     html,body{height:auto}
     body{padding:0;font-size:var(--fs-md)}
     .wrap{
@@ -695,6 +695,120 @@
     .achg{grid-template-columns:1fr}
     .ts{padding:0 8px}
   }
+
+  /* =========================================================
+     反 馈 系 统（阶段五）
+     ---------------------------------------------------------
+     四级：L0 顶栏数字浮动 / L1 toast 队列 / L2 中央浮层 / L3 全屏重弹
+     配色全部走既有令牌；动效尊重 prefers-reduced-motion
+     ========================================================= */
+
+  /* ---------- L0 · 数字浮动 ---------- */
+  .fb-delta{
+    position:fixed;z-index:140;pointer-events:none;
+    font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+    white-space:nowrap;transform:translate(-50%,-50%);
+    text-shadow:0 1px 0 var(--paper),0 0 6px var(--paper);
+    animation:fbDeltaUp 1.35s cubic-bezier(.2,.8,.3,1) forwards;
+  }
+  .fb-delta-gain{color:var(--qing)}
+  .fb-delta-cost{color:var(--zhu)}
+  .fb-delta-gold{color:var(--jin)}
+  @keyframes fbDeltaUp{
+    0%  {opacity:0;transform:translate(-50%,-20%) scale(.85)}
+    18% {opacity:1;transform:translate(-50%,-95%) scale(1)}
+    75% {opacity:1;transform:translate(-50%,-215%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-255%) scale(.95)}
+  }
+
+  /* ---------- L1 · toast 队列 ---------- */
+  .fb-toast-root{
+    position:fixed;right:14px;bottom:calc(var(--navh) + 22px);z-index:130;
+    display:flex;flex-direction:column;gap:6px;align-items:flex-end;
+    pointer-events:none;max-width:min(340px,78vw);
+  }
+  .fb-toast{
+    padding:7px 12px;border-radius:var(--r-sm);
+    background:linear-gradient(180deg,var(--raise2),var(--raise3));
+    border:1px solid var(--line2);color:var(--ink2);
+    font-size:12.5px;line-height:1.5;
+    box-shadow:0 2px 12px var(--glow);
+    transform:translateX(110%);opacity:0;pointer-events:none;
+    transition:transform .26s cubic-bezier(.2,.8,.3,1.1),opacity .22s;
+  }
+  .fb-toast.on{transform:none;opacity:1}
+  .fb-toast.out{transform:translateX(18%);opacity:0}
+  .fb-toast .fb-ico{color:var(--jin);margin-right:4px}
+  .fb-toast b{color:var(--ink)}
+  .fb-toast.q2{border-color:var(--q2)}
+  .fb-toast.q3{border-color:var(--q3)}
+  .fb-toast.q4{border-color:var(--q4)}
+
+  /* ---------- L2 / L3 · 中央浮层 ---------- */
+  .fb-center-mask{
+    position:fixed;inset:0;z-index:150;padding:22px;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;opacity:0;pointer-events:none;
+    transition:opacity .26s,background-color .26s;
+  }
+  .fb-center-mask.heavy{background:var(--veil)}
+  .fb-center-mask.on{opacity:1;pointer-events:auto}
+  .fb-center{
+    max-width:min(420px,86vw);padding:22px 26px;
+    border-radius:var(--r-md);border:1px solid var(--line2);
+    background:var(--modal-bg);box-shadow:0 16px 48px var(--glow);
+    text-align:center;
+    transform:scale(.92) translateY(10px);
+    transition:transform .3s cubic-bezier(.2,.9,.3,1.2);
+  }
+  .fb-center-mask.on .fb-center{transform:none}
+  .fb-center.tier-3{max-width:min(500px,88vw);padding:26px 30px}
+  .fb-center .fb-c-title{
+    font-family:var(--serif);font-size:13px;letter-spacing:.34em;
+    color:var(--ink3);margin-bottom:10px;
+  }
+  .fb-center.tier-3 .fb-c-title{font-size:15px;color:var(--zhu)}
+  .fb-center .fb-c-body{font-size:14px;line-height:1.9;color:var(--ink)}
+  .fb-center.tier-3 .fb-c-body{font-size:15px}
+  .fb-center .fb-c-hint{font-size:11.5px;color:var(--ink3);margin-top:12px;letter-spacing:.08em}
+  .fb-center .fb-c-btn{margin-top:16px;padding:7px 22px;font-size:12.5px}
+  .fb-center.god{border-color:var(--q3)}
+  .fb-center.shen{border-color:var(--q4)}
+
+  /* ---------- 移动端浮动反馈条（桌面由 .only-m 隐藏） ---------- */
+  .fb-strip{
+    display:flex;
+    position:fixed;left:10px;right:10px;z-index:45;
+    bottom:calc(var(--navh) + 8px);
+    align-items:center;gap:8px;padding:8px 12px;
+    border-radius:var(--r-md);border:1px solid var(--line2);
+    background:linear-gradient(180deg,var(--paper2),var(--paper));
+    box-shadow:0 -2px 16px var(--glow);cursor:pointer;
+    transform:translateY(140%);opacity:0;
+    transition:transform .28s cubic-bezier(.2,.8,.3,1),opacity .22s;
+  }
+  .fb-strip.on{transform:none;opacity:1}
+  .fb-strip .fb-strip-txt{
+    flex:1 1 auto;min-width:0;font-size:12.5px;line-height:1.5;color:var(--ink2);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .fb-strip .fb-strip-hint{
+    flex:0 0 auto;font-size:10px;letter-spacing:.14em;color:var(--ink4);
+  }
+
+  @media (max-width:820px){
+    .fb-toast-root{right:10px;left:10px;align-items:stretch;max-width:none}
+    .fb-toast{font-size:13px;padding:8px 12px}
+    .fb-center{padding:20px 20px}
+    /* 日志区为浮动反馈条留白 */
+    .logpanel{padding-bottom:44px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .fb-delta{animation-duration:.55s}
+    .fb-center{transition:none;transform:none}
+    .fb-center-mask{transition:opacity .1s}
+    .fb-strip{transition:opacity .15s;transform:none}
+  }
 </style>
 </head>
 <body>
@@ -799,6 +913,18 @@
         <div class="ph">储 物 袋 <span style="margin-left:auto;letter-spacing:0;color:var(--ink4)" id="bagCount"></span></div>
         <div class="pb" id="bagBox" style="padding:6px 8px"></div>
       </div>
+
+      <div class="panel">
+        <div class="ph">图 鉴 · 称 号</div>
+        <div class="pb" style="display:flex;gap:8px">
+          <button class="mbtn" style="flex:1;padding:8px 0;font-size:12px;letter-spacing:.08em" onclick="openCodex()">
+            图 鉴 <span id="cdTag" class="muted-sm">0/0</span>
+          </button>
+          <button class="mbtn" style="flex:1;padding:8px 0;font-size:12px;letter-spacing:.08em" onclick="openTitles()">
+            称 号 <span id="ttTag" class="muted-sm">0/0</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 右栏 -->
@@ -814,6 +940,11 @@
 </div>
 <div id="veil" onclick="closeSheet()"></div>
 <input type="file" id="impFile" accept=".txt,.json,text/plain" style="display:none" onchange="onImportFile(this)">
+<!-- 移动端浮动反馈条：底部导航上方常驻，实时显示最新一条关键日志（桌面隐藏） -->
+<div id="fbStrip" class="fb-strip only-m" onclick="fbStripClick()">
+  <span class="fb-strip-txt">—</span>
+  <span class="fb-strip-hint">天 机 录</span>
+</div>
 <div id="modalRoot"></div>
 
 <script>
@@ -1702,6 +1833,124 @@ function caveFullCost(){
   return { stones, days };
 }
 
+/* ── data/codex.js ──────────────────────────────────────────────── */
+
+/* =========================================================
+   图 鉴 —— 数据层
+   ---------------------------------------------------------
+   规则：本文件只导出常量，不 import 任何东西（防循环依赖的铁律）
+
+   ★ 条目本身**不写在这张表里**，而是在 sys/codex.js 里从既有数据表
+     （MONSTERS / BASE_NAMES / GONGFA / MOUNT_NAMES / MATERIALS /
+      PILLS / SECRETS / ENCOUNTERS）**派生** —— 加一个新妖兽，图鉴自动
+     多一项，不需要两处维护（DRY）。本文件只放「分类元信息」与「节奏常量」。
+   ========================================================= */
+
+/* 分类元信息（面板分组 + 配色，走既有令牌，不写死颜色） */
+const CODEX_CATS = [
+  { k:'mon',   n:'妖 兽', color:'var(--zhu)' },
+  { k:'item',  n:'器 物', color:'var(--jin)' },
+  { k:'gf',    n:'功 法', color:'var(--zi)' },
+  { k:'mount', n:'坐 骑', color:'var(--qing)' },
+  { k:'mat',   n:'材 料', color:'var(--ink2)' },
+  { k:'pill',  n:'丹 药', color:'var(--jin)' },
+  { k:'sec',   n:'秘 境', color:'var(--zhu-d)' },
+  { k:'enc',   n:'奇 遇', color:'var(--warn)' }
+];
+
+/* 品阶名：凡·灵·宝·仙·神
+   ★ 刻意不叫 TIER_NAME —— 顶层 const 在构建后同处一个作用域，
+     与 data/monsters.js 的 TIER_NAME 重名会直接 SyntaxError */
+const CODEX_TIER_NAME = ['凡', '灵', '宝', '仙', '神'];
+
+/* 每 N 项 → 一次里程碑提示（L3 中央浮层） */
+const CODEX_MILESTONE_STEP = 25;
+
+/* 每 N 项 → +N_LUCK 气运（并入 fortune()，不新开乘区） */
+const CODEX_LUCK_STEP = 10;
+const CODEX_LUCK_PER_STEP = 1;
+
+/* 分类键 → 元信息 */
+const CODEX_CAT_BY_KEY = {};
+for(const c of CODEX_CATS) CODEX_CAT_BY_KEY[c.k] = c;
+
+/* ── data/titles.js ─────────────────────────────────────────────── */
+
+/* =========================================================
+   称 号 —— 数据层
+   ---------------------------------------------------------
+   规则：本文件只导出常量，不 import 任何东西（防循环依赖的铁律）
+
+   · t    品阶 0~4（凡·灵·宝·仙·神）
+   · cond 解锁条件函数，入参是 achAgg() 的输出（额外字段见 sys/titles.js 的补充）
+   · ef   佩戴效果，供 sys/titles.js 的 titleBonus() 汇总
+         atk/def/hp/cult/brk/speed/all 为**百分比**；stone 为**绝对值**；
+         drop/pill/boss 为**专项百分比**（由各调用点手动合并）
+   · d    描述
+
+   设计约束：同时只佩戴 1 个（防叠加膨胀），效果走独立乘区 titleBonus()，
+   不并入既有 stats() 公式 —— 便于调试，也不污染既有平衡。
+   ========================================================= */
+
+const TITLES = [
+  /* ---- 凡品 ---- */
+  { k:'t_chuxue',  n:'初 学',       t:0,
+    d:'你踏入了修行，从此与凡人不同。',
+    cond: a => a.lv >= 1,
+    ef: { cult:1 } },
+  { k:'t_zhanzhe', n:'斩 妖 者',    t:0,
+    d:'百头妖兽死于你手。',
+    cond: a => a.kills >= 100,
+    ef: { atk:2 } },
+
+  /* ---- 灵品 ---- */
+  { k:'t_mitan',   n:'秘 探',       t:1,
+    d:'三处秘境被你翻遍。',
+    cond: a => a.secret >= 3,
+    ef: { drop:5 } },
+  { k:'t_danchi',  n:'丹 痴',       t:1,
+    d:'五十次开炉，丹火已随心转。',
+    cond: a => (a.pillMake || 0) >= 50,
+    ef: { pill:3 } },
+
+  /* ---- 宝品 ---- */
+  { k:'t_yaowang', n:'妖 王 克 星',  t:2,
+    d:'二十头妖王在你手上折戟。',
+    cond: a => (a.boss || 0) >= 20,
+    ef: { boss:10 } },
+  { k:'t_yushou',  n:'御 兽',       t:2,
+    d:'坐骑被你喂养至七阶。',
+    cond: a => (a.mountMax || 0) >= 7,
+    ef: { speed:5 } },
+
+  /* ---- 仙品 ---- */
+  { k:'t_zongshi', n:'一 代 宗 师',  t:3,
+    d:'修至大乘，你已可开宗立派。',
+    cond: a => a.grp >= 7,
+    ef: { brk:3 } },
+  { k:'t_lunhui',  n:'万 世 轮 回',  t:3,
+    d:'三次轮回，你记得自己走过的每一步。',
+    cond: a => (a.rebirths || 0) >= 3,
+    ef: { stone:500 } },
+
+  /* ---- 神品 ---- */
+  { k:'t_daoxin',  n:'道 心',       t:4,
+    d:'四十二道关卡，你全数走过。',
+    cond: a => (a.achCount || 0) >= 42,
+    ef: { all:3 } },
+  { k:'t_tiandao', n:'天 道',       t:4,
+    d:'你已叩问过天道，并将它抛在身后。',
+    cond: a => (a.asc || 0) >= 1,
+    ef: { cult:10, atk:5 } }
+];
+
+/* 键 → 定义 */
+const TITLE_BY_KEY = {};
+for(const t of TITLES) TITLE_BY_KEY[t.k] = t;
+
+/* 品阶名（与成就/材料共用同一套口径） */
+const TITLE_TIER_NAME = ['凡', '灵', '宝', '仙', '神'];
+
 /* ── core/meta.js ───────────────────────────────────────────────── */
 
 /* 气运 → 掉落运气（滚品质时叠加到 luck 上），见 fortune() */
@@ -1727,7 +1976,10 @@ function blankMeta(){
     life: blankStat(),
     secSet:[],
     encSeen:0, encKeys:[],
-    gongfa:{ learned:[], best:{} }      /* 已习得功法：轮回不灭 */
+    gongfa:{ learned:[], best:{} },     /* 已习得功法：轮回不灭 */
+    codex:{ unlocked:[], milestones:0 },/* 图鉴：永久收集进度，每 10 项 +1 气运 */
+    titles:{ owned:[], active:null },   /* 称号：永久解锁，同时只佩戴一个 */
+    prefs:{ audio:true }                /* 偏好：音效开关 */
   };
 }
 let META = blankMeta();
@@ -1754,6 +2006,9 @@ function loadMeta(){
     META.encKeys = Array.isArray(d.encKeys) ? d.encKeys.filter(x => typeof x === 'string') : [];
     META.secSet = Array.isArray(d.secSet) ? d.secSet.filter(x => typeof x === 'number') : [];
     META.gongfa = gfSanitizeMeta(d.gongfa);
+    META.codex = codexSanitizeMeta(d.codex);
+    META.titles = titleSanitizeMeta(d.titles);
+    META.prefs = { audio: !(d.prefs && d.prefs.audio === false) };
   }catch(e){}
 }
 function saveMeta(){ try{ localStorage.setItem(META_KEY, JSON.stringify(META)); }catch(e){} }
@@ -1777,6 +2032,9 @@ function applyMeta(m){
   META.encSeen = m.encSeen||0;
   META.encKeys = Array.isArray(m.encKeys) ? m.encKeys.filter(x => typeof x === 'string') : [];
   META.gongfa = gfSanitizeMeta(m.gongfa);
+  META.codex = codexSanitizeMeta(m.codex);
+  META.titles = titleSanitizeMeta(m.titles);
+  META.prefs = { audio: !(m.prefs && m.prefs.audio === false) };
   saveMeta();
 }
 /* 成就列表的安全读取：任何情况下都必须是数组 */
@@ -1796,10 +2054,13 @@ function fortune(){
     if(d) f += ACH_TIER[d.t].f;
   }
   f += gfLuck();                       /* 心法所带气运 —— 一并计入，不另开乘区 */
+  f += codexLuck();                    /* 图鉴气运 —— 同样并入统一乘区，不新开 */
   return Math.round(f * 10) / 10;
 }
 function fortStone(v){ return Math.max(1, Math.round(v * (1 + fortune()*0.006))); }  /* 灵石收益 */
-function fortDrop(p){ return p * (1 + fortune()*0.008); }                            /* 掉落概率 */
+function fortDrop(p){
+  return p * (1 + fortune()*0.008 + (titleBonus().drop||0)/100);   /* 掉落概率（+ 称号「秘探」） */
+}
 
 
 /* 轮回印记：每一世永久 +2% 修炼速度（至多 +20%） */
@@ -1825,7 +2086,7 @@ function noBusy(msg){ if(busy()){ toast(msg || '此刻无暇他顾'); return tru
 
 function newGame(){
   S = {
-    level:0, exp:0, day:1, stones:40 + META.up.stone*200,
+    level:0, exp:0, day:1, stones:40 + META.up.stone*200 + titleBonus().stone,   /* 称号「万世轮回」另给初始灵石 */
     hp:0, mp:0,
     equip:{ weapon:null, armor:null, mount:null, treasures:[null,null,null] },
     bag:[],
@@ -1888,6 +2149,15 @@ function renderLog(){
   }
   el.innerHTML = html;
   el.scrollTop = el.scrollHeight;
+  /* 移动端浮动反馈条：取最后一条「关键」日志（获得 / 精进 / 成就 / 奇遇 / 非凡） */
+  let last = null;
+  for(let i = S.logs.length - 1; i >= 0; i--){
+    const l = S.logs[i];
+    if(!l || l.sep) continue;
+    if(l.c === 'item' || l.c === 'gain' || l.c === 'epic' || l.c === 'ach' || l.c === 'enc'){ last = l; break; }
+  }
+  if(!last) last = S.logs[S.logs.length - 1] || null;
+  fbStripUpdate(last && !last.sep ? last.t : '');
 }
 function toast(msg){
   const d = document.createElement('div');
@@ -2024,6 +2294,17 @@ function stats(){
   st.def *= (1 + ab.def/100) * (1 + gb.def/100);
   st.crit += gb.crit;
   st.cult += heritageCult() + ab.cult + gb.cult + cvBonus().cult;   /* 悟性传承 + 轮回印记 + 成就 + 心法 + 洞府 */
+  /* 称号：独立乘区，由这里手动合并（不并入既有公式） */
+  const tb = titleBonus();
+  if(tb.all){
+    st.atk *= (1 + tb.all/100); st.def *= (1 + tb.all/100);
+    st.hpMax = Math.round(st.hpMax * (1 + tb.all/100));
+  }
+  if(tb.atk)  st.atk *= (1 + tb.atk/100);
+  if(tb.def)  st.def *= (1 + tb.def/100);
+  if(tb.hp)   st.hpMax = Math.round(st.hpMax * (1 + tb.hp/100));
+  if(tb.cult) st.cult += tb.cult;
+  if(tb.speed) st.speed += tb.speed;
   st.atk = Math.round(st.atk);
   st.def = Math.round(st.def);
   st.crit = +st.crit.toFixed(1);
@@ -2082,6 +2363,10 @@ function countItem(it){
 function addItem(it, quiet){
   if(!it) return false;
   countItem(it);
+  /* 图鉴 + 反馈：quiet 只决定「写不写日志」，**不影响反馈** ——
+     获得是玩家最该被看见的瞬间，静默获取也要给一次提示 */
+  if(isMount(it)) codexUnlockMount(it); else codexUnlockItem(it);
+  fbGain(it);
 
   if(S.autoEquipOn && tryEquipIfBetter(it)){
     if(!quiet){
@@ -2379,6 +2664,9 @@ function gfLearn(key, quiet){
   if(!quiet){
     addLog('你参研【' + gf.n + '】（' + QUALITIES[gf.t].name + '）——关窍豁然贯通，此法刻入道基，<b>轮回不灭</b>。', 'ach');
   }
+  /* 图鉴 + 反馈：功法是永久所得，quiet 与否都该被看见 */
+  codexUnlockGf(key);
+  if(!quiet) fbGrantGongfa(gf);
   /* 空槽自动祭炼，省得玩家来回点 */
   if(S){
     const g = gfEnsure();
@@ -2767,7 +3055,10 @@ function realmNameOf(lv){ return REALMS[clamp(lv||0,0,MAX_LV)].name; }
 /* ---------------- 修为 ---------------- */
 function gainExp(v, silent){
   S.exp += v;
-  if(!silent && v > 0) addLog('修为 +' + num(v), 'gain');
+  if(!silent && v > 0){
+    addLog('修为 +' + num(v), 'gain');
+    fbExpDelta(v);                 /* L0 · 顶栏数字浮动（内部 120ms 节流合并） */
+  }
 }
 
 /* =========================================================
@@ -2894,6 +3185,7 @@ function breakChance(){
   c += META.up.pill * 1.5;
   c += achBonus().brk;                                      /* 成就加成 */
   c += gfBonus().brk;                                       /* 心法「悟道」类加成 */
+  c += titleBonus().brk;                                    /* 称号效果（独立乘区，手动并入） */
   c += Math.min(20, stats().cultGear * 0.28);
   c += pillBonus();
   c -= Math.min(12, (S.breakStreak||0) * 3);
@@ -2936,6 +3228,8 @@ function breakthroughOnce(quiet){
       addLog('周身灵气如潮水倒灌，经脉节节拓宽，骨骼发出细密脆响。你于剧痛中睁开双眼，眸中精光一闪而逝。','epic');
     }
     addLog('★ 突破成功，境界晋升为【'+realmName()+'】！' + (quiet ? '' : '气血灵力尽复。'),'epic');
+    /* 反馈：大境界首层 → L3，其余 → L2（连破 quiet 时也该被看见） */
+    fbBreak(isGroupStart(S.level), realmName());
     if(isGroupStart(S.level)) addLog('你踏入「'+gname+'」——天地在你眼中骤然不同。','sys');
     if(grp >= 10 && realmAt(S.level).i === 0){
       addLog(grp === 10 ? '仙道之上再无阶可循。至此，你已是准圣之姿，一念可断山河。'
@@ -3009,6 +3303,7 @@ function ascend(){
     [{ label:'入 轮 回（+'+g+' 点）', primary:true, fn:()=>doRebirth() },
      { label:'留 于 此 界', fn:closeModal }]
   );
+  fbAscend();                          /* 只放一声长音，不重复弹窗（上面已有专属弹层） */
 }
 
 /* ── sys/combat.js ──────────────────────────────────────────────── */
@@ -3051,7 +3346,15 @@ function startFight(m, ctx){
   S.fightPillN = 0;
   addSep();
   addLog('【'+m.name+'】出现在你面前——'+TIER_NAME[m.tier]+'，气血 '+num(m.hpMax)+'。','dmg');
+  codexUnlockMon(m.name);          /* 图鉴：遭遇即收录 */
   renderAll();
+}
+
+/* 称号「妖 王 克 星」：对妖王伤害加成（独立乘区，不进 stats()） */
+function bossDmg(d, m){
+  const b = titleBonus().boss || 0;
+  if(!b || !m || !m.boss) return d;
+  return Math.max(1, Math.round(d * (1 + b / 100)));
 }
 
 function dmgRoll(atk, def, crit, mult){
@@ -3140,9 +3443,10 @@ function fightAction(kind, skIdx){
   }
 
   const r = dmgRoll(st.atk, m.def, st.crit, mult);
-  m.hp -= r.d;
+  const d = bossDmg(r.d, m);
+  m.hp -= d;
   addLog('你'+(kind==='skill' ? '催动灵力，一道灵光斩落' : '挥动法器直取')+'——'
-    + (r.crit?'<b>暴击！</b>':'') + '造成 '+num(r.d)+' 点伤害。', r.crit?'epic':'dmg');
+    + (r.crit?'<b>暴击！</b>':'') + '造成 '+num(d)+' 点伤害。', r.crit?'epic':'dmg');
 
   if(m.hp <= 0){ winFight(); after(); return; }
   monsterTurn();
@@ -3175,8 +3479,9 @@ function castSkill(arg){
   let total = 0, anyCrit = false;
   for(let i=0;i<(sk.hits||1);i++){
     const r = dmgRoll(st.atk, defUse, critUse, sk.mult);
-    m.hp -= r.d;
-    total += r.d;
+    const d = bossDmg(r.d, m);
+    m.hp -= d;
+    total += d;
     if(r.crit) anyCrit = true;
     if(m.hp <= 0) break;
   }
@@ -3440,6 +3745,7 @@ function enterSecret(si){
   addLog('你以灵力 '+num(d.mp)+' 打开「'+d.name+'」的入口禁制，踏入其中。','epic');
   addLog(d.desc,'dim');
   S.stat.secEnter++;
+  codexUnlockSec(si);              /* 图鉴：进入即收录 */
   floorIntro();
   checkAch();
   after();
@@ -3561,6 +3867,7 @@ function completeDungeon(){
   }
   S.dungeon = null;
   S.stat.secret++;
+  fbDungeon(def);                  /* L2 中央浮层：秘境贯通 */
   if(META.secSet.indexOf(d.idx) < 0){ META.secSet.push(d.idx); saveMeta(); }
   addSep();
   checkAch();
@@ -3753,6 +4060,7 @@ function tryEncounter(){
   META.encSeen = (META.encSeen||0) + 1;
   if(META.encKeys.indexOf(sel.k) < 0) META.encKeys.push(sel.k);
   if(S.stat) S.stat.enc++;
+  codexUnlockEnc(sel.k);            /* 图鉴：撞上即收录 */
   saveMeta();
   addSep();
   addLog('【奇遇 · '+sel.t+'】'+sel.d,'enc');
@@ -3848,7 +4156,10 @@ function checkAch(){
       addLog('【成就 · '+ACH_TIER[d.t].n+'品】'+d.n+' —— '+d.d+'　（'+achTierText(d.t)+'）','ach');
     }
     showAchPop(got[got.length-1], got.length);
+    for(const d of got) fbAchievement(d);      /* 神品成就额外给一次中央浮层 */
   }
+  /* 成就扫完顺带扫称号 —— 二者共用 achAgg() */
+  checkTitles();
   return got;
 }
 
@@ -3977,6 +4288,7 @@ function doRebirth(){
   addLog('一世修行尽付东流，唯有那点不肯散去的执念留在了神魂里。你自凡俗中再一次睁开眼。','epic');
   if(g) addLog('结得轮回点 '+g+'，可用以点化传承。','item');
   renderAll();
+  fbRebirth(META.rebirths);            /* L3 中央浮层：轮回转世 */
   toast('轮回第 '+META.rebirths+' 世 · 轮回点 +'+g);
 }
 
@@ -4070,6 +4382,8 @@ function addMaterial(k, n){
   if(n <= 0) return false;
   if(!S.materials) S.materials = {};
   S.materials[k] = clamp((S.materials[k] || 0) + n, 0, 999999);
+  codexUnlockMat(k);          /* 图鉴 */
+  fbGainMat(k, n);            /* L1 toast（高阶材料带品质描边） */
   return true;
 }
 function addMaterials(map, quiet){
@@ -4246,7 +4560,8 @@ function craftLocked(recipe){
 }
 function pillCraftRate(k){
   const r = PILL_RECIPES.find(x => x.k === k);
-  return r ? finalRate(r, cvBonus().pillRate) : 0;        /* 洞府 · 丹房 */
+  /* 洞府丹房 + 称号（独立乘区，叠加而非相乘） */
+  return r ? finalRate(r, cvBonus().pillRate + (titleBonus().pill || 0) / 100) : 0;
 }
 function gearCraftRate(k){
   const r = GEAR_RECIPES.find(x => x.k === k);
@@ -4291,13 +4606,16 @@ function craftPill(k, n){
   advance(days);
   addLog('你布下丹炉，以灵力 ' + num(mpCost) + ' 催动真火，炼了 ' + days + ' 日——', 'act');
 
-  const rate = finalRate(r, cvBonus().pillRate);
+  const rate = finalRate(r, cvBonus().pillRate + (titleBonus().pill || 0) / 100);
+  S.stat.pillMake = (S.stat.pillMake || 0) + n;          /* 称号「丹 痴」按开炉次数 */
   let ok = 0, bad = 0;
   for(let i = 0; i < n; i++){ if(chance(rate * 100)) ok++; else bad++; }
 
   if(ok > 0){
     S.pills[r.out] = (S.pills[r.out] || 0) + ok;
     addLog('成丹 ' + ok + ' 枚「' + r.out + '」，炉中清香四溢。', 'item');
+    codexUnlockPill(r.out);
+    fbGainPill(r.out, ok);
   }
   if(bad > 0){
     const back = refundMats(scaleNeed(r.need, bad), 0.4);
@@ -4536,6 +4854,301 @@ function cvSnapshot(){
   return { facs: Object.assign({}, c.facs), lastTick: Date.now() };
 }
 
+/* ── sys/codex.js ───────────────────────────────────────────────── */
+
+/* =========================================================
+   图 鉴 —— 逻辑层
+   ---------------------------------------------------------
+   设计三原则（改它之前先读）：
+   1. **条目从既有数据表派生**，不另建大表 —— 加一个新妖兽/功法/材料，
+      图鉴自动多一项，不需要两处维护（DRY）
+   2. 解锁记录存 META（永久，轮回不灭）—— 与「知识/成就/传承」同轴
+   3. 每 10 项 +1 气运 —— **并入 fortune()，不新开乘区**
+   ========================================================= */
+
+/* ---------- 条目派生 ---------- */
+function codexMonEntries(){
+  const out = [];
+  for(let tier = 0; tier < MONSTERS.length; tier++){
+    for(const name of MONSTERS[tier]){
+      out.push({ c:'mon', k:'mon_' + name, n:name, t: Math.min(4, tier) });
+    }
+  }
+  return out;
+}
+function codexItemEntries(){
+  const out = [];
+  for(const slot in BASE_NAMES){
+    for(const name of BASE_NAMES[slot]){
+      /* key 带槽位前缀：武器与法宝可能重名 */
+      out.push({ c:'item', k:'item_' + slot + '_' + name, n:name, t:0, slot });
+    }
+  }
+  return out;
+}
+function codexGfEntries(){
+  return GONGFA.map(g => ({ c:'gf', k:'gf_' + g.k, n:g.n, t:g.t, kind:g.kind }));
+}
+function codexMountEntries(){
+  const out = [];
+  for(let tier = 0; tier < MOUNT_NAMES.length; tier++){
+    for(const name of MOUNT_NAMES[tier]){
+      out.push({ c:'mount', k:'mount_' + name, n:name, t: Math.min(4, tier) });
+    }
+  }
+  return out;
+}
+function codexMatEntries(){
+  return MAT_ORDER.map(k => {
+    const m = MATERIALS[k];
+    return { c:'mat', k:'mat_' + k, n:m.n, t:m.t };
+  });
+}
+function codexPillEntries(){
+  return PILLS.map(p => ({ c:'pill', k:'pill_' + p.name, n:p.name, t:0 }));
+}
+function codexSecEntries(){
+  return SECRETS.map((s, i) => ({ c:'sec', k:'sec_' + i, n:s.name, t: Math.min(4, s.tier) }));
+}
+function codexEncEntries(){
+  return ENCOUNTERS.map(e => ({ c:'enc', k:'enc_' + e.k, n:e.t, t: Math.min(4, e.seg) }));
+}
+
+let _CODEX_ALL = null;
+let _CODEX_BY_KEY = null;
+function codexAll(){
+  if(_CODEX_ALL) return _CODEX_ALL;
+  _CODEX_ALL = [].concat(
+    codexMonEntries(), codexItemEntries(), codexGfEntries(), codexMountEntries(),
+    codexMatEntries(), codexPillEntries(), codexSecEntries(), codexEncEntries()
+  );
+  _CODEX_BY_KEY = {};
+  for(const e of _CODEX_ALL) _CODEX_BY_KEY[e.k] = e;
+  return _CODEX_ALL;
+}
+function codexTotal(){ return codexAll().length; }
+function codexByKey(k){ codexAll(); return _CODEX_BY_KEY[k] || null; }
+
+/* 按分类分组（面板用） */
+function codexGrouped(){
+  const by = {};
+  for(const e of codexAll()){
+    if(!by[e.c]) by[e.c] = [];
+    by[e.c].push(e);
+  }
+  return by;
+}
+function codexCountByCat(cat){
+  let total = 0, own = 0;
+  const list = codexOwnedList();
+  for(const e of codexAll()){
+    if(e.c !== cat) continue;
+    total++;
+    if(list.indexOf(e.k) >= 0) own++;
+  }
+  return { own, total };
+}
+
+/* ---------- 名称 → key 反查（按名字解锁的场景） ---------- */
+function codexKeyByItemName(name){
+  for(const e of codexAll()) if(e.c === 'item' && e.n === name) return e.k;
+  return null;
+}
+function codexKeyByMonName(name){
+  for(const e of codexAll()) if(e.c === 'mon' && e.n === name) return e.k;
+  return null;
+}
+function codexKeyByMountName(name){
+  for(const e of codexAll()) if(e.c === 'mount' && e.n === name) return e.k;
+  return null;
+}
+
+/* ---------- 解锁 ---------- */
+function codexOwnedList(){
+  if(!META || !META.codex || !Array.isArray(META.codex.unlocked)) return [];
+  return META.codex.unlocked;
+}
+function codexOwned(k){ return codexOwnedList().indexOf(k) >= 0; }
+function codexCount(){ return codexOwnedList().length; }
+
+/* 主入口：解锁一条，返回 true 表示**首次**解锁 */
+function codexUnlock(k){
+  if(!k || !META) return false;
+  if(!META.codex) META.codex = { unlocked:[], milestones:0 };
+  if(!Array.isArray(META.codex.unlocked)) META.codex.unlocked = [];
+  if(META.codex.unlocked.indexOf(k) >= 0) return false;
+  if(!codexByKey(k)) return false;                     /* 非法 key 一律拒绝 */
+  META.codex.unlocked.push(k);
+  if(S && S.stat) S.stat.codex = (S.stat.codex || 0) + 1;
+
+  /* 里程碑：每 +CODEX_MILESTONE_STEP 项一次 L3 提示 */
+  const n = META.codex.unlocked.length;
+  const step = Math.floor(n / CODEX_MILESTONE_STEP);
+  if(!META.codex.milestones) META.codex.milestones = 0;
+  const hit = step > META.codex.milestones;
+  if(hit) META.codex.milestones = step;
+  saveMeta();
+  if(hit && typeof fbCodexMilestone === 'function') fbCodexMilestone(step * CODEX_MILESTONE_STEP);
+  return true;
+}
+
+/* 便捷入口（供各处调用） */
+function codexUnlockItem(it){
+  if(!it || !it.name) return false;
+  const k = codexKeyByItemName(it.name);
+  return k ? codexUnlock(k) : false;
+}
+function codexUnlockMount(m){
+  if(!m || !m.name) return false;
+  const k = codexKeyByMountName(m.name);
+  return k ? codexUnlock(k) : false;
+}
+function codexUnlockMon(name){
+  if(!name) return false;
+  const k = codexKeyByMonName(name);
+  return k ? codexUnlock(k) : false;
+}
+function codexUnlockMat(k){ return codexUnlock('mat_' + k); }
+function codexUnlockPill(name){ return codexUnlock('pill_' + name); }
+function codexUnlockGf(key){ return codexUnlock('gf_' + key); }
+function codexUnlockSec(i){ return codexUnlock('sec_' + i); }
+function codexUnlockEnc(key){ return codexUnlock('enc_' + key); }
+
+/* ---------- 气运（并入 fortune()） ---------- */
+function codexLuck(){
+  return Math.floor(codexCount() / CODEX_LUCK_STEP) * CODEX_LUCK_PER_STEP;
+}
+
+/* ---------- 存档清洗（META 侧，防御式） ---------- */
+function codexSanitizeMeta(d){
+  const out = { unlocked:[], milestones:0 };
+  if(!d || typeof d !== 'object') return out;
+  const L = Array.isArray(d.unlocked) ? d.unlocked : [];
+  for(const k of L){
+    if(typeof k !== 'string') continue;
+    if(!codexByKey(k)) continue;                 /* 剔除已不存在的条目 */
+    if(out.unlocked.indexOf(k) >= 0) continue;   /* 去重 */
+    out.unlocked.push(k);
+  }
+  out.milestones = Math.max(0, Math.floor(Number(d.milestones) || 0));
+  return out;
+}
+
+/* ── sys/titles.js ──────────────────────────────────────────────── */
+
+/* =========================================================
+   称 号 —— 逻辑层
+   ---------------------------------------------------------
+   设计要点（改它之前先读）：
+   1. 同时只戴 1 个 —— 防止叠加膨胀
+   2. 效果**不并入**既有 stats() 公式，而是独立提供 titleBonus()，
+      由各调用点手动合并 —— 便于调试，也避免污染既有平衡
+   3. 已解锁记录存 META（永久，轮回不灭）
+   4. 解锁判定与成就共用 achAgg()（只需在 checkTitles 里补字段）
+   ========================================================= */
+
+function titleDefOf(k){ return TITLE_BY_KEY[k] || null; }
+function titleOwnedList(){
+  if(!META || !META.titles) return [];
+  return Array.isArray(META.titles.owned) ? META.titles.owned : [];
+}
+function titleOwned(k){ return titleOwnedList().indexOf(k) >= 0; }
+function titleActiveKey(){
+  if(!META || !META.titles) return null;
+  const k = META.titles.active;
+  return (k && titleOwned(k)) ? k : null;
+}
+function titleActiveDef(){
+  const k = titleActiveKey();
+  return k ? titleDefOf(k) : null;
+}
+
+/* 解锁扫描：在 checkAch() 之后调用即可，返回本次新解锁的称号 */
+function checkTitles(){
+  if(!S || !META) return [];
+  const a = achAgg();
+  /* 补充 achAgg 里没有、称号需要的字段 */
+  a.pillMake = ((S.stat && S.stat.pillMake) || 0) + ((META.life && META.life.pillMake) || 0);
+  a.achCount = achList().length;
+  a.rebirths = META.rebirths || 0;
+  a.asc = META.ascensions || 0;
+
+  if(!META.titles) META.titles = { owned:[], active:null };
+  if(!Array.isArray(META.titles.owned)) META.titles.owned = [];
+
+  const got = [];
+  for(const t of TITLES){
+    if(titleOwned(t.k)) continue;
+    let ok = false;
+    try{ ok = !!t.cond(a); }catch(e){ ok = false; }
+    if(ok) META.titles.owned.push(t.k), got.push(t);
+  }
+  if(got.length){
+    if(!META.titles.active) META.titles.active = got[got.length - 1].k;
+    saveMeta();
+    for(const t of got){
+      addLog('【称号 · ' + TITLE_TIER_NAME[t.t] + '品】' + t.n + ' —— ' + t.d, 'ach');
+    }
+    /* 中央浮层：宝品及以上才弹，避免刷屏 */
+    const show = got.filter(t => t.t >= 2);
+    if(show.length && typeof fbCenterQueue === 'function'){
+      const t = show[show.length - 1];
+      fbCenterQueue({
+        tier:2, quality:t.t,
+        title:'得 称 号',
+        body:'<b>' + t.n + '</b><br><span class="muted-sm">' + t.d + '</span>',
+        autoMs:2200,
+        sound: t.t >= 3 ? 'xian' : 'item'
+      });
+    }
+  }
+  return got;
+}
+
+/* ---------- 佩戴 ---------- */
+function titleEquip(k){
+  const t = titleDefOf(k);
+  if(!t){ toast('无此称号'); return false; }
+  if(!titleOwned(k)){ toast('尚未解锁此称号'); return false; }
+  if(!META.titles) META.titles = { owned:[], active:null };
+  META.titles.active = k;
+  saveMeta();
+  addLog('你将「' + t.n + '」刻于名帖之上。', 'act');
+  after();
+  return true;
+}
+function titleUnequip(){
+  if(!META || !META.titles) return;
+  META.titles.active = null;
+  saveMeta();
+  addLog('你收起了名帖上的称号。', 'dim');
+  after();
+}
+
+/* 加成汇总：由调用点手动合并（不并入 stats() 公式） */
+function titleBonus(){
+  const z = { atk:0, def:0, hp:0, cult:0, brk:0, speed:0, stone:0, drop:0, pill:0, boss:0, all:0 };
+  const t = titleActiveDef();
+  if(!t || !t.ef) return z;
+  for(const k in t.ef) if(z[k] !== undefined) z[k] = t.ef[k];
+  return z;
+}
+
+/* ---------- 存档清洗 ---------- */
+function titleSanitizeMeta(d){
+  const out = { owned:[], active:null };
+  if(!d || typeof d !== 'object') return out;
+  const L = Array.isArray(d.owned) ? d.owned : [];
+  for(const k of L){
+    if(typeof k !== 'string') continue;
+    if(!titleDefOf(k)) continue;
+    if(out.owned.indexOf(k) >= 0) continue;
+    out.owned.push(k);
+  }
+  if(typeof d.active === 'string' && out.owned.indexOf(d.active) >= 0) out.active = d.active;
+  return out;
+}
+
 /* ── ui/theme.js ────────────────────────────────────────────────── */
 
 const THEME_KEY = 'xiuxian_theme_v1';
@@ -4617,6 +5230,372 @@ function showModal(title, html, buttons, cls){
   });
 }
 function closeModal(){ $('modalRoot').innerHTML = ''; }
+
+/* ── ui/feedback.js ─────────────────────────────────────────────── */
+
+/* =========================================================
+   反 馈 系 统
+   ---------------------------------------------------------
+   设计目标：让每一次「获得」在合适的视觉重量下**即时可见**
+
+   四级（频率与视觉重量成反比）：
+     L0 · 微  —— 顶栏数字浮动 +N（修为/灵石），不阻塞
+     L1 · 轻  —— 右下角 toast 队列，最多 3 条同时显示
+     L2 · 中  —— 中央浮层，品质光晕，2 秒自动关闭
+     L3 · 重  —— 全屏淡入 + 大浮层，需手动关闭
+
+   约束：
+     · 不新增配色，品质色走 .qc0~qc4 / godCls
+     · 音效由 Web Audio 现场合成，**不引入资源文件、无第三方请求**
+     · prefers-reduced-motion 时动画降级，音效保留
+     · 队列化：中央浮层（L2/L3）独占，依次展示
+     · 所有 DOM 操作都有 try/catch —— 测试沙箱里没有完整 DOM 也不能崩
+   ========================================================= */
+
+/* ---------- 状态 ---------- */
+let FB_INITED = false;
+let FB_ACTX = null;
+let FB_TOASTS = [];            /* 当前在屏的 L1 元素 */
+let FB_CENTER_QUEUE = [];      /* 待展示的 L2/L3 配置 */
+let FB_CENTER_SHOWING = false;
+let FB_LAST_STRIP = '';
+
+/* ---------- 分档判定 ---------- */
+function fbLevelOfItem(it){
+  if(!it) return 0;
+  if(it.q >= 4) return 3;      /* 神品 → L3 */
+  if(it.q >= 2) return 2;      /* 宝品 / 仙品 → L2 */
+  return 1;                    /* 凡 / 灵品 → L1 */
+}
+function fbLevelOfMat(k){
+  const m = MATERIALS[k];
+  if(!m) return 1;
+  if(m.t >= 4) return 3;
+  if(m.t >= 2) return 2;
+  return 1;
+}
+function fbLevelOfPill(name){
+  return (name === '破境丹' || name === '归元丹') ? 2 : 1;
+}
+function fbLevelOfBreak(isGroupStart){ return isGroupStart ? 3 : 2; }
+
+/* ---------- 偏好 ---------- */
+function fbAudioOn(){
+  if(!META || !META.prefs) return true;
+  return META.prefs.audio !== false;
+}
+function fbToggleAudio(){
+  if(!META.prefs) META.prefs = { audio:true };
+  META.prefs.audio = !fbAudioOn();
+  saveMeta();
+  return META.prefs.audio;
+}
+
+/* ---------- 音效（Web Audio 现场合成） ---------- */
+function fbInitAudio(){
+  if(FB_INITED) return;
+  FB_INITED = true;
+  try{
+    const AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+    if(!AC) return;
+    FB_ACTX = new AC();
+  }catch(e){ FB_ACTX = null; }
+}
+function fbBeep(freq, dur, type, vol){
+  if(!fbAudioOn() || !FB_ACTX) return;
+  try{
+    if(FB_ACTX.state === 'suspended') FB_ACTX.resume();
+    const osc = FB_ACTX.createOscillator();
+    const gain = FB_ACTX.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    const t0 = FB_ACTX.currentTime;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol || 0.06, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain); gain.connect(FB_ACTX.destination);
+    osc.start(); osc.stop(t0 + dur + 0.02);
+  }catch(e){}
+}
+const FB_SOUND = {
+  coin:    () => fbBeep(880, 0.06, 'sine', 0.04),
+  item:    () => fbBeep(660, 0.10, 'triangle', 0.05),
+  xian:    () => { fbBeep(990, 0.18, 'triangle', 0.07); setTimeout(() => fbBeep(1320, 0.22, 'sine', 0.05), 100); },
+  shen:    () => { fbBeep(440, 0.30, 'sawtooth', 0.05); setTimeout(() => fbBeep(660, 0.40, 'sine', 0.07), 150); setTimeout(() => fbBeep(880, 0.50, 'sine', 0.06), 350); },
+  breakth: () => { fbBeep(220, 0.40, 'sawtooth', 0.05); setTimeout(() => fbBeep(330, 0.50, 'triangle', 0.06), 220); },
+  asc:     () => { fbBeep(196, 0.60, 'sine', 0.05); setTimeout(() => fbBeep(392, 0.80, 'triangle', 0.07), 300); setTimeout(() => fbBeep(784, 1.00, 'sine', 0.06), 700); },
+  ach:     () => { fbBeep(523, 0.12, 'triangle', 0.05); setTimeout(() => fbBeep(784, 0.18, 'triangle', 0.05), 100); setTimeout(() => fbBeep(1046, 0.25, 'sine', 0.04), 240); }
+};
+
+/* ---------- DOM 小工具（沙箱无 DOM 时不崩） ---------- */
+function fbDoc(){ return (typeof document !== 'undefined') ? document : null; }
+function fbEl(id){ const d = fbDoc(); return d ? d.getElementById(id) : null; }
+
+/* ---------- L0 · 数字浮动 ---------- */
+function fbDelta(anchorEl, txt, kind){
+  const d = fbDoc();
+  if(!d || !anchorEl || !d.body) return;
+  try{
+    const r = (anchorEl.getBoundingClientRect && anchorEl.getBoundingClientRect()) || { left:0, top:0, width:0, height:0 };
+    const el = d.createElement('div');
+    el.className = 'fb-delta fb-delta-' + (kind || 'gain');
+    el.textContent = txt;
+    el.style.left = (r.left + r.width / 2) + 'px';
+    el.style.top = (r.top + r.height / 2) + 'px';
+    d.body.appendChild(el);
+    setTimeout(() => { try{ el.remove(); }catch(e){} }, 1400);
+  }catch(e){}
+}
+
+/* 修为 / 灵石：120ms 节流合并，避免连击时刷屏
+   ⚠ 方案原稿把 fbExpDelta 定义了两遍（锚点版 + 节流版），节流版再回调同名函数
+     → 无限递归。这里只保留一个入口，内部调 fbDelta。 */
+let FB_EXP_ACC = 0, FB_EXP_TIMER = null;
+let FB_STONE_ACC = 0, FB_STONE_TIMER = null;
+
+function fbExpDelta(v){
+  if(!v) return;
+  FB_EXP_ACC += v;
+  if(FB_EXP_TIMER) return;
+  FB_EXP_TIMER = setTimeout(() => {
+    const n = FB_EXP_ACC;
+    FB_EXP_ACC = 0; FB_EXP_TIMER = null;
+    fbDelta(fbEl('expTxt'), (n > 0 ? '+' : '') + num(n), n > 0 ? 'gain' : 'cost');
+  }, 120);
+}
+function fbStoneDelta(v){
+  if(!v) return;
+  FB_STONE_ACC += v;
+  if(FB_STONE_TIMER) return;
+  FB_STONE_TIMER = setTimeout(() => {
+    const n = FB_STONE_ACC;
+    FB_STONE_ACC = 0; FB_STONE_TIMER = null;
+    fbDelta(fbEl('topStones'), (n > 0 ? '+' : '') + num(n), n > 0 ? 'gold' : 'cost');
+  }, 120);
+}
+
+/* ---------- L1 · toast 队列 ---------- */
+const FB_TOAST_MAX = 3;
+function fbToastQueue(text, cls){
+  const d = fbDoc();
+  if(!d || !d.body) return;
+  try{
+    let root = fbEl('fbToastRoot');
+    if(!root){
+      root = d.createElement('div');
+      root.id = 'fbToastRoot';
+      root.className = 'fb-toast-root';
+      d.body.appendChild(root);
+    }
+    if(FB_TOASTS.length >= FB_TOAST_MAX){
+      const old = FB_TOASTS.shift();
+      if(old){ old.className += ' out'; setTimeout(() => { try{ old.remove(); }catch(e){} }, 240); }
+    }
+    const el = d.createElement('div');
+    el.className = 'fb-toast' + (cls ? ' ' + cls : '');
+    el.innerHTML = text;
+    root.appendChild(el);
+    FB_TOASTS.push(el);
+    setTimeout(() => el.className += ' on', 16);
+    setTimeout(() => {
+      el.className += ' out';
+      const i = FB_TOASTS.indexOf(el);
+      if(i >= 0) FB_TOASTS.splice(i, 1);
+      setTimeout(() => { try{ el.remove(); }catch(e){} }, 260);
+    }, 2400);
+  }catch(e){}
+}
+
+/* ---------- L2 / L3 · 中央浮层（队列，独占） ---------- */
+function fbCenterQueue(cfg){
+  FB_CENTER_QUEUE.push(cfg);
+  if(!FB_CENTER_SHOWING) fbCenterNext();
+}
+function fbCenterNext(){
+  if(FB_CENTER_SHOWING) return;
+  const cfg = FB_CENTER_QUEUE.shift();
+  if(!cfg) return;
+  const d = fbDoc();
+  if(!d || !d.body){ FB_CENTER_SHOWING = false; return; }
+  FB_CENTER_SHOWING = true;
+
+  let mask = null;
+  try{
+    mask = d.createElement('div');
+    mask.className = 'fb-center-mask' + (cfg.tier >= 3 ? ' heavy' : '');
+    const box = d.createElement('div');
+    box.className = 'fb-center'
+      + (cfg.tier >= 3 ? ' tier-3' : ' tier-2')
+      + (cfg.quality !== undefined ? godCls(cfg.quality) : '');
+    box.innerHTML = '<div class="fb-c-title">' + (cfg.title || '') + '</div>'
+      + '<div class="fb-c-body">' + (cfg.body || '') + '</div>'
+      + (cfg.hint ? '<div class="fb-c-hint">' + cfg.hint + '</div>' : '');
+    mask.appendChild(box);
+    d.body.appendChild(mask);
+
+    if(cfg.tier >= 3 && cfg.sound === 'shen') FB_SOUND.shen();
+    else if(cfg.sound && FB_SOUND[cfg.sound]) FB_SOUND[cfg.sound]();
+    else if(cfg.tier >= 3) FB_SOUND.shen();
+    else FB_SOUND.item();
+
+    setTimeout(() => { try{ mask.className += ' on'; }catch(e){} }, 16);
+
+    const closeIt = () => {
+      try{ mask.className = mask.className.replace(' on', ''); }catch(e){}
+      setTimeout(() => {
+        try{ mask.remove(); }catch(e){}
+        FB_CENTER_SHOWING = false;
+        fbCenterNext();
+      }, 280);
+    };
+
+    if(cfg.tier >= 3){
+      const btn = d.createElement('button');
+      btn.className = 'mbtn primary fb-c-btn';
+      btn.textContent = cfg.btnLabel || '收 下';
+      btn.onclick = closeIt;
+      box.appendChild(btn);
+      setTimeout(() => { mask.onclick = e => { if(e.target === mask) closeIt(); }; }, 300);
+    }else{
+      setTimeout(closeIt, cfg.autoMs || 2000);
+      mask.onclick = closeIt;
+    }
+  }catch(e){
+    FB_CENTER_SHOWING = false;
+  }
+}
+
+/* ---------- 对外：各类获得 ---------- */
+function fbGain(it){
+  if(!it) return;
+  const lv = fbLevelOfItem(it);
+  const im = isMount(it);
+  const label = im ? mountLabel(it) : itemLabel(it);
+
+  if(lv >= 3){
+    fbCenterQueue({ tier:3, quality:it.q, sound:'shen',
+      title:(im ? '得 神 兽' : '得 神 器'),
+      body: label + '<br><span class="muted-sm">威能远超同阶，宜即刻祭炼。</span>',
+      hint:'这是难得的造化。' });
+  }else if(lv >= 2){
+    fbCenterQueue({ tier:2, quality:it.q,
+      title:(im ? '获 得 坐 骑' : '获 得 器 物'),
+      body: label, autoMs:2000 });
+  }else{
+    fbToastQueue('<span class="fb-ico">◈</span> ' + label, it.q >= 2 ? 'q' + it.q : '');
+    FB_SOUND.item();
+  }
+}
+function fbGainMat(k, n){
+  if(!n) return;
+  const m = MATERIALS[k];
+  if(!m) return;
+  const txt = qName(m.n, m.t) + '<span class="muted-sm"> ×' + num(n) + '</span>';
+  fbToastQueue('<span class="fb-ico">◆</span> 拾得 ' + txt, m.t >= 2 ? 'q' + m.t : '');
+}
+function fbGainPill(name, n){
+  n = n || 1;
+  const txt = '<b>' + name + '</b><span class="muted-sm"> ×' + n + '</span>';
+  if(fbLevelOfPill(name) >= 2){
+    fbCenterQueue({ tier:2, title:'得 丹', body:txt, autoMs:1800 });
+  }else{
+    fbToastQueue('<span class="fb-ico">◎</span> ' + txt);
+  }
+}
+function fbGrantGongfa(gf){
+  if(!gf) return;
+  fbCenterQueue({ tier:2, quality:gf.t,
+    title:'悟 得 功 法',
+    body: qName(gf.n, gf.t) + ' ' + gfGrade(gf)
+      + '<br><span class="muted-sm">' + gfEffectText(gf, 1) + '（每重）</span>'
+      + '<br><span class="muted-sm">刻入道基，<b>轮回不灭</b>。</span>',
+    autoMs:2600, sound: gf.t >= 3 ? 'xian' : 'item' });
+}
+function fbBreak(isGroupStart, realmName){
+  fbCenterQueue({ tier: fbLevelOfBreak(isGroupStart),
+    title: isGroupStart ? '境 界 跃 迁' : '境 界 精 进',
+    body: '气机贯通，你已踏入 <b>' + realmName + '</b>。'
+      + (isGroupStart ? '<br><span class="muted-sm">天地在你眼中骤然不同。</span>' : ''),
+    autoMs:2000, sound:'breakth' });
+}
+/* 飞升刻意**不**弹中央浮层：`breakthrough.js` 的 `ascend()` 已有专属全屏弹层，
+   再叠一层「需手动关闭」的遮罩会互相打架。这里只放一声长音作为情绪落点。 */
+function fbAscend(){ FB_SOUND.asc(); }
+function fbAchievement(d){
+  if(!d) return;
+  if(d.t >= 4){
+    fbCenterQueue({ tier:3, quality:4, sound:'shen', title:'神 品 成 就',
+      body: d.n + '<br><span class="muted-sm">' + d.d + '</span>',
+      hint: achTierText(d.t), btnLabel:'收 下' });
+  }else{
+    FB_SOUND.ach();
+  }
+}
+function fbDungeon(def){
+  if(!def) return;
+  fbCenterQueue({ tier:2, title:'秘 境 贯 通',
+    body:'「' + def.name + '」已尽归你手。', autoMs:2200, sound:'xian' });
+}
+function fbRebirth(n){
+  fbCenterQueue({ tier:3, title:'轮 回 转 世',
+    body:'一世修行尽付东流。<br>你自凡俗中，再一次睁开眼——',
+    hint:'第 ' + n + ' 世', btnLabel:'睁 开 眼' });
+}
+function fbCodexMilestone(n){
+  fbCenterQueue({ tier:3, title:'图 鉴 · 里 程 碑',
+    body:'已点亮 <b>' + n + '</b> 项图鉴。', hint:'气运随之增长。',
+    btnLabel:'收 下', sound:'xian' });
+}
+
+/* ---------- 清空（导入存档 / 轮回时用） ---------- */
+function fbClearAll(){
+  const d = fbDoc();
+  try{
+    FB_TOASTS.forEach(el => { try{ el.remove(); }catch(e){} });
+  }catch(e){}
+  FB_TOASTS = [];
+  FB_CENTER_QUEUE = [];
+  FB_CENTER_SHOWING = false;
+  if(d){
+    try{
+      const masks = d.querySelectorAll ? d.querySelectorAll('.fb-center-mask') : [];
+      for(let i = 0; i < masks.length; i++){ try{ masks[i].remove(); }catch(e){} }
+    }catch(e){}
+  }
+}
+
+/* ---------- 移动端浮动反馈条 ---------- */
+function fbStripUpdate(text){
+  FB_LAST_STRIP = text || '';
+  const el = fbEl('fbStrip');
+  if(!el) return;
+  try{
+    /* 用 classList 增删，不整体覆盖 className —— 覆盖会把别处动态挂上的类一并抹掉 */
+    if(!text){ el.classList.remove('on'); return; }
+    el.classList.add('on');
+    const inner = (el.querySelectorAll ? el.querySelectorAll('.fb-strip-txt')[0] : null)
+      || el.querySelector ? el.querySelector('.fb-strip-txt') : null;
+    if(inner) inner.innerHTML = text;
+    else el.innerHTML = '<span class="fb-strip-txt">' + text + '</span>'
+      + '<span class="fb-strip-hint">点 击 展 开 天 机 录</span>';
+  }catch(e){}
+}
+function fbStripText(){ return FB_LAST_STRIP; }
+function fbStripClick(){
+  if(!FB_LAST_STRIP) return;
+  /* 展开完整「天机录」——内容就是当前日志面板的文字 */
+  try{
+    const box = fbEl('log');
+    const html = box ? box.innerHTML : '';
+    showModal('天 机 录', '<div class="pb-scroll">' + (html || '<div class="hint-mini">尚 无 记 载</div>') + '</div>',
+      [{ label:'收 起', primary:true, fn: closeModal }], 'wide');
+  }catch(e){}
+}
+
+/* ---------- 测试用：不依赖 DOM 的状态快照 ---------- */
+function fbDebugCounts(){
+  return { toasts: FB_TOASTS.length, queue: FB_CENTER_QUEUE.length, showing: FB_CENTER_SHOWING };
+}
 
 /* ── core/save.js ───────────────────────────────────────────────── */
 
@@ -4859,6 +5838,11 @@ function showHelp(){
     + '<b>离线时灵田与聚灵阵仍在运转</b>，可累积上限为 <b>8 小时 + 静室等级 × 2</b>（满级 26 小时），'
     + '超出的部分不再计入，故升静室才有意义。离线收益在下次打开时以「闭关归来」面板一次性结算。'
     + '洞府归本局所有，<b>轮回清零</b>。<br><br>'
+    + '<b>图 鉴</b>　左栏「图 鉴 · 称 号」进入。每次获得器物、习得功法、剥取材料、遭遇妖兽、进入秘境、'
+    + '撞上奇遇，都会在图鉴上点亮一格。<b>每 10 项 +1 气运</b>（并入统一气运乘区），'
+    + '每 <b>25 项</b>会有一次里程碑提示。图鉴<b>轮回不灭</b>——它属于「知识 / 成就 / 传承」这一侧的永久进度。<br><br>'
+    + '<b>称 号</b>　称号是玩法行为的具象化印记，共 <b>' + TITLES.length + ' 个</b>，覆盖凡 · 灵 · 宝 · 仙 · 神五品。'
+    + '解锁后<b>永久留存</b>，但同时<b>只可佩戴一个</b>——效果是独立乘区，不与功法 / 成就叠乘混淆。<br><br>'
     + '<b>奇 遇</b>　打坐、灵石修炼、闭关与历练之后，你有机会撞上奇遇——共 <b>25 段</b>，按大境界分五段，'
     + '每段内容各不相同。奇遇弹出数条选项，<b>各有得失、不可兼得</b>：稳妥的拿小利，冒险的可能翻倍，'
     + '也可能重伤。两次奇遇至少相隔 5 日，不会反复打断你。<br><br>',
@@ -4881,6 +5865,8 @@ function renderAll(){
   renderPills();
   renderMaterials();
   renderCave();
+  renderCodexTag();
+  renderTitleTag();
   renderMount();
   renderBag();
   renderTabs();
@@ -4888,6 +5874,17 @@ function renderAll(){
   renderUtil();
   renderLog();
   save();
+}
+
+/* 左栏「图 鉴 · 称 号」两个按钮上的计数标签 */
+function renderCodexTag(){
+  const el = $('cdTag');
+  if(el) el.textContent = codexCount() + '/' + codexTotal();
+}
+function renderTitleTag(){
+  const el = $('ttTag');
+  if(!el) return;
+  el.textContent = titleOwnedList().length + '/' + TITLES.length + (titleActiveKey() ? ' · 佩' : '');
 }
 
 function renderTop(){
@@ -5983,6 +6980,157 @@ function cvShowOfflineReport(report){
   showModal('闭 关 归 来', h, [{ label:'收 下', primary:true, fn: closeModal }], 'wide');
 }
 
+/* ── ui/panels/codex.js ─────────────────────────────────────────── */
+
+/* =========================================================
+   图 鉴 · 面 板
+   ---------------------------------------------------------
+   规则：
+   · 面板操作函数一律 cdUi 前缀（构建后同作用域，重名会静默覆盖）
+   · 只用具名导入（禁止 import * as / 默认导入）
+   · 复用既有样式：.achhd / .achsum / .achbar / .achsec / .achg / .ach
+     （不新增配色，分类色走 CODEX_CATS 里已有的令牌）
+   ========================================================= */
+
+function openCodex(){
+  const owned = codexOwnedList();
+  const total = codexTotal();
+  const own = owned.length;
+  const luck = codexLuck();
+  const pct = total ? Math.round(own / total * 100) : 0;
+
+  let h = '<div class="achhd">'
+    + '<span class="achsum">已点亮 <b style="color:var(--zhu-d)">' + own + '</b> / ' + total + '</span>'
+    + '<span class="achbar"><i style="width:' + pct + '%"></i></span>'
+    + '<span class="achsum">气 运 <b style="color:var(--jin)">+' + luck + '</b></span>'
+    + '</div>';
+  h += '<div class="meta-note" style="margin-bottom:10px">'
+    + '获得器物、习得功法、剥取材料、遭遇妖兽、进入秘境、撞上奇遇，都会在此点亮一格。'
+    + '<b>每 10 项 +1 气运</b>（并入统一气运乘区）；每 <b>25 项</b>有一次里程碑提示。'
+    + '图鉴<b>轮回不灭</b>——它是「知识 / 成就 / 传承」这一侧的永久进度。'
+    + '</div>';
+
+  /* 分类概览 chips（点击滚动到对应分类） */
+  h += '<div class="filters" style="margin-bottom:10px">';
+  for(const c of CODEX_CATS){
+    const d = codexCountByCat(c.k);
+    const full = d.total > 0 && d.own >= d.total;
+    h += '<span class="chip' + (full ? ' on' : '') + '" onclick="cdUiJump(\'' + c.k + '\')"'
+      + (full ? '' : ' style="color:' + c.color + '"')
+      + '>' + c.n + ' ' + d.own + '/' + d.total + '</span>';
+  }
+  h += '</div>';
+
+  h += '<div class="pb-scroll">';
+  const by = codexGrouped();
+  for(const c of CODEX_CATS){
+    const list = by[c.k] || [];
+    if(!list.length) continue;
+    const d = codexCountByCat(c.k);
+    h += '<div class="achsec" id="cd-sec-' + c.k + '" style="color:' + c.color + '">'
+      + c.n + ' · ' + d.own + ' / ' + d.total + '</div>';
+    h += '<div class="achg">';
+    for(const e of list){
+      const on = owned.indexOf(e.k) >= 0;
+      h += '<div class="ach' + (on ? ' got' : '') + '">'
+        + (on ? '<span class="tick">已 收 录</span>' : '')
+        + '<div class="ant">'
+        +   '<span class="tier qc' + (e.t || 0) + '">' + CODEX_TIER_NAME[e.t || 0] + '</span>'
+        +   (on ? qName(e.n, e.t || 0) : '<span class="dim">？ ？ ？</span>')
+        + '</div>'
+        + (on ? '' : '<div class="ad">尚 未 收 录</div>')
+        + '</div>';
+    }
+    h += '</div>';
+  }
+  h += '</div>';
+
+  showModal('图 鉴 · 收 藏 录', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide');
+}
+
+/* 滚动到某分类（面板内锚点） */
+function cdUiJump(cat){
+  try{
+    const d = (typeof document !== 'undefined') ? document : null;
+    const el = d ? d.getElementById('cd-sec-' + cat) : null;
+    if(el && el.scrollIntoView) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }catch(e){}
+}
+
+/* ── ui/panels/titles.js ────────────────────────────────────────── */
+
+/* =========================================================
+   称 号 · 面 板
+   ---------------------------------------------------------
+   规则：操作函数一律 ttUi 前缀（防顶层重名）
+   复用 .heritage / .hr / .hn / .hl / .hd / .hb / .achsec 既有样式
+   ========================================================= */
+
+const EF_LABEL = {
+  atk:'攻击 +%', def:'防御 +%', hp:'气血 +%', cult:'修速 +%',
+  brk:'突破 +%', speed:'遁速 +%', drop:'掉落率 +%',
+  pill:'成丹率 +%', boss:'对妖王伤害 +%', all:'全属性 +%'
+};
+
+function ttEffectText(t){
+  if(!t || !t.ef) return '无';
+  const parts = [];
+  for(const k in t.ef){
+    const v = t.ef[k];
+    if(k === 'stone'){ parts.push('初始灵石 +' + v); continue; }
+    const label = EF_LABEL[k] || (k + ' +');
+    parts.push(label.replace('%', v + '%'));
+  }
+  return parts.join(' · ');
+}
+
+function openTitles(){
+  const owned = titleOwnedList();
+  const active = titleActiveKey();
+
+  let h = '<div class="meta-note" style="margin-bottom:10px">'
+    + '称号是玩法行为的具象化印记。解锁后<b>永久留存</b>，但同时<b>只可佩戴一个</b>'
+    + '——佩戴效果是独立乘区，不与功法 / 成就叠乘混淆。<br>'
+    + '已解锁 <b>' + owned.length + '</b> / ' + TITLES.length + '。'
+    + (active ? '当前佩戴：<b>' + titleDefOf(active).n + '</b>' : '当前未佩戴任何称号。')
+    + '</div>';
+
+  h += '<div class="pb-scroll">';
+  for(let t = 4; t >= 0; t--){
+    const list = TITLES.filter(x => x.t === t);
+    if(!list.length) continue;
+    h += '<div class="achsec" style="color:' + ACH_TIER[t].c + '">'
+      + TITLE_TIER_NAME[t] + ' 品 · ' + list.length + ' 个</div>';
+    for(const tt of list){
+      const on = owned.indexOf(tt.k) >= 0;
+      const act = active === tt.k;
+      h += '<div class="heritage' + godCls(tt.t) + '">'
+        + '<div class="hr">'
+        +   '<span class="hn">' + (on ? qName(tt.n, tt.t) : '<span class="dim">' + tt.n + '</span>') + '</span>'
+        +   '<span class="q qc' + tt.t + '">' + TITLE_TIER_NAME[tt.t] + '品</span>'
+        +   (act ? '<span class="hl gold">已 佩 戴</span>' : '')
+        +   '<span style="margin-left:auto">'
+        +     (on
+              ? (act
+                ? '<button class="hb" style="margin-left:0;padding:4px 10px" onclick="ttUiUnequip()">卸 下</button>'
+                : '<button class="hb" style="margin-left:0;padding:4px 10px" onclick="ttUiEquip(\'' + tt.k + '\')">佩 戴</button>')
+              : '<button class="hb dis" style="margin-left:0;padding:4px 10px">未 解 锁</button>')
+        +   '</span>'
+        + '</div>'
+        + '<div class="hd">' + tt.d + '</div>'
+        + '<div class="hd">佩戴效果 <b>' + ttEffectText(tt) + '</b>'
+        +   (on ? '' : '　（解锁后可用）') + '</div>'
+        + '</div>';
+    }
+  }
+  h += '</div>';
+
+  showModal('称 号 · 名 帖', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide');
+}
+
+function ttUiEquip(k){ if(titleEquip(k)) openTitles(); }
+function ttUiUnequip(){ titleUnequip(); openTitles(); }
+
 /* ── main.js ────────────────────────────────────────────────────── */
 
 /* =========================================================
@@ -6008,9 +7156,22 @@ function cvShowOfflineReport(report){
   if(!noticeAccepted()) showNotice();
   /* 老玩家回归：补发历史上其实已经达成的成就 */
   const got = checkAch();
-  if(got.length) renderAll();
+  /* 称号与成就共用 achAgg()，紧跟成就之后扫一次（新号也会拿到「初 学」） */
+  const tGot = checkTitles();
+  if(got.length || tGot.length) renderAll();
   /* 闭关归来：放在声明与成就之后，免得打断它们 */
   if(offlineReport) cvShowOfflineReport(offlineReport);
+
+  /* 音效必须等用户先动一次手（浏览器自动播放策略） */
+  const fbWake = () => {
+    fbInitAudio();
+    document.removeEventListener('click', fbWake);
+    document.removeEventListener('touchstart', fbWake);
+  };
+  document.addEventListener('click', fbWake);
+  document.addEventListener('touchstart', fbWake);
+  /* 导入存档等场景：清掉残留的反馈浮层，免得盖在新档上 */
+  window.__fbClearAll = fbClearAll;
   window.addEventListener('beforeunload', () => { try{ save(); saveMeta(); }catch(e){} });
 })();
 </script>

@@ -4,6 +4,8 @@ import { ACHIEVEMENTS, ACH_BY_KEY, ACH_TIER, achTierText, fmtBonus } from '../da
 import { SECRETS } from '../data/secrets.js';
 import { realmAt } from './cultivate.js';
 import { addLog } from './log.js';
+import { checkTitles } from './titles.js';
+import { fbAchievement } from '../ui/feedback.js';
 import { closeModal, showModal } from '../ui/modal.js';
 
 
@@ -64,7 +66,10 @@ export function checkAch(){
       addLog('【成就 · '+ACH_TIER[d.t].n+'品】'+d.n+' —— '+d.d+'　（'+achTierText(d.t)+'）','ach');
     }
     showAchPop(got[got.length-1], got.length);
+    for(const d of got) fbAchievement(d);      /* 神品成就额外给一次中央浮层 */
   }
+  /* 成就扫完顺带扫称号 —— 二者共用 achAgg() */
+  checkTitles();
   return got;
 }
 

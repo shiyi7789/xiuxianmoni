@@ -5,6 +5,7 @@ import { SECRETS } from '../data/secrets.js';
 import { checkAch } from './achievement.js';
 import { addItem, rollItem, stats } from './character.js';
 import { makeMonster, startFight } from './combat.js';
+import { codexUnlockSec } from './codex.js';
 import { expNeed, gainExp, realmAt } from './cultivate.js';
 import { addMaterials, matPlain, rollBossMats, rollSearchMats } from './craft.js';
 import { gfGrant, gfRollDrop } from './gongfa.js';
@@ -12,6 +13,7 @@ import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
 import { advance, travelDays } from './time.js';
 import { after, renderAll } from '../ui/render.js';
+import { fbDungeon } from '../ui/feedback.js';
 
 
 /* =========================================================
@@ -29,6 +31,7 @@ export function enterSecret(si){
   addLog('你以灵力 '+num(d.mp)+' 打开「'+d.name+'」的入口禁制，踏入其中。','epic');
   addLog(d.desc,'dim');
   S.stat.secEnter++;
+  codexUnlockSec(si);              /* 图鉴：进入即收录 */
   floorIntro();
   checkAch();
   after();
@@ -150,6 +153,7 @@ export function completeDungeon(){
   }
   S.dungeon = null;
   S.stat.secret++;
+  fbDungeon(def);                  /* L2 中央浮层：秘境贯通 */
   if(META.secSet.indexOf(d.idx) < 0){ META.secSet.push(d.idx); saveMeta(); }
   addSep();
   checkAch();

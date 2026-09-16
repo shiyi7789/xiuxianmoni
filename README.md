@@ -17,7 +17,7 @@
 ## 目录结构
 
 ```
-├─ src/                      ← ★ 日常改这里（47 个 ES 模块，见「开发日志.md」）
+├─ src/                      ← ★ 日常改这里（54 个 ES 模块，见「开发日志.md」）
 │  ├─ core/                  ← 工具 / 状态 / 元进度 / 存档
 │  ├─ data/                  ← 纯数据表（装备·境界·妖兽·秘境·成就·奇遇·功法·材料·配方·洞府）
 │  ├─ sys/                   ← 玩法系统（修炼·突破·战斗·秘境·坊市·轮回·功法·材料炼制·洞府…）
@@ -40,7 +40,7 @@
 │  ├─ _headers               ← 缓存与安全响应头（Cloudflare Pages / Netlify）
 │  └─ 404.html / robots.txt / sitemap.xml
 │
-├─ regression-test.js        ← 游戏逻辑回归测试（169 项断言，固定随机种子）
+├─ regression-test.js        ← 游戏逻辑回归测试（198 项断言，固定随机种子）
 ├─ 开发日志.md                ← 架构决策、改动历史、给下一个 AI 的交接说明
 ├─ vercel.json               ← Vercel 配置（outputDirectory: site）
 └─ 部署指引.md                ← 部署与「实时更新」完整指引
@@ -71,7 +71,7 @@ node -e "const h=require('http'),f=require('fs'),p=require('path');h.createServe
 # 构建（src/ → xiuxian.html）
 node scripts/build.mjs
 
-# 游戏逻辑回归测试（169 项断言）
+# 游戏逻辑回归测试（198 项断言）
 node regression-test.js xiuxian.html 回归测试结果.txt
 
 # 站点质量自检（74 项，会本地起服务并真实抓取页面）

@@ -68,6 +68,30 @@ for (const mod of manifest.order) {
 }
 if (missing.length) throw new Error('清单里的模块不存在：' + missing.join(', '));
 
+/* ---------- 2.5 硬守卫：顶层标识符不得重名 ----------
+   构建后所有模块同处一个作用域，顶层 `const X` 重名会直接 SyntaxError，
+   而 `function X` 重名只会**静默覆盖**（表现成「点了没反应 / 扣钱不生效」），
+   两者都必须拦下。曾经 ui/panels/codex.js 的 TIER_NAME 撞上 data/monsters.js。 */
+{
+  const owner = new Map();   /* 顶层名 → [模块] */
+  const declRe = /^(?:export\s+)?(?:(?:const|let|var)\s+([A-Za-z_$][\w$]*)|(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|class\s+([A-Za-z_$][\w$]*))/gm;
+  for (const { mod, body } of chunks) {
+    declRe.lastIndex = 0;
+    let m;
+    while ((m = declRe.exec(body))) {
+      const name = m[1] || m[2] || m[3];
+      if (!owner.has(name)) owner.set(name, []);
+      owner.get(name).push(mod);
+    }
+  }
+  const dup = [...owner.entries()].filter(([, mods]) => mods.length > 1);
+  if (dup.length) {
+    throw new Error('顶层标识符重名（构建后同作用域会冲突）：\n'
+      + dup.map(([n, mods]) => '  ' + n + '  ←  ' + mods.join('  &  ')).join('\n')
+      + '\n  → 改名（UI 侧建议加前缀，如 gfUi* / crUi* / cvUi* / cdUi*），或改为局部 const');
+  }
+}
+
 /* ---------- 3. 拼装 ---------- */
 let js = openPart.replace(/\s+$/, '');
 for (const { mod, body } of chunks) js += '\n\n' + SEP(mod) + '\n\n' + body;

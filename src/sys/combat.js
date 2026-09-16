@@ -5,10 +5,12 @@ import { MONSTERS, TIER_NAME } from '../data/monsters.js';
 import { PILLS } from '../data/pills.js';
 import { checkAch } from './achievement.js';
 import { addItem, rollItem, stats } from './character.js';
+import { codexUnlockMon } from './codex.js';
 import { expNeed, gainExp } from './cultivate.js';
 import { completeDungeon } from './dungeon.js';
 import { addMaterials, matPlain, rollMaterialDrop } from './craft.js';
 import { gfActiveSkill, gfSkillByKey, gfSkillMp } from './gongfa.js';
+import { titleBonus } from './titles.js';
 import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
 import { usePill } from './pills.js';
@@ -54,7 +56,15 @@ export function startFight(m, ctx){
   S.fightPillN = 0;
   addSep();
   addLog('【'+m.name+'】出现在你面前——'+TIER_NAME[m.tier]+'，气血 '+num(m.hpMax)+'。','dmg');
+  codexUnlockMon(m.name);          /* 图鉴：遭遇即收录 */
   renderAll();
+}
+
+/* 称号「妖 王 克 星」：对妖王伤害加成（独立乘区，不进 stats()） */
+export function bossDmg(d, m){
+  const b = titleBonus().boss || 0;
+  if(!b || !m || !m.boss) return d;
+  return Math.max(1, Math.round(d * (1 + b / 100)));
 }
 
 export function dmgRoll(atk, def, crit, mult){
@@ -143,9 +153,10 @@ export function fightAction(kind, skIdx){
   }
 
   const r = dmgRoll(st.atk, m.def, st.crit, mult);
-  m.hp -= r.d;
+  const d = bossDmg(r.d, m);
+  m.hp -= d;
   addLog('你'+(kind==='skill' ? '催动灵力，一道灵光斩落' : '挥动法器直取')+'——'
-    + (r.crit?'<b>暴击！</b>':'') + '造成 '+num(r.d)+' 点伤害。', r.crit?'epic':'dmg');
+    + (r.crit?'<b>暴击！</b>':'') + '造成 '+num(d)+' 点伤害。', r.crit?'epic':'dmg');
 
   if(m.hp <= 0){ winFight(); after(); return; }
   monsterTurn();
@@ -178,8 +189,9 @@ export function castSkill(arg){
   let total = 0, anyCrit = false;
   for(let i=0;i<(sk.hits||1);i++){
     const r = dmgRoll(st.atk, defUse, critUse, sk.mult);
-    m.hp -= r.d;
-    total += r.d;
+    const d = bossDmg(r.d, m);
+    m.hp -= d;
+    total += d;
     if(r.crit) anyCrit = true;
     if(m.hp <= 0) break;
   }

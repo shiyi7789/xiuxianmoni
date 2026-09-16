@@ -6,6 +6,7 @@ import { HERITAGE } from '../data/heritage.js';
 import { clampVitals, stats } from './character.js';
 import { realmName, realmNameOf } from './cultivate.js';
 import { addLog, toast } from './log.js';
+import { fbRebirth } from '../ui/feedback.js';
 import { closeModal, showModal } from '../ui/modal.js';
 import { openSavePanel } from '../ui/panels/save.js';
 import { renderAll } from '../ui/render.js';
@@ -77,6 +78,7 @@ export function doRebirth(){
   addLog('一世修行尽付东流，唯有那点不肯散去的执念留在了神魂里。你自凡俗中再一次睁开眼。','epic');
   if(g) addLog('结得轮回点 '+g+'，可用以点化传承。','item');
   renderAll();
+  fbRebirth(META.rebirths);            /* L3 中央浮层：轮回转世 */
   toast('轮回第 '+META.rebirths+' 世 · 轮回点 +'+g);
 }
 

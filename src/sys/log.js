@@ -19,6 +19,15 @@ export function renderLog(){
   }
   el.innerHTML = html;
   el.scrollTop = el.scrollHeight;
+  /* 移动端浮动反馈条：取最后一条「关键」日志（获得 / 精进 / 成就 / 奇遇 / 非凡） */
+  let last = null;
+  for(let i = S.logs.length - 1; i >= 0; i--){
+    const l = S.logs[i];
+    if(!l || l.sep) continue;
+    if(l.c === 'item' || l.c === 'gain' || l.c === 'epic' || l.c === 'ach' || l.c === 'enc'){ last = l; break; }
+  }
+  if(!last) last = S.logs[S.logs.length - 1] || null;
+  fbStripUpdate(last && !last.sep ? last.t : '');
 }
 export function toast(msg){
   const d = document.createElement('div');

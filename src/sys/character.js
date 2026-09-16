@@ -6,7 +6,10 @@ import { BASE_NAMES } from '../data/items.js';
 import { QUALITIES, Q_FLOW } from '../data/qualities.js';
 import { achBonus } from './achievement.js';
 import { cvBonus } from './cave.js';
+import { codexUnlockItem, codexUnlockMount } from './codex.js';
 import { gfBonus } from './gongfa.js';
+import { titleBonus } from './titles.js';
+import { fbGain } from '../ui/feedback.js';
 import { addLog } from './log.js';
 import { mountLabel } from './mount.js';
 import { after } from '../ui/render.js';
@@ -120,6 +123,17 @@ export function stats(){
   st.def *= (1 + ab.def/100) * (1 + gb.def/100);
   st.crit += gb.crit;
   st.cult += heritageCult() + ab.cult + gb.cult + cvBonus().cult;   /* 悟性传承 + 轮回印记 + 成就 + 心法 + 洞府 */
+  /* 称号：独立乘区，由这里手动合并（不并入既有公式） */
+  const tb = titleBonus();
+  if(tb.all){
+    st.atk *= (1 + tb.all/100); st.def *= (1 + tb.all/100);
+    st.hpMax = Math.round(st.hpMax * (1 + tb.all/100));
+  }
+  if(tb.atk)  st.atk *= (1 + tb.atk/100);
+  if(tb.def)  st.def *= (1 + tb.def/100);
+  if(tb.hp)   st.hpMax = Math.round(st.hpMax * (1 + tb.hp/100));
+  if(tb.cult) st.cult += tb.cult;
+  if(tb.speed) st.speed += tb.speed;
   st.atk = Math.round(st.atk);
   st.def = Math.round(st.def);
   st.crit = +st.crit.toFixed(1);
@@ -178,6 +192,10 @@ export function countItem(it){
 export function addItem(it, quiet){
   if(!it) return false;
   countItem(it);
+  /* 图鉴 + 反馈：quiet 只决定「写不写日志」，**不影响反馈** ——
+     获得是玩家最该被看见的瞬间，静默获取也要给一次提示 */
+  if(isMount(it)) codexUnlockMount(it); else codexUnlockItem(it);
+  fbGain(it);
 
   if(S.autoEquipOn && tryEquipIfBetter(it)){
     if(!quiet){

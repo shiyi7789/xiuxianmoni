@@ -5,6 +5,7 @@ import { ENCOUNTERS, ENC_CD, ENC_RATE } from '../data/encounters.js';
 import { checkAch } from './achievement.js';
 import { addItem, clampVitals, rollItem, stats } from './character.js';
 import { makeMonster, startFight } from './combat.js';
+import { codexUnlockEnc } from './codex.js';
 import { expNeed, gainExp, realmAt } from './cultivate.js';
 import { addLog, addSep } from './log.js';
 import { closeModal, showModal } from '../ui/modal.js';
@@ -53,6 +54,7 @@ export function tryEncounter(){
   META.encSeen = (META.encSeen||0) + 1;
   if(META.encKeys.indexOf(sel.k) < 0) META.encKeys.push(sel.k);
   if(S.stat) S.stat.enc++;
+  codexUnlockEnc(sel.k);            /* 图鉴：撞上即收录 */
   saveMeta();
   addSep();
   addLog('【奇遇 · '+sel.t+'】'+sel.d,'enc');

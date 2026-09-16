@@ -1,6 +1,8 @@
 import { ACH_BY_KEY, ACH_TIER } from '../data/achievements.js';
 import { HERITAGE } from '../data/heritage.js';
+import { codexLuck, codexSanitizeMeta } from '../sys/codex.js';
 import { gfLuck, gfSanitizeMeta } from '../sys/gongfa.js';
+import { titleBonus, titleSanitizeMeta } from '../sys/titles.js';
 
 
 /* 气运 → 掉落运气（滚品质时叠加到 luck 上），见 fortune() */
@@ -26,7 +28,10 @@ export function blankMeta(){
     life: blankStat(),
     secSet:[],
     encSeen:0, encKeys:[],
-    gongfa:{ learned:[], best:{} }      /* 已习得功法：轮回不灭 */
+    gongfa:{ learned:[], best:{} },     /* 已习得功法：轮回不灭 */
+    codex:{ unlocked:[], milestones:0 },/* 图鉴：永久收集进度，每 10 项 +1 气运 */
+    titles:{ owned:[], active:null },   /* 称号：永久解锁，同时只佩戴一个 */
+    prefs:{ audio:true }                /* 偏好：音效开关 */
   };
 }
 export let META = blankMeta();
@@ -53,6 +58,9 @@ export function loadMeta(){
     META.encKeys = Array.isArray(d.encKeys) ? d.encKeys.filter(x => typeof x === 'string') : [];
     META.secSet = Array.isArray(d.secSet) ? d.secSet.filter(x => typeof x === 'number') : [];
     META.gongfa = gfSanitizeMeta(d.gongfa);
+    META.codex = codexSanitizeMeta(d.codex);
+    META.titles = titleSanitizeMeta(d.titles);
+    META.prefs = { audio: !(d.prefs && d.prefs.audio === false) };
   }catch(e){}
 }
 export function saveMeta(){ try{ localStorage.setItem(META_KEY, JSON.stringify(META)); }catch(e){} }
@@ -76,6 +84,9 @@ export function applyMeta(m){
   META.encSeen = m.encSeen||0;
   META.encKeys = Array.isArray(m.encKeys) ? m.encKeys.filter(x => typeof x === 'string') : [];
   META.gongfa = gfSanitizeMeta(m.gongfa);
+  META.codex = codexSanitizeMeta(m.codex);
+  META.titles = titleSanitizeMeta(m.titles);
+  META.prefs = { audio: !(m.prefs && m.prefs.audio === false) };
   saveMeta();
 }
 /* 成就列表的安全读取：任何情况下都必须是数组 */
@@ -95,10 +106,13 @@ export function fortune(){
     if(d) f += ACH_TIER[d.t].f;
   }
   f += gfLuck();                       /* 心法所带气运 —— 一并计入，不另开乘区 */
+  f += codexLuck();                    /* 图鉴气运 —— 同样并入统一乘区，不新开 */
   return Math.round(f * 10) / 10;
 }
 export function fortStone(v){ return Math.max(1, Math.round(v * (1 + fortune()*0.006))); }  /* 灵石收益 */
-export function fortDrop(p){ return p * (1 + fortune()*0.008); }                            /* 掉落概率 */
+export function fortDrop(p){
+  return p * (1 + fortune()*0.008 + (titleBonus().drop||0)/100);   /* 掉落概率（+ 称号「秘探」） */
+}
 
 
 /* 轮回印记：每一世永久 +2% 修炼速度（至多 +20%） */

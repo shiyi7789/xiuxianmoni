@@ -6,8 +6,10 @@ import {
 } from '../data/gongfa.js';
 import { QUALITIES } from '../data/qualities.js';
 import { addLog, toast } from './log.js';
+import { codexUnlockGf } from './codex.js';
 import { expNeed, realmAt } from './cultivate.js';
 import { after } from '../ui/render.js';
+import { fbGrantGongfa } from '../ui/feedback.js';
 
 /* =========================================================
    功 法 · 悟 道 录 —— 逻辑层
@@ -87,6 +89,9 @@ export function gfLearn(key, quiet){
   if(!quiet){
     addLog('你参研【' + gf.n + '】（' + QUALITIES[gf.t].name + '）——关窍豁然贯通，此法刻入道基，<b>轮回不灭</b>。', 'ach');
   }
+  /* 图鉴 + 反馈：功法是永久所得，quiet 与否都该被看见 */
+  codexUnlockGf(key);
+  if(!quiet) fbGrantGongfa(gf);
   /* 空槽自动祭炼，省得玩家来回点 */
   if(S){
     const g = gfEnsure();
