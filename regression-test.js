@@ -2990,6 +2990,156 @@ step('不变量 · 反馈与图鉴未引入外部资源请求', () => {
   return '音效为 Web Audio 合成，零外部请求';
 });
 
+log('=== X. 第二版界面体系（布局重排 · 按钮系统 · 弹层外壳） ===');
+
+step('第二版设计令牌齐备（间距 / 圆角 / 阴影 / 交互态）', () => {
+  const need = ['--sp1:', '--sp4:', '--sp6:', '--r-xs:', '--r-sm:', '--r-md:', '--r-xl:',
+    '--sh1:', '--sh2:', '--sh3:', '--sh-in:', '--dur:', '--ease:',
+    '--hover-bg:', '--press-bg:', '--hot-bg:', '--got-bg:', '--sel-bg:',
+    '--line-soft:', '--ok:', '--enc:', '--ak:', '--an:', '--ab:', '--seal-bg:', '--fs-2xs:'];
+  const miss = need.filter(k => src.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺令牌 ' + miss.join(' '));
+  return need.length + ' 个新令牌齐备';
+});
+
+step('暗色主题覆盖第二版新增的颜色令牌', () => {
+  const css = src.slice(src.indexOf('<style>') + 7, src.indexOf('</style>'));
+  const ds = css.indexOf('html[data-theme="dark"]{');
+  const dark = css.slice(ds, css.indexOf('}', ds));
+  const must = ['--hover-bg', '--press-bg', '--hot-bg', '--got-bg', '--sel-bg',
+    '--line-soft', '--ok', '--enc', '--q3-line', '--q4-line', '--ak', '--an', '--ab',
+    '--shen-pop', '--sh1', '--sh2', '--sh3'];
+  const miss = must.filter(k => dark.indexOf(k + ':') < 0);
+  if (miss.length) throw new Error('暗色缺 ' + miss.length + ' 个：' + miss.join(' '));
+  return must.length + ' 个新令牌在暗色下重定义';
+});
+
+step('暗色兼容守卫：悬停不再写死白色（旧版在夜间会整块闪白）', () => {
+  const css = src.slice(src.indexOf('<style>') + 7, src.indexOf('</style>'));
+  /* 只拦「规则体里写死颜色」。:root 里 --achpop-bg 这类令牌定义不算——
+     它们在 html[data-theme="dark"] 中有对应重定义（上一条断言已经守住） */
+  const bad = ['background:#fff', 'background:#fffdf8', '#fff8f5', '#fdeee9',
+    'color:#a07a2c', 'color:#7d1f1a', 'color:#8a6a3a',
+    'color:#2f6b63', 'color:#7a5b12', 'border-color:rgba(176,112,28'];
+  const hit = bad.filter(x => css.indexOf(x) >= 0);
+  if (hit.length) throw new Error('样式层仍写死 ' + hit.join(' '));
+  return '悬停 / 高亮 / 成就横幅 / 收录勾 已全部令牌化';
+});
+
+step('按钮系统统一：一条规格 + 旧类名映射', () => {
+  const css = src.slice(src.indexOf('<style>') + 7, src.indexOf('</style>'));
+  /* 旧类名必须与 .btn 出现在同一条规则里，否则又是各写一套 */
+  const m = css.match(/\.btn,\s*\.btn-mini,\s*\.mbtn,\s*\.heritage \.hb,\s*\.slotcard \.sb,\s*\.bagrow2 button,\s*\.chip\{/);
+  if (!m) throw new Error('旧类名未并入 .btn 规格');
+  const need = ['.btn-primary', '.btn-ghost', '.btn-danger', '.btn-sm', '.btn-lg', '.btn-block', '.btn-icon'];
+  const miss = need.filter(k => css.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺按钮变体 ' + miss.join(' '));
+  return '1 条基础规格 + 7 个变体，6 个旧类名统一映射';
+});
+
+step('弹层外壳与内部构件齐备', () => {
+  const css = src.slice(src.indexOf('<style>') + 7, src.indexOf('</style>'));
+  const need = ['.modal-x{', '.modal h2 .sub{', '.seg{', '.seg-i{', '.seg-i.on{',
+    '.kv{', '.kv-r{', '.lgrp{', '.lgrp-t{', '.nav-strip{', '.empty-state{',
+    '.sec-t{', '.sec-d{', '.card .cost .tag{', '.hbrow{', '.util-grid{',
+    '.ph-tag.on{', '.live-dot{', '.panel.hero{', '.hero-hd{'];
+  const miss = need.filter(k => css.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺构件 ' + miss.join(' '));
+  return need.length + ' 个构件就位';
+});
+
+step('弹层标题带关闭按钮（键盘 / 触摸都能退）', () => {
+  G.newGame();
+  G.showHelp();
+  const html = el('modalRoot').innerHTML || '';
+  if (html.indexOf('modal-x') < 0) throw new Error('标题区缺关闭按钮');
+  if (html.indexOf('aria-label="关闭"') < 0) throw new Error('关闭按钮缺无障碍标签');
+  if (html.indexOf('doc-toc') < 0) throw new Error('道法纲要缺目录');
+  G.closeModal();
+  return '标题区含 ✕（aria-label 齐备）· 纲要含目录';
+});
+
+step('道法纲要改为分段文档（保留旧锚点字串不破断言）', () => {
+  G.showHelp();
+  const h = el('modalRoot').innerHTML || '';
+  const need = ['doc-sec', '取舍', '洞 府</b>', '材 料 · 炼 制', '图 鉴</b>', '称 号</b>', '每 10 项'];
+  const miss = need.filter(k => h.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺 ' + miss.join(' '));
+  const secs = (h.match(/class="doc-sec"/g) || []).length;
+  if (secs < 15) throw new Error('分段过少：' + secs);
+  G.closeModal();
+  return secs + ' 段 + 目录，锚点字串完好';
+});
+
+step('分段筛选：uiSeg 生成 data-k，uiSegPick 容错不抛', () => {
+  const html = G.__eval("uiSeg('t-seg',[{k:'all',n:'全 部',c:3},{k:'xin',n:'被 动'}],'all')");
+  if (html.indexOf('id="t-seg"') < 0) throw new Error('缺容器 id');
+  if (html.indexOf('data-k="xin"') < 0) throw new Error('缺分段键');
+  if (html.indexOf("uiSegPick('t-seg','xin')") < 0) throw new Error('缺切换处理器');
+  if (html.indexOf('class="seg-i on"') < 0) throw new Error('未高亮当前段');
+  /* 目标不存在时必须是静默返回，不能把内联处理器带崩 */
+  G.__eval("uiSegPick('__no_such__','x')");
+  G.__eval("uiJump('__no_such__')");
+  G.__eval("uiJump(null)");
+  if (G.__eval("uiSec('标题','说明','计数')").indexOf('sec-t') < 0) throw new Error('uiSec 异常');
+  if (G.__eval("uiEmpty('空')").indexOf('empty-state') < 0) throw new Error('uiEmpty 异常');
+  return '生成 / 切换 / 容错 三类行为均正常';
+});
+
+step('悟道录新增分段筛选且 30 部仍在', () => {
+  G.newGame();
+  G.openGongfa();
+  const h = el('modalRoot').innerHTML || '';
+  if (h.indexOf('id="gfSeg"') < 0) throw new Error('悟道录缺分段筛选');
+  if (h.indexOf('data-seg="owned') < 0) throw new Error('条目未挂分段标记');
+  const miss = G.gfDefs.filter(g => h.indexOf(g.n) < 0);
+  if (miss.length) throw new Error('缺 ' + miss.length + ' 部（如 ' + miss[0].n + '）');
+  G.closeModal();
+  return '5 个分段 · 30 部齐备 · 标记就位';
+});
+
+step('图鉴 / 称号面板改用分类导航与品阶分段', () => {
+  G.newGame();
+  G.openCodex();
+  const cx = el('modalRoot').innerHTML || '';
+  if (cx.indexOf('nav-strip') < 0) throw new Error('图鉴缺分类导航');
+  if (cx.indexOf('cd-sec-') < 0) throw new Error('图鉴缺分类锚点');
+  G.closeModal();
+  G.openTitles();
+  const tt = el('modalRoot').innerHTML || '';
+  if (tt.indexOf('id="ttSeg"') < 0) throw new Error('称号缺品阶分段');
+  if (tt.indexOf('data-seg="t') < 0) throw new Error('称号条目缺分段标记');
+  G.closeModal();
+  return '图鉴：分类导航 + 锚点；称号：品阶分段';
+});
+
+step('左栏分三组，道体提为头等面板', () => {
+  const body = src.slice(src.indexOf('</style>'), src.indexOf('<script>'));
+  const grps = (body.match(/class="lgrp"/g) || []).length;
+  if (grps < 2) throw new Error('左栏分组标题不足：' + grps);
+  if (body.indexOf('class="panel hero"') < 0) throw new Error('道体未提为头等面板');
+  if (body.indexOf('id="heroRealm"') < 0) throw new Error('缺左栏境界位');
+  /* 十个面板一个都不能少 */
+  for (const id of ['equipBox', 'mountBox', 'gfBox', 'pillBox', 'matBox', 'caveBox', 'bagBox', 'utilBox']) {
+    if (body.indexOf('id="' + id + '"') < 0) throw new Error('缺面板 ' + id);
+  }
+  return grps + ' 个分组标题 · 头等面板 + 8 个面板在位';
+});
+
+step('骨架结构：顶栏三分区、右栏三段、页签仍是 5 个', () => {
+  const body = src.slice(src.indexOf('</style>'), src.indexOf('<script>'));
+  const need = ['class="brand"', 'class="top-stats"', 'class="top-acts"',
+    'class="left"', 'class="right"', 'class="tabs"', 'actwrap', 'logpanel',
+    'id="tabs"', 'id="actPanel"', 'id="log"', 'id="veil"', 'id="modalRoot"', 'id="fbStrip"'];
+  const miss = need.filter(k => body.indexOf(k) < 0);
+  if (miss.length) throw new Error('缺结构 ' + miss.join(' '));
+  if ((body.match(/class="tab"/g) || []).length > 0) throw new Error('页签不应写死在骨架里');
+  G.newGame(); G.renderAll();
+  const tn = (el('tabs').innerHTML.match(/class="tab/g) || []).length;
+  if (tn !== 5) throw new Error('页签数应为 5，实际 ' + tn);
+  return '顶栏三分区 · 右栏三段 · 页签 5 个';
+});
+
 log('');
 log('================ 汇总 ================');
 log('通过步骤：' + (OUT.filter(l => l.indexOf('  OK   ') === 0).length));

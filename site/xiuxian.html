@@ -5,23 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>修仙模拟器 · 文字版</title>
 <style>
+  /* =========================================================================
+     修仙模拟器 · 样式层（第二版 · 重排）
+     -------------------------------------------------------------------------
+     设计原则
+       1. 一切颜色 / 字号 / 间距 / 圆角 / 阴影 / 动效都走令牌，规则里不许出现裸值
+       2. 一条统一的按钮系统（.btn 家族）+ 旧类名统一映射，避免六种按钮各写一套
+       3. 左栏分层：道体（hero）／身外之物／收录 —— 用组标题切分，替掉十块等重的面板
+       4. 弹层统一外壳：.sheet-hd 标题区 + .sheet-body 内容区 + 分段切换 .seg
+       5. 移动优先：窄屏单栏 + 底部导航（固定 5 等分）+ 底部抽屉 + 安全区
+     兼容约束
+       · 顶层标识符与类名多为回归测试与旧存档依赖，改名需同步改测试
+       · 令牌**不允许**写成别名（形如 名称:var(另一个令牌)）：构建期的自引用校验会直接报错
+       · calc() 内运算符两侧必须留空格，且不要以负值开头
+     ========================================================================= */
+
   *{margin:0;padding:0;box-sizing:border-box}
   html{-webkit-text-size-adjust:100%;height:100%}
 
-  /* =========================================================
-     设计令牌（Design Tokens）
-     所有颜色 / 字号 / 节律集中在此，改主题不需要动具体规则
-     ========================================================= */
+  /* =========================================================================
+     一、设计令牌
+     ========================================================================= */
   :root{
     /* —— 纸墨（中性） —— */
     --ink:#2b2620;            /* 主文字   对比 ~11:1 */
     --ink2:#4a4238;           /* 次级文字 对比 ~7.4:1 */
-    --ink3:#6f6659;           /* 弱化文字 对比 ~5.2:1（原 #7d7365 不足 AA，已压暗） */
-    --ink4:#9c9280;           /* 提示 / 占位（大字或装饰用） */
+    --ink3:#6f6659;           /* 弱化文字 对比 ~5.2:1 */
+    --ink4:#9c9280;           /* 提示 / 占位 */
     --paper:#efe7d8;
     --paper2:#f7f2e7;
     --paper3:#e6dcc8;
-    /* —— 表面层（叠加在纸上的"抬起"层次） —— */
+    /* —— 表面层 —— */
     --surface:rgba(255, 253, 247, .78);
     --surface2:rgba(246, 240, 228, .72);
     --raise:rgba(255, 255, 255, .48);
@@ -29,9 +43,16 @@
     --raise3:rgba(240, 232, 216, .50);
     --track:rgba(58, 50, 38, .12);
     --veil:rgba(43, 38, 32, .42);
+    /* —— 交互态（第二版新增：替掉散落的写死 #fff，暗色下不再"闪白"） —— */
+    --hover-bg:rgba(255, 255, 255, .94);
+    --press-bg:rgba(240, 232, 216, .70);
+    --hot-bg:linear-gradient(180deg,rgba(255, 250, 247, .96),rgba(253, 238, 233, .86));
+    --got-bg:linear-gradient(180deg,rgba(255, 252, 244, .92),rgba(250, 240, 220, .72));
+    --sel-bg:rgba(255, 255, 255, .34);
     /* —— 描边 —— */
-    --line:rgba(58,50,38,.20);
-    --line2:rgba(58,50,38,.34);
+    --line:rgba(58, 50, 38, .20);
+    --line2:rgba(58, 50, 38, .34);
+    --line-soft:rgba(58, 50, 38, .11);
     /* —— 主题色 —— */
     --zhu:#9e2b25;   --zhu2:#c0453a;  --zhu-d:#8c1f1a;   /* 朱砂 */
     --qing:#2f6b63;                                    /* 青 */
@@ -39,39 +60,66 @@
     --zi:#5b4a9e;                                      /* 紫 */
     --warn:#a8481a;
     --on-accent:#fdf6ee;                               /* 朱砂底上的文字 */
+    --ok:#2f6b63;                                      /* 成功 / 收录勾 */
+    --enc:#7a5b12;                                     /* 奇遇标题 */
     /* —— 品质（凡灵宝仙神） —— */
     --q0:#8a8378; --q1:#2f7d63; --q2:#5b4a9e; --q3:#a86a12; --q4:#9e2b25;
+    --q3-line:rgba(176, 112, 28, .50);
+    --q4-line:rgba(158, 43, 37, .55);
     /* —— 血条 / 灵力条 —— */
     --hp1:#8e2f2a; --hp2:#c4645c;
     --mp1:#22564f; --mp2:#4b9c8f;
     /* —— 背景肌理 —— */
     --bg-glow:#fbf7ee; --bg-glow2:#e7dcc6;
-    --fiber:rgba(120,100,70,.030); --fiber2:rgba(120,100,70,.024);
+    --fiber:rgba(120, 100, 70, .030); --fiber2:rgba(120, 100, 70, .024);
     /* —— 特殊表面 —— */
     --modal-bg:linear-gradient(180deg,#fdf9f0,#f3ecdd);
-    --god-bg:linear-gradient(180deg,rgba(255,250,236,.72),rgba(250,238,208,.55));
-    --shen-bg:linear-gradient(180deg,rgba(255,246,243,.78),rgba(252,231,224,.55));
+    --god-bg:linear-gradient(180deg,rgba(255, 250, 236, .72),rgba(250, 238, 208, .55));
+    --shen-bg:linear-gradient(180deg,rgba(255, 246, 243, .78),rgba(252, 231, 224, .55));
     --achpop-bg:linear-gradient(180deg,#fffaf0,#f4e3bf);
+    --seal-bg:radial-gradient(circle at 35% 30%,var(--zhu2),var(--zhu-d));
     --sheen:rgba(255, 243, 205, .85);
     --sheen2:rgba(255, 196, 178, .85);
     --glow:rgba(80, 62, 38, .06);
     --toast-bg:rgba(43, 38, 32, .92); --toast-fg:#f6efe2;
     --flow3:linear-gradient(100deg,#8a5510 0%,#f7e3b0 16%,#b0701c 32%,#8a5510 50%,#fff2cf 66%,#c98a2a 82%,#8a5510 100%);
     --flow4:linear-gradient(100deg,#6f1a16 0%,#ffd0c4 14%,#9e2b25 30%,#5d1410 46%,#ffe9b8 62%,#c0453a 80%,#6f1a16 100%);
+    /* —— 成就横幅文字（原为写死色值） —— */
+    --ak:#a07a2c; --an:#7d1f1a; --ab:#8a6a3a;
+    --shen-pop:linear-gradient(180deg,#fff6f3,#f6dbd1);
+    --shen-seal:radial-gradient(circle at 35% 30%,#e0a020,var(--zhu-d));
     /* —— 字号（流体，随视口自适应） —— */
+    --fs-2xs:10.5px;
     --fs-xs:11px;
     --fs-sm:12px;
     --fs-sm2:12.5px;
     --fs-base:14px;
     --fs-md:15px;
-    --fs-lg:clamp(16px,4.4vw,19px);
-    --fs-xl:clamp(19px,5.6vw,23px);
-    /* —— 节律与圆角 —— */
-    --gap:12px;
-    --r-sm:3px;
-    --r-md:6px;
-    --r-lg:14px;
-    --tap:44px;               /* 移动端最小触摸目标 */
+    --fs-lg:clamp(16px, 4.4vw, 19px);
+    --fs-xl:clamp(19px, 5.6vw, 23px);
+    /* —— 节律 · 间距（第二版新增，替代散落的 6/9/11/13/18px） —— */
+    --sp1:4px;
+    --sp2:6px;
+    --sp3:8px;
+    --sp4:12px;
+    --sp5:16px;
+    --sp6:22px;
+    /* —— 圆角 —— */
+    --r-xs:3px;
+    --r-sm:5px;
+    --r-md:9px;
+    --r-lg:16px;
+    --r-xl:24px;
+    /* —— 阴影（明暗各一套，见暗色块） —— */
+    --sh1:0 1px 2px rgba(80, 62, 38, .07);
+    --sh2:0 4px 14px rgba(80, 62, 38, .10);
+    --sh3:0 18px 52px rgba(40, 30, 20, .26);
+    --sh-in:0 1px 0 rgba(255, 255, 255, .62) inset;
+    /* —— 动效 —— */
+    --dur:.18s;
+    --ease:cubic-bezier(.22, .8, .28, 1);
+    /* —— 触摸目标 —— */
+    --tap:44px;
     /* —— 字体族 —— */
     --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
     --serif:"Songti SC","Source Han Serif SC","Noto Serif SC","STSong","SimSun",serif;
@@ -95,15 +143,25 @@
     --raise3:rgba(255, 255, 255, .028);
     --track:rgba(0, 0, 0, .40);
     --veil:rgba(0, 0, 0, .62);
+    --hover-bg:rgba(255, 255, 255, .10);
+    --press-bg:rgba(0, 0, 0, .34);
+    --hot-bg:linear-gradient(180deg,rgba(217, 84, 63, .16),rgba(217, 84, 63, .07));
+    --got-bg:linear-gradient(180deg,rgba(255, 250, 236, .10),rgba(255, 240, 200, .04));
+    --sel-bg:rgba(255, 255, 255, .05);
     --line:rgba(236, 228, 214, .14);
     --line2:rgba(236, 228, 214, .26);
+    --line-soft:rgba(236, 228, 214, .08);
     --zhu:#d9543f;   --zhu2:#e8705a;  --zhu-d:#c8452f;
     --qing:#4fb3a0;
     --jin:#d9a441;
     --zi:#a394e8;
     --warn:#e08a4c;
     --on-accent:#1a1512;
+    --ok:#54b795;
+    --enc:#e0b357;
     --q0:#a49c8e; --q1:#54b795; --q2:#9a8ce8; --q3:#e0a531; --q4:#e2664c;
+    --q3-line:rgba(217, 164, 65, .50);
+    --q4-line:rgba(226, 102, 76, .55);
     --hp1:#b8483c; --hp2:#e0766a;
     --mp1:#2f7d74; --mp2:#63c4b3;
     --bg-glow:#1e1a15; --bg-glow2:#191612;
@@ -112,14 +170,25 @@
     --god-bg:linear-gradient(180deg,rgba(217, 164, 65, .15),rgba(217, 164, 65, .06));
     --shen-bg:linear-gradient(180deg,rgba(226, 102, 76, .17),rgba(226, 102, 76, .07));
     --achpop-bg:linear-gradient(180deg,#33291b,#241f16);
+    --seal-bg:radial-gradient(circle at 35% 30%,var(--zhu2),var(--zhu-d));
     --sheen:rgba(255, 215, 130, .40);
     --sheen2:rgba(255, 150, 120, .40);
     --glow:rgba(0, 0, 0, .5);
     --toast-bg:rgba(236, 228, 214, .95); --toast-fg:#1c1915;
     --flow3:linear-gradient(100deg,#a06a12 0%,#ffeec4 16%,#d9a441 32%,#a06a12 50%,#fff8e2 66%,#e8bb5c 82%,#a06a12 100%);
     --flow4:linear-gradient(100deg,#b8402a 0%,#ffdfd4 14%,#e2664c 30%,#a83a26 46%,#fff3d2 62%,#e8705a 80%,#b8402a 100%);
+    --ak:#d9a441; --an:#e8705a; --ab:#c9a86a;
+    --shen-pop:linear-gradient(180deg,#3a251f,#2a1c18);
+    --shen-seal:radial-gradient(circle at 35% 30%,#e0a020,var(--zhu-d));
+    --sh1:0 1px 2px rgba(0, 0, 0, .40);
+    --sh2:0 4px 16px rgba(0, 0, 0, .48);
+    --sh3:0 18px 52px rgba(0, 0, 0, .62);
+    --sh-in:0 1px 0 rgba(255, 255, 255, .05) inset;
   }
 
+  /* =========================================================================
+     二、基础元素
+     ========================================================================= */
   body{
     min-height:100%;
     background:
@@ -130,223 +199,536 @@
       var(--paper);
     color:var(--ink);
     font-family:var(--sans);
-    font-size:var(--fs-base);line-height:1.6;
+    font-size:var(--fs-base);line-height:1.62;
     -webkit-font-smoothing:antialiased;
     -webkit-tap-highlight-color:transparent;
-    padding:14px;
+    padding:var(--sp5);
     transition:background-color .25s,color .25s;
   }
   .serif{font-family:var(--serif)}
   /* 数字统一等宽，跳动时不抖动 */
   b,.num,.ts b,.grid2 b,.bar .lab em,.cost,.pr,.pw{font-variant-numeric:tabular-nums}
+  button{font-family:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  /* 键盘可达性：统一的焦点环（鼠标点击不触发） */
+  :focus-visible{outline:2px solid var(--zhu);outline-offset:2px;border-radius:var(--r-xs)}
+  ::selection{background:var(--zhu);color:var(--on-accent)}
 
+  /* =========================================================================
+     三、页面骨架
+     ========================================================================= */
   .wrap{
-    max-width:1320px;margin:0 auto;
-    height:calc(100vh - 28px);
-    height:calc(100dvh - 28px);   /* 移动端浏览器动态视口 */
-    display:flex;flex-direction:column;gap:var(--gap);
+    max-width:1360px;margin:0 auto;
+    height:calc(100vh - 32px);
+    height:calc(100dvh - 32px);   /* 移动端浏览器动态视口 */
+    display:flex;flex-direction:column;gap:var(--sp4);
   }
 
   /* ---------- 顶栏 ---------- */
   .top{
     flex:0 0 auto;
-    display:flex;align-items:center;gap:16px;
-    padding:12px 18px;
+    display:flex;align-items:center;gap:var(--sp5);
+    padding:10px 18px;
     background:linear-gradient(180deg,var(--paper2),var(--paper));
     border:1px solid var(--line2);
-    border-radius:3px;
-    box-shadow:0 1px 0 var(--raise2) inset,0 2px 10px var(--glow);
+    border-radius:var(--r-sm);
+    box-shadow:var(--sh-in),var(--sh1);
     position:relative;
+    overflow:hidden;
   }
-  .top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--zhu),transparent);opacity:.45}
-  .brand{display:flex;align-items:baseline;gap:10px}
-  .brand h1{font-size:19px;letter-spacing:.34em;font-weight:600;color:var(--ink)}
-  .brand span{font-size:11px;color:var(--ink3);letter-spacing:.22em}
-  .top-stats{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-  .ts{display:flex;flex-direction:column;line-height:1.25}
-  .ts b{font-size:14px;font-weight:600;letter-spacing:.04em}
-  .ts i{font-style:normal;font-size:10.5px;color:var(--ink3);letter-spacing:.2em}
+  /* 顶栏底部的朱砂细线：宣纸卷首的一道压边 */
+  .top::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--zhu),var(--jin),transparent);
+    opacity:.5;
+  }
+  .brand{display:flex;align-items:center;gap:11px;flex:0 0 auto}
+  /* 印章式标识：先用文字，不引入任何外部图片 */
+  .brand .seal{
+    width:34px;height:34px;flex:0 0 auto;border-radius:var(--r-sm);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:17px;font-weight:600;
+    color:var(--on-accent);background:var(--seal-bg);
+    box-shadow:0 1px 0 var(--raise2) inset;
+    letter-spacing:0;
+  }
+  .brand .btxt{display:flex;flex-direction:column;line-height:1.24;min-width:0}
+  .brand h1{font-size:17px;letter-spacing:.3em;font-weight:600;color:var(--ink);white-space:nowrap}
+  .brand span{font-size:10px;color:var(--ink3);letter-spacing:.2em;white-space:nowrap}
+
+  /* 统计带：一条横向的"简牍"，每格一格 */
+  .top-stats{
+    margin-left:auto;display:flex;gap:0;align-items:stretch;flex-wrap:nowrap;
+    border:1px solid var(--line-soft);border-radius:var(--r-sm);
+    background:var(--raise);overflow:hidden;min-width:0;
+  }
+  .ts{
+    display:flex;flex-direction:column;justify-content:center;gap:1px;
+    padding:5px 15px;line-height:1.2;min-width:0;
+    border-left:1px solid var(--line-soft);
+  }
+  .ts:first-child{border-left:0}
+  .ts b{font-size:14px;font-weight:600;letter-spacing:.03em;white-space:nowrap}
+  .ts i{font-style:normal;font-size:9.5px;color:var(--ink3);letter-spacing:.18em;white-space:nowrap}
   .ts.realm b{color:var(--zhu)}
+  .ts.luck b{color:var(--jin)}
+  .ts.luck.hi b{color:var(--zhu-d)}
 
-  .btn-mini{
-    font-size:11.5px;padding:5px 11px;border:1px solid var(--line2);border-radius:2px;
-    background:var(--raise);color:var(--ink2);cursor:pointer;letter-spacing:.1em;
+  .top-acts{display:flex;align-items:center;gap:var(--sp2);flex:0 0 auto}
+  /* 操作簇里的小分隔线 */
+  .top-acts .gap1{width:1px;height:18px;background:var(--line);margin:0 3px;flex:0 0 auto}
+
+  /* =========================================================================
+     四、按钮系统（一条统一规格 + 旧类名映射）
+     -------------------------------------------------------------------------
+     .btn 家族：默认描边 / .primary 朱砂实心 / .ghost 无框 / .danger 警示
+     规格：.btn-sm 紧凑 / 默认中等 / .btn-lg 大
+     旧类名（.btn-mini .mbtn .hb .sb .chip .bagrow2 button）统一映射，避免另起炉灶
+     ========================================================================= */
+  .btn,
+  .btn-mini,.mbtn,.heritage .hb,.slotcard .sb,.bagrow2 button,.chip{
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;
+    font-family:inherit;font-size:var(--fs-sm2);letter-spacing:.08em;
+    padding:6px 13px;border:1px solid var(--line2);border-radius:var(--r-sm);
+    background:var(--raise);color:var(--ink2);cursor:pointer;
+    transition:border-color var(--dur) var(--ease),background-color var(--dur) var(--ease),
+               color var(--dur) var(--ease),transform .1s var(--ease),box-shadow var(--dur) var(--ease);
+    white-space:nowrap;text-align:center;
   }
-  .btn-mini:hover{border-color:var(--zhu);color:var(--zhu);background:#fff}
+  .btn:hover,
+  .btn-mini:hover,.mbtn:hover,.heritage .hb:hover,.slotcard .sb:hover,.bagrow2 button:hover,.chip:hover{
+    border-color:var(--zhu);color:var(--zhu);background:var(--hover-bg);
+  }
+  .btn:active,
+  .btn-mini:active,.mbtn:active,.heritage .hb:active,.slotcard .sb:active,.bagrow2 button:active,.chip:active{
+    transform:translateY(1px);background:var(--press-bg);
+  }
+  .btn:disabled,.btn.dis,
+  .mbtn.dis,.heritage .hb.dis,.slotcard .sb.dis,.chip.dis{
+    opacity:.38;cursor:not-allowed;transform:none;border-color:var(--line2);color:var(--ink2);background:var(--raise);
+  }
+  .btn-primary,.mbtn.primary{
+    background:var(--zhu);border-color:var(--zhu);color:var(--on-accent);font-weight:600;
+  }
+  .btn-primary:hover,.mbtn.primary:hover{background:var(--zhu-d);border-color:var(--zhu-d);color:var(--on-accent)}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--ink3)}
+  .btn-ghost:hover{background:var(--raise);color:var(--zhu);border-color:var(--line)}
+  .btn-danger{border-color:var(--q4-line);color:var(--zhu-d)}
+  .btn-danger:hover{border-color:var(--zhu);background:var(--hot-bg);color:var(--zhu-d)}
+  .btn-sm,.btn-mini{padding:4px 10px;font-size:var(--fs-xs);letter-spacing:.1em}
+  .btn-lg{padding:10px 24px;font-size:var(--fs-base);letter-spacing:.16em}
+  .btn-block{width:100%}
+  .btn-icon{width:32px;height:32px;padding:0;font-size:15px;line-height:1}
+  .chip{border-radius:999px;padding:4px 12px}
+  .chip.on{background:var(--zhu);border-color:var(--zhu);color:var(--on-accent);font-weight:600}
+  .chip.on:hover{background:var(--zhu-d);border-color:var(--zhu-d);color:var(--on-accent)}
 
-  /* ---------- 主体 ---------- */
-  .main{flex:1 1 auto;display:grid;grid-template-columns:330px 1fr;gap:12px;min-height:0}
+  /* =========================================================================
+     五、主区骨架
+     ========================================================================= */
+  .main{flex:1 1 auto;display:grid;grid-template-columns:336px 1fr;gap:var(--sp4);min-height:0}
 
   .panel{
     background:linear-gradient(180deg,var(--surface),var(--surface2));
     border:1px solid var(--line);
-    border-radius:3px;
-    box-shadow:0 1px 0 var(--raise2) inset;
+    border-radius:var(--r-sm);
+    box-shadow:var(--sh-in);
   }
   .ph{
-    display:flex;align-items:center;gap:8px;
-    padding:8px 12px;border-bottom:1px solid var(--line);
-    font-size:12px;letter-spacing:.24em;color:var(--ink3);
+    display:flex;align-items:center;gap:var(--sp3);
+    padding:8px 12px;border-bottom:1px solid var(--line-soft);
+    font-size:var(--fs-xs);letter-spacing:.22em;color:var(--ink3);
+    background:var(--raise);
   }
-  .ph::before{content:"";width:3px;height:12px;background:var(--zhu);opacity:.8;border-radius:1px}
-  .pb{padding:12px}
+  .ph::before{content:"";width:3px;height:12px;background:var(--zhu);opacity:.8;border-radius:1px;flex:0 0 auto}
+  .ph .ph-tag{margin-left:auto;letter-spacing:.03em;color:var(--ink4);font-size:var(--fs-2xs)}
+  /* 面板标题右侧的状态角标（自动换装开关 / 计数） */
+  .ph-tag{
+    margin-left:auto;font-size:var(--fs-2xs);letter-spacing:.04em;color:var(--ink4);
+    padding:1px 7px;border:1px solid transparent;border-radius:999px;
+    background:var(--raise);line-height:1.6;white-space:nowrap;
+  }
+  .ph-tag.on{color:var(--qing);border-color:var(--qing);background:transparent}
+  .ph-tag.gold{color:var(--jin);border-color:var(--jin);background:transparent}
+  .ph-tag.ok{color:var(--zhu);border-color:var(--zhu);background:transparent}
+  .ph-tag.link{cursor:pointer;transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease)}
+  .ph-tag.link:hover{border-color:var(--zhu);color:var(--zhu)}
+  /* 移动端抽屉里的功能按钮：两列网格 */
+  .util-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp3)}
+  .pb{padding:var(--sp4)}
 
-  /* 左栏 */
-  .left{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;padding-right:2px}
+  /* ---------- 左栏 ---------- */
+  .left{display:flex;flex-direction:column;gap:var(--sp3);min-height:0;overflow-y:auto;padding-right:3px}
   .left::-webkit-scrollbar{width:7px}
   .left::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+  /* 分组标题：把十块等重的面板切成三段，一眼能扫 */
+  .lgrp{display:flex;align-items:center;gap:var(--sp3);padding:2px 2px 0}
+  .lgrp-t{font-size:var(--fs-2xs);letter-spacing:.3em;color:var(--ink4);white-space:nowrap}
+  .lgrp::after{content:"";flex:1 1 auto;height:1px;background:var(--line-soft)}
 
-  .bar{margin-bottom:9px}
-  .bar .lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink3);margin-bottom:3px;letter-spacing:.06em}
-  .bar .lab em{font-style:normal;color:var(--ink2)}
+  /* 道体：左栏的头等面板，去掉常规标题栏，直接把三条状态条铺开 */
+  .panel.hero{background:linear-gradient(180deg,var(--raise2),var(--surface2));border-color:var(--line2)}
+  .panel.hero .pb{padding:var(--sp4) var(--sp4) 10px}
+  .hero-hd{display:flex;align-items:center;gap:var(--sp3);margin-bottom:var(--sp4)}
+  .hero-hd .realm{
+    font-family:var(--serif);font-size:var(--fs-lg);letter-spacing:.1em;color:var(--zhu);
+  }
+  .hero-hd .sub{font-size:var(--fs-2xs);letter-spacing:.14em;color:var(--ink3);margin-left:auto;text-align:right}
+
+  .bar{margin-bottom:10px}
+  .bar .lab{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--fs-xs);color:var(--ink3);margin-bottom:4px;letter-spacing:.06em}
+  .bar .lab em{font-style:normal;color:var(--ink2);font-size:var(--fs-sm)}
   .track{height:7px;background:var(--track);border-radius:4px;overflow:hidden}
-  .fill{height:100%;border-radius:4px;transition:width .35s ease}
+  .fill{height:100%;border-radius:4px;transition:width .35s var(--ease)}
   .f-exp{background:linear-gradient(90deg,var(--zhu-d),var(--zhu2))}
   .f-hp{background:linear-gradient(90deg,var(--hp1),var(--hp2))}
   .f-mp{background:linear-gradient(90deg,var(--mp1),var(--mp2))}
 
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12.5px}
-  .grid2 div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:3px 0}
-  .grid2 span{color:var(--ink3);font-size:11.5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:var(--fs-sm2)}
+  .grid2 div{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dotted var(--line-soft);padding:4px 0}
+  .grid2 span{color:var(--ink3);font-size:var(--fs-xs)}
   .grid2 b{font-weight:600;color:var(--ink2)}
 
-  /* 装备位 */
+  /* ---------- 行（装备位 / 通用行） ---------- */
   .slot{
-    display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:5px;
-    border:1px solid var(--line);border-radius:2px;background:var(--raise);
-    font-size:12.5px;
+    display:flex;align-items:center;gap:var(--sp3);padding:7px 9px;margin-bottom:5px;
+    border:1px solid var(--line);border-radius:var(--r-xs);background:var(--raise);
+    font-size:var(--fs-sm2);transition:border-color var(--dur) var(--ease);
   }
-  .slot .k{flex:0 0 52px;color:var(--ink3);font-size:11.5px;letter-spacing:.06em}
+  .slot:hover{border-color:var(--line2)}
+  .slot:last-child{margin-bottom:0}
+  .slot .k{flex:0 0 50px;color:var(--ink3);font-size:var(--fs-xs);letter-spacing:.06em}
   .slot .v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .slot .v.empty{color:var(--ink4)}
-  .slot .q{font-size:10.5px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.9;flex:0 0 auto}
-  .slot .r{flex:0 0 auto;font-size:10.5px;color:var(--ink3);cursor:pointer;border-bottom:1px dotted var(--ink3);opacity:.75}
+  .slot .q{font-size:var(--fs-2xs);padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.9;flex:0 0 auto}
+  .slot .r{flex:0 0 auto;font-size:var(--fs-2xs);color:var(--ink3);cursor:pointer;border-bottom:1px dotted var(--ink3);opacity:.8}
   .slot .r:hover{color:var(--zhu);border-color:var(--zhu);opacity:1}
+  .slot .r.sell{color:var(--jin);border-color:var(--jin)}
+  .slot .r.sell:hover{color:var(--zhu);border-color:var(--zhu)}
 
-  .empty-note{font-size:12px;color:var(--ink4);text-align:center;padding:10px 0;letter-spacing:.1em}
-  .hint-mini{font-size:11px;color:var(--ink3);margin-top:5px;line-height:1.6;letter-spacing:.02em}
+  .empty-note{font-size:var(--fs-sm);color:var(--ink4);text-align:center;padding:12px 0;letter-spacing:.1em}
+  .hint-mini{font-size:var(--fs-xs);color:var(--ink3);margin-top:var(--sp3);line-height:1.7;letter-spacing:.02em}
   .empty-row .slot{margin-bottom:0}
+  /* 小按钮成排时的统一间距 */
+  .btnrow{display:flex;gap:var(--sp2);margin-top:var(--sp3);flex-wrap:wrap}
+  .btnrow .btn,.btnrow .mbtn{flex:1 1 auto}
 
-  /* 右栏 */
-  .right{display:flex;flex-direction:column;gap:12px;min-height:0}
+  /* =========================================================================
+     六、右栏
+     ========================================================================= */
+  .right{display:flex;flex-direction:column;gap:var(--sp4);min-height:0}
 
-  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);padding:0 4px;flex:0 0 auto}
+  /* ---------- 页签 ---------- */
+  .tabs{
+    display:flex;gap:2px;border:1px solid var(--line);border-radius:var(--r-sm);
+    padding:3px;flex:0 0 auto;background:var(--raise);position:relative;
+  }
   .tab{
-    padding:9px 20px 8px;font-size:13px;letter-spacing:.22em;color:var(--ink3);
-    cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;position:relative;
+    flex:1 1 auto;text-align:center;
+    padding:8px 14px;font-size:var(--fs-sm2);letter-spacing:.2em;color:var(--ink3);
+    cursor:pointer;border-radius:var(--r-xs);position:relative;
+    transition:color var(--dur) var(--ease),background-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
   }
-  .tab:hover{color:var(--ink2)}
-  .tab.on{color:var(--zhu);border-color:var(--zhu);font-weight:600}
-  .tab.dis{opacity:.35;cursor:not-allowed}
+  .tab:hover{color:var(--ink2);background:var(--raise)}
+  .tab.on{
+    color:var(--on-accent);background:linear-gradient(180deg,var(--zhu2),var(--zhu-d));
+    font-weight:600;box-shadow:var(--sh1);
+  }
+  .tab.on:hover{color:var(--on-accent)}
+  .tab.dis{opacity:.32;cursor:not-allowed}
+  .tab.dis:hover{background:none;color:var(--ink3)}
 
-  .actwrap{flex:0 0 auto;padding:13px 14px}
-  .actgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:9px}
+  /* ---------- 动作区 ---------- */
+  .actwrap{flex:0 0 auto;padding:14px 15px}
+  .actgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:10px}
   .card{
-    text-align:left;padding:10px 12px;border:1px solid var(--line2);border-radius:3px;
+    text-align:left;padding:11px 13px;border:1px solid var(--line2);border-radius:var(--r-sm);
     background:linear-gradient(180deg,var(--raise2),var(--raise3));
-    cursor:pointer;transition:.14s;position:relative;overflow:hidden;
+    cursor:pointer;position:relative;overflow:hidden;
+    transition:border-color var(--dur) var(--ease),background-color var(--dur) var(--ease),
+               transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
   }
-  .card:hover{border-color:var(--zhu);background:#fff;transform:translateY(-1px);box-shadow:0 3px 10px rgba(120,90,60,.10)}
-  .card:active{transform:translateY(0)}
+  /* 左侧朱砂竖条：hover 时亮起，作为"可点"的暗示 */
+  .card::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
+    background:var(--zhu);opacity:0;transition:opacity var(--dur) var(--ease);
+  }
+  .card:hover{border-color:var(--zhu);background:var(--hover-bg);transform:translateY(-1px);box-shadow:var(--sh2)}
+  .card:hover::before{opacity:.9}
+  .card:active{transform:translateY(0);box-shadow:var(--sh1);background:var(--press-bg)}
   .card.lock{opacity:.42;cursor:not-allowed}
-  .card.lock:hover{border-color:var(--line2);transform:none;background:linear-gradient(180deg,var(--raise2),var(--raise3));box-shadow:none}
-  .card .t{font-size:13.5px;font-weight:600;letter-spacing:.08em;display:flex;align-items:center;gap:6px}
-  .card .d{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.5}
-  .card .cost{font-size:11px;color:var(--jin);margin-top:4px;letter-spacing:.04em}
-  .card.hot{border-color:var(--zhu);background:linear-gradient(180deg,#fff8f5,#fdeee9)}
-  .card.danger{border-color:rgba(158,43,37,.5)}
+  .card.lock:hover{border-color:var(--line2);transform:none;box-shadow:none;background:linear-gradient(180deg,var(--raise2),var(--raise3))}
+  .card.lock:hover::before{opacity:0}
+  .card .t{font-size:var(--fs-base);font-weight:600;letter-spacing:.06em;display:flex;align-items:center;gap:var(--sp2);line-height:1.4}
+  .card .d{font-size:var(--fs-xs);color:var(--ink3);margin-top:3px;line-height:1.6}
+  .card .cost{font-size:var(--fs-2xs);color:var(--jin);margin-top:6px;letter-spacing:.04em;
+    display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+  .card .cost .tag{
+    border:1px solid var(--line-soft);border-radius:999px;padding:1px 8px;
+    background:var(--raise);color:var(--jin);white-space:nowrap;
+  }
+  .card .cost .tag b{color:var(--jin)}
+  .card.hot{border-color:var(--zhu);background:var(--hot-bg)}
+  .card.hot::before{opacity:.9}
+  .card.danger{border-color:var(--q4-line)}
   .card.danger:hover{border-color:var(--zhu)}
-  .tip{font-size:11.5px;color:var(--ink3);margin-bottom:9px;letter-spacing:.06em;line-height:1.65}
+  /* 卡片内的操作按钮行（配方卡 / 坐骑喂养等） */
+  .card .acts{display:flex;gap:var(--sp2);margin-top:8px}
+
+  /* ---------- 区块标题（替代裸的 .tip） ---------- */
+  .sec{margin:20px 0 10px}
+  .sec:first-child{margin-top:2px}
+  .sec-t{
+    display:flex;align-items:center;gap:var(--sp3);
+    font-size:var(--fs-sm);letter-spacing:.24em;color:var(--ink2);
+  }
+  .sec-t::before{content:"";width:3px;height:12px;background:var(--zhu);opacity:.85;border-radius:1px;flex:0 0 auto}
+  .sec-t .n{margin-left:auto;font-size:var(--fs-2xs);letter-spacing:.04em;color:var(--ink4)}
+  .sec-d{font-size:var(--fs-xs);color:var(--ink3);line-height:1.72;margin-top:5px;letter-spacing:.03em}
+  .sec-d b{color:var(--zhu);font-weight:600}
+  /* 段落说明（沿用旧类名，视觉并入 .sec-d） */
+  .tip{font-size:var(--fs-xs);color:var(--ink3);margin-bottom:10px;letter-spacing:.05em;line-height:1.75}
   .tip b{color:var(--zhu);font-weight:600}
 
-  /* 日志 */
+  /* ---------- 日志 ---------- */
   .logpanel{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .logpanel .ph{position:relative}
+  .live-dot{
+    width:6px;height:6px;border-radius:50%;background:var(--qing);flex:0 0 auto;
+    box-shadow:0 0 0 3px var(--raise);animation:livedot 2.4s ease-in-out infinite;
+  }
+  @keyframes livedot{0%,100%{opacity:.35}50%{opacity:1}}
   .log{
-    flex:1 1 auto;overflow-y:auto;padding:12px 16px;
-    font-size:13px;line-height:1.85;
-    font-family:"Songti SC","STSong","SimSun","Noto Serif SC",serif;
+    flex:1 1 auto;overflow-y:auto;padding:var(--sp4) 16px;
+    font-size:var(--fs-sm2);line-height:1.9;
+    font-family:var(--serif);
   }
   .log::-webkit-scrollbar{width:7px}
   .log::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
-  .log p{margin:0 0 5px;padding-left:11px;position:relative;animation:fadein .28s ease}
-  .log p::before{content:"";position:absolute;left:0;top:.72em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.45}
+  .log p{margin:0 0 5px;padding-left:12px;position:relative;animation:fadein .28s var(--ease)}
+  .log p::before{content:"";position:absolute;left:0;top:.74em;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.45}
   @keyframes fadein{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
-  .l-sys{color:var(--ink3);font-size:12.5px}
+  .l-sys{color:var(--ink3);font-size:var(--fs-sm)}
   .l-act{color:var(--ink2)}
   .l-gain{color:var(--qing)}
   .l-dmg{color:var(--zhu)}
   .l-warn{color:var(--warn)}
   .l-epic{color:var(--zhu-d);font-weight:600;letter-spacing:.04em}
   .l-item{color:var(--jin)}
-  .l-dim{color:var(--ink3);font-size:12.5px}
-  .sep{text-align:center;color:var(--ink4);font-size:11px;letter-spacing:.5em;margin:8px 0}
+  .l-ach{color:var(--zhu-d);font-weight:600;letter-spacing:.05em}
+  .l-enc{color:var(--enc);font-weight:600;letter-spacing:.04em}
+  .l-dim{color:var(--ink3);font-size:var(--fs-sm)}
+  .sep{text-align:center;color:var(--ink4);font-size:var(--fs-xs);letter-spacing:.5em;margin:8px 0}
 
-  /* 战斗条 */
-  .fbar{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);background:rgba(158,43,37,.045)}
-  .fbar .fname{font-size:13.5px;font-weight:600;letter-spacing:.1em;color:var(--zhu)}
+  /* ---------- 战斗 · 敌血条 ---------- */
+  .fbar{
+    display:flex;align-items:center;gap:var(--sp4);padding:10px 14px;
+    border-bottom:1px solid var(--line);background:var(--hot-bg);
+  }
+  .fbar .fname{font-size:var(--fs-base);font-weight:600;letter-spacing:.08em;color:var(--zhu);flex:0 0 auto}
   .fbar .ftrack{flex:1 1 auto;height:9px;background:var(--track);border-radius:5px;overflow:hidden}
-  .fbar .ffill{height:100%;background:linear-gradient(90deg,var(--zhu-d),var(--zhu2));transition:width .3s}
-  .fbar .fnum{font-size:11.5px;color:var(--ink3);flex:0 0 auto}
+  .fbar .ffill{display:block;height:100%;background:linear-gradient(90deg,var(--zhu-d),var(--zhu2));transition:width .3s var(--ease)}
+  .fbar .fnum{font-size:var(--fs-xs);color:var(--ink3);flex:0 0 auto}
+  /* ---------- 敌情条 / 秘境进度 ---------- */
+  .foe{display:flex;gap:var(--sp2);flex-wrap:wrap;font-size:var(--fs-xs);color:var(--ink3);margin-bottom:10px}
+  .foe span{background:var(--raise);border:1px solid var(--line-soft);border-radius:999px;padding:3px 10px}
+  .foe b{color:var(--ink2)}
+  .foe .up{color:var(--zhu-d);font-weight:600}
+  .foe .dn{color:var(--ok);font-weight:600}
+  .dtrack{height:6px;background:var(--track);border-radius:4px;overflow:hidden;margin:8px 0 2px}
+  .dtrack i{display:block;height:100%;background:linear-gradient(90deg,var(--mp1),var(--mp2));border-radius:4px;transition:width .3s var(--ease)}
 
-  /* 居中弹层 */
-  .mask{position:fixed;inset:0;background:var(--veil);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
+  /* =========================================================================
+     七、弹层（统一外壳）
+     ========================================================================= */
+  .mask{
+    position:fixed;inset:0;background:var(--veil);
+    backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;
+    z-index:60;padding:var(--sp6);overflow-y:auto;
+  }
   .modal{
     max-width:560px;width:100%;background:var(--modal-bg);
-    border:1px solid var(--line2);border-radius:4px;padding:26px 30px;
-    box-shadow:0 20px 60px rgba(40,30,20,.3);animation:pop .3s ease;
+    border:1px solid var(--line2);border-radius:var(--r-md);
+    box-shadow:var(--sh3);animation:pop .3s var(--ease);
+    max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);
+    overflow-y:auto;overflow-x:hidden;padding:0;
   }
-  @keyframes pop{from{opacity:0;transform:scale(.95) translateY(8px)}to{opacity:1;transform:none}}
-  .modal h2{font-size:22px;letter-spacing:.3em;color:var(--zhu);margin-bottom:14px;text-align:center}
-  .modal .txt{font-size:13.5px;line-height:2;color:var(--ink2)}
+  @keyframes pop{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+  .modal::-webkit-scrollbar{width:7px}
+  .modal::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+  .modal.wide{max-width:720px}
+  /* 标题区：左对齐编号 + 标题，右侧关闭按钮（第二版：不再居中） */
+  .modal h2{
+    position:sticky;top:0;z-index:3;
+    display:flex;align-items:center;gap:var(--sp3);
+    font-family:var(--serif);font-size:var(--fs-lg);font-weight:600;
+    letter-spacing:.22em;color:var(--zhu);text-align:left;
+    padding:16px 20px 14px;margin:0;
+    background:var(--modal-bg);border-bottom:1px solid var(--line-soft);
+  }
+  .modal h2::before{
+    content:"";width:3px;height:18px;background:var(--zhu);border-radius:1px;flex:0 0 auto;opacity:.9;
+  }
+  .modal h2 .sub{
+    margin-left:auto;font-size:var(--fs-2xs);font-weight:400;letter-spacing:.05em;color:var(--ink3);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .modal h2 .modal-x{
+    width:30px;height:30px;flex:0 0 auto;margin-left:10px;padding:0;
+    border:1px solid var(--line2);border-radius:50%;
+    background:var(--raise);color:var(--ink3);font-size:12px;letter-spacing:0;
+    display:flex;align-items:center;justify-content:center;
+    transition:border-color var(--dur) var(--ease),color var(--dur) var(--ease),background-color var(--dur) var(--ease);
+  }
+  .modal h2 .modal-x:hover{border-color:var(--zhu);color:var(--zhu);background:var(--hover-bg)}
+  .modal .txt{font-size:var(--fs-sm2);line-height:1.9;color:var(--ink2);padding:16px 20px 4px}
   .modal .txt b{color:var(--zhu)}
-  .modal .btns{margin-top:20px;display:flex;gap:10px;justify-content:center}
-  .mbtn{padding:9px 26px;border:1px solid var(--line2);background:var(--raise2);color:var(--ink2);
-    border-radius:2px;cursor:pointer;font-size:13px;letter-spacing:.2em}
-  .mbtn:hover{border-color:var(--zhu);color:var(--zhu);background:#fff}
-  .mbtn.primary{background:var(--zhu);border-color:var(--zhu);color:var(--on-accent)}
-  .mbtn.primary:hover{background:var(--zhu-d);color:#fff}
-
-  .toast{
-    position:fixed;left:50%;top:22px;transform:translateX(-50%);
-    background:var(--toast-bg);color:var(--toast-fg);padding:9px 22px;border-radius:2px;
-    font-size:13px;letter-spacing:.12em;z-index:99;pointer-events:none;
-    animation:tin .25s ease;box-shadow:0 6px 24px rgba(0,0,0,.24)
+  .modal .btns{
+    display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+    padding:16px 20px 18px;margin:0;
   }
-  @keyframes tin{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+  .modal .btns .mbtn{min-width:110px}
 
-  /* ---------- 品阶徽章（全局） ---------- */
-  .q{font-size:10.5px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.9}
-  /* 功法学派角标（配色全走令牌） */
-  .gfs{font-size:10px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.85;letter-spacing:.04em;flex:0 0 auto}
+  /* ---------- 弹层内部构件 ---------- */
+  /* 说明段落 */
+  .meta-note{font-size:var(--fs-xs);color:var(--ink3);line-height:1.9;margin-bottom:var(--sp4);letter-spacing:.03em}
+  .meta-note b{color:var(--zhu)}
+  .hrline{height:1px;background:var(--line-soft);margin:var(--sp5) 0}
+  /* 区块标题（弹层内） */
+  .achsec{
+    font-size:var(--fs-xs);letter-spacing:.28em;color:var(--ink3);
+    margin:17px 0 9px;display:flex;align-items:center;gap:var(--sp3);
+  }
+  .achsec::after{content:"";flex:1 1 auto;height:1px;background:var(--line-soft)}
+  .achsec:first-child{margin-top:2px}
+  /* 记录式行（功法 / 洞府 / 称号 / 传承 共用） */
+  .heritage{border-top:1px dotted var(--line-soft);padding:11px 0}
+  .heritage:first-of-type{border-top:0;padding-top:2px}
+  .heritage .hr{display:flex;align-items:center;gap:var(--sp3);flex-wrap:wrap}
+  .heritage .hn{font-size:var(--fs-base);font-weight:600;color:var(--ink)}
+  .heritage .hl{font-size:var(--fs-2xs);color:var(--ink3);letter-spacing:.06em}
+  .heritage .hd{font-size:var(--fs-xs);color:var(--ink3);margin-top:4px;line-height:1.7}
+  .heritage .hd b{color:var(--ink2)}
+  .heritage .hb{margin-left:auto;flex:0 0 auto}
+  /* 行内操作簇（功法 / 洞府 / 称号的右侧按钮组） */
+  .hbrow{margin-left:auto;display:flex;gap:var(--sp2);flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end}
+  .heritage.off{opacity:.6}
+  /* 进度点阵 */
+  .dots{display:flex;gap:3px;margin-left:4px}
+  .dots i{width:8px;height:8px;border-radius:2px;background:var(--track);display:block}
+  .dots i.f{background:var(--zhu);opacity:.9}
+  /* 滚动容器 */
+  .pb-scroll{overflow:visible}
+  /* 卡片式槽位（存档玉简） */
+  .slotcard{
+    display:flex;align-items:center;gap:var(--sp3);flex-wrap:wrap;
+    padding:11px 13px;border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--raise);margin-bottom:var(--sp3);
+    transition:border-color var(--dur) var(--ease);
+  }
+  .slotcard:hover{border-color:var(--line2)}
+  .slotcard .si{flex:1 1 160px;min-width:0}
+  .slotcard .sn{font-size:var(--fs-sm2);color:var(--ink);font-weight:600;letter-spacing:.06em}
+  .slotcard .sd{font-size:var(--fs-2xs);color:var(--ink3);margin-top:3px;line-height:1.6}
+  .slotcard .sb{flex:0 0 auto}
+  .savecode{
+    width:100%;height:78px;font-size:var(--fs-2xs);font-family:var(--mono);
+    padding:9px;border:1px solid var(--line);border-radius:var(--r-xs);
+    background:var(--raise);color:var(--ink2);resize:vertical;line-height:1.6;
+  }
+  .savecode:focus{border-color:var(--zhu);outline:none}
+  /* 键值行（弹层里的信息排布） */
+  .kv{display:grid;gap:2px;margin:var(--sp3) 0}
+  .kv-r{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp4);
+    border-bottom:1px dotted var(--line-soft);padding:5px 0;font-size:var(--fs-sm)}
+  .kv-r:last-child{border-bottom:0}
+  .kv-r .k{color:var(--ink3);font-size:var(--fs-xs);letter-spacing:.06em;flex:0 0 auto}
+  .kv-r .v{color:var(--ink2);text-align:right}
+  .kv-r .v b{color:var(--ink)}
+  /* 分段切换（弹层内筛选：分类 / 品阶 / 已习得…） */
+  .seg{
+    display:flex;gap:2px;flex-wrap:wrap;
+    border:1px solid var(--line);border-radius:var(--r-sm);
+    padding:3px;background:var(--raise);margin-bottom:var(--sp4);
+  }
+  .seg-i{
+    flex:1 1 auto;text-align:center;padding:6px 12px;border-radius:var(--r-xs);
+    font-size:var(--fs-xs);letter-spacing:.1em;color:var(--ink3);cursor:pointer;
+    transition:color var(--dur) var(--ease),background-color var(--dur) var(--ease);
+  }
+  .seg-i:hover{color:var(--ink2);background:var(--raise2)}
+  .seg-i.on{background:var(--zhu);border-color:var(--zhu);color:var(--on-accent);font-weight:600}
+  .seg-i .n{font-size:var(--fs-2xs);opacity:.8;margin-left:4px}
+  /* 滚动锚点分类导航（图鉴 / 称号） */
+  .nav-strip{
+    display:flex;gap:var(--sp2);overflow-x:auto;padding-bottom:var(--sp2);
+    scrollbar-width:none;margin-bottom:var(--sp3);
+  }
+  .nav-strip::-webkit-scrollbar{display:none}
+  .nav-strip .chip{flex:0 0 auto}
+  /* 空状态 */
+  .empty-state{
+    text-align:center;padding:22px 12px;border:1px dashed var(--line);border-radius:var(--r-sm);
+    color:var(--ink4);font-size:var(--fs-sm);letter-spacing:.12em;background:var(--raise);
+  }
+
+  /* =========================================================================
+     八、徽章 / 角标 / 提示
+     ========================================================================= */
+  .q{font-size:var(--fs-2xs);padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.9}
+  .qname{font-weight:600}
+  .tier-tag{font-size:var(--fs-xs);color:var(--ink3);font-weight:400}
+  .gfs{font-size:var(--fs-2xs);padding:1px 5px;border-radius:2px;border:1px solid currentColor;opacity:.85;letter-spacing:.04em;flex:0 0 auto}
   .gfs-jian{color:var(--qing)}
   .gfs-ti{color:var(--jin)}
   .gfs-fa{color:var(--zi)}
   .gfs-dun{color:var(--ink3)}
   .gfs-xin{color:var(--zhu)}
+  .muted{color:var(--ink3)}
+  .muted-sm{color:var(--ink3);font-size:var(--fs-xs)}
+  .dim{color:var(--ink4)}
+  .gold{color:var(--jin)}
+  .jade{color:var(--qing)}
+  .warnc{color:var(--warn)}
+  .zhu{color:var(--zhu)}
+  .sell-btn{color:var(--jin);border-color:var(--jin)}
+  .qc0{color:var(--q0)}
+  .qc1{color:var(--q1)}
+  .qc2{color:var(--q2)}
+  .qc3{color:var(--q3)}
+  .qc4{color:var(--q4)}
 
-  /* ---------- 出售台 ---------- */
-  .filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 9px}
-  .filters .fl{font-size:11px;color:var(--ink3);letter-spacing:.14em;margin-right:2px}
-  .chip{
-    font-size:11.5px;padding:4px 10px;border:1px solid var(--line2);border-radius:2px;
-    background:var(--raise);color:var(--ink2);cursor:pointer;letter-spacing:.06em;
-  }
-  .chip:hover{border-color:var(--zhu);color:var(--zhu)}
-  .chip.on{background:var(--zhu);border-color:var(--zhu);color:var(--on-accent)}
+  /* =========================================================================
+     九、出售台 / 储物袋
+     ========================================================================= */
+  .filters{display:flex;flex-wrap:wrap;gap:var(--sp2);align-items:center;margin:2px 0 9px}
+  .filters .fl{font-size:var(--fs-2xs);color:var(--ink3);letter-spacing:.14em;margin-right:2px}
   .sellbox{
-    display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin-top:6px;
-    border:1px solid var(--line2);border-radius:3px;background:var(--raise);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 13px;margin-top:var(--sp2);
+    border:1px solid var(--line2);border-radius:var(--r-sm);background:var(--raise);
   }
-  .sellbox .sv{font-size:12.5px;color:var(--ink2)}
+  .sellbox .sv{font-size:var(--fs-sm2);color:var(--ink2)}
   .sellbox .sv b{color:var(--jin)}
-  .slot .r.sell{color:var(--jin);border-color:var(--jin)}
-  .slot .r.sell:hover{color:var(--zhu);border-color:var(--zhu)}
   .locked-row{opacity:.42;pointer-events:none;filter:grayscale(.3)}
+  /* 储物袋：两行式（第一行名与战力，第二行三个操作） */
+  .bagrow2{
+    padding:8px;border-bottom:1px dotted var(--line-soft);position:relative;overflow:hidden;
+    border-radius:var(--r-xs);transition:background-color var(--dur) var(--ease);
+  }
+  .bagrow2:last-child{border-bottom:0}
+  .bagrow2:hover{background:var(--raise)}
+  .bagrow2 .l1{display:flex;align-items:center;gap:var(--sp3)}
+  .bagrow2 .l2{display:flex;align-items:center;gap:var(--sp2);margin-top:6px}
+  .bagrow2 .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-sm2)}
+  .bagrow2 .pw{font-size:var(--fs-2xs);color:var(--ink3);flex:0 0 auto}
+  .bagrow2 .pr{font-size:var(--fs-2xs);color:var(--jin);margin-left:auto;white-space:nowrap}
 
-  /* ---------- 仙品 / 神品 流光 ---------- */
+  /* =========================================================================
+     十、流光与特殊品质
+     ========================================================================= */
   @keyframes flowmove{0%{background-position:0% 50%}100%{background-position:220% 50%}}
-  @keyframes gl3{0%,100%{filter:drop-shadow(0 0 1px rgba(246,223,168,.45))}50%{filter:drop-shadow(0 0 6px rgba(246,223,168,.92))}}
-  @keyframes gl4{0%,100%{filter:drop-shadow(0 0 1px rgba(255,170,150,.5))}50%{filter:drop-shadow(0 0 7px rgba(255,138,108,.95))}}
+  @keyframes gl3{0%,100%{filter:drop-shadow(0 0 1px rgba(246, 223, 168, .45))}50%{filter:drop-shadow(0 0 6px rgba(246, 223, 168, .92))}}
+  @keyframes gl4{0%,100%{filter:drop-shadow(0 0 1px rgba(255, 170, 150, .5))}50%{filter:drop-shadow(0 0 7px rgba(255, 138, 108, .95))}}
   @keyframes sheen{0%{left:-48%}62%{left:106%}100%{left:106%}}
   .flow{
     background-size:220% 100%;
@@ -360,356 +742,121 @@
     animation:flowmove 2.1s linear infinite, gl4 1.5s ease-in-out infinite;
   }
   .god,.shen{position:relative;overflow:hidden}
-  .god{border-color:rgba(176,112,28,.5)!important;background:var(--god-bg)!important}
-  .shen{border-color:rgba(158,43,37,.55)!important;background:var(--shen-bg)!important}
+  .god{border-color:var(--q3-line)!important;background:var(--god-bg)!important}
+  .shen{border-color:var(--q4-line)!important;background:var(--shen-bg)!important}
   .god::after,.shen::after{
-    content:"";position:absolute;top:-1px;bottom:-1px;width:42%;left:-48%;pointer-events:none;
+    content:"";position:absolute;top:0;bottom:0;width:42%;left:-48%;pointer-events:none;
     background:linear-gradient(100deg,transparent,var(--sheen),transparent);
     animation:sheen 2.9s ease-in-out infinite;
   }
   .shen::after{background:linear-gradient(100deg,transparent,var(--sheen2),transparent);animation-duration:2.3s}
+  .hrline-i{height:1px;background:var(--line-soft);margin:var(--sp4) 0}
 
-  /* ---------- 传承 / 存档面板 ---------- */
-  .heritage{border-top:1px dotted var(--line);padding:10px 0}
-  .heritage:first-of-type{border-top:0}
-  .heritage .hr{display:flex;align-items:center;gap:8px}
-  .heritage .hn{font-size:13.5px;font-weight:600;color:var(--ink)}
-  .heritage .hl{font-size:11px;color:var(--ink3);letter-spacing:.06em}
-  .heritage .hd{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.6}
-  .heritage .hb{margin-left:auto;font-size:11.5px;padding:4px 12px;border:1px solid var(--line2);border-radius:2px;background:var(--raise);color:var(--ink2);cursor:pointer;letter-spacing:.08em;flex:0 0 auto}
-  .heritage .hb:hover{border-color:var(--zhu);color:var(--zhu)}
-  .heritage .hb.dis{opacity:.4;cursor:not-allowed}
-  /* 未习得的功法：整行压暗，只作图鉴 */
-  .heritage.off{opacity:.62}
-  .dots{display:flex;gap:3px;margin-left:4px}
-  .dots i{width:8px;height:8px;border-radius:2px;background:var(--track);display:block}
-  .dots i.f{background:var(--zhu);opacity:.85}
-  .modal.wide{max-width:680px}
-  .mask{overflow-y:auto}
-  .modal{max-height:calc(100vh - 40px);overflow-y:auto}
-  .modal::-webkit-scrollbar{width:7px}
-  .modal::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
-  .modal .pb-scroll{overflow:visible}
-  .slotcard{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line2);border-radius:3px;background:var(--raise);margin-bottom:8px}
-  .slotcard .si{flex:1 1 auto;min-width:0}
-  .slotcard .sn{font-size:12.5px;color:var(--ink);font-weight:600}
-  .slotcard .sd{font-size:11px;color:var(--ink3);margin-top:3px;line-height:1.5}
-  .slotcard .sb{font-size:11.5px;padding:4px 10px;border:1px solid var(--line2);border-radius:2px;background:var(--raise2);color:var(--ink2);cursor:pointer;flex:0 0 auto;letter-spacing:.06em}
-  .slotcard .sb:hover{border-color:var(--zhu);color:var(--zhu)}
-  .slotcard .sb.dis{opacity:.35;cursor:not-allowed}
-  .savecode{width:100%;height:76px;font-size:11.5px;font-family:ui-monospace,Consolas,monospace;padding:8px;border:1px solid var(--line2);border-radius:2px;background:var(--raise2);color:var(--ink2);resize:vertical}
-  .meta-note{font-size:11.5px;color:var(--ink3);line-height:1.85;margin-bottom:12px;letter-spacing:.03em}
-  .meta-note b{color:var(--zhu)}
-
-  /* ---------- 游玩声明 ---------- */
-  .notice{font-size:13px;line-height:1.95;color:var(--ink2)}
-  .notice > p:first-child{margin:0 0 12px;color:var(--ink)}
-  .notice ul{margin:0 0 10px;padding:0;list-style:none}
-  .notice li{padding:7px 0 7px 13px;border-left:2px solid var(--line2);margin-bottom:7px}
-  .notice li b{color:var(--zhu);letter-spacing:.06em}
-  .notice .dim{
-    font-size:11.5px;color:var(--ink4);line-height:1.9;margin:14px 0 0;
-    border-top:1px dotted var(--line);padding-top:11px;
-  }
-  .hrline{height:1px;background:var(--line);margin:14px 0}
-  /* ---------- 顶栏：分隔线与气运 ---------- */
-  .ts{padding-left:16px;border-left:1px solid var(--line)}
-  .ts.realm{padding-left:0;border-left:0}
-  .ts.luck b{color:var(--jin)}
-  .ts.luck.hi b{color:var(--zhu-d)}
-
-  /* ---------- 成就解锁横幅 ---------- */
+  /* =========================================================================
+     十一、成就横幅 / 成就面板 / 图鉴
+     ========================================================================= */
   @keyframes achin{from{opacity:0;transform:translate(-50%,-115%)}to{opacity:1;transform:translate(-50%,0)}}
   @keyframes achout{to{opacity:0;transform:translate(-50%,-115%)}}
   .achpop{
     position:fixed;left:50%;top:0;transform:translateX(-50%);z-index:120;pointer-events:none;
-    display:flex;align-items:center;gap:13px;padding:12px 30px;min-width:330px;
+    display:flex;align-items:center;gap:13px;padding:13px 30px;min-width:330px;
     background:var(--achpop-bg);
-    border:1px solid rgba(176,112,28,.55);border-top:0;border-radius:0 0 4px 4px;
-    box-shadow:0 10px 34px rgba(120,80,20,.26);
-    animation:achin .5s cubic-bezier(.2,.9,.3,1.3);
+    border:1px solid var(--q3-line);border-top:0;border-radius:0 0 var(--r-sm) var(--r-sm);
+    box-shadow:var(--sh2);
+    animation:achin .5s cubic-bezier(.2, .9, .3, 1.3);
   }
   .achpop.out{animation:achout .45s ease forwards}
   .achpop .aseal{
     width:34px;height:34px;border-radius:50%;flex:0 0 auto;
     display:flex;align-items:center;justify-content:center;
     font-size:14px;font-weight:600;color:var(--on-accent);
-    background:radial-gradient(circle at 35% 30%,var(--zhu2),var(--zhu-d));
-    box-shadow:0 0 0 3px rgba(176,112,28,.22);
+    background:var(--seal-bg);
+    box-shadow:0 0 0 3px var(--raise2);
   }
   .achpop .atxt{line-height:1.35}
-  .achpop .ak{font-size:10.5px;letter-spacing:.34em;color:#a07a2c}
-  .achpop .an{font-size:14.5px;font-weight:600;color:#7d1f1a;letter-spacing:.06em}
-  .achpop .ab{font-size:11.5px;color:#8a6a3a;letter-spacing:.03em}
-  .achpop.shen{background:linear-gradient(180deg,#fff6f3,#f6dbd1);border-color:rgba(158,43,37,.6)}
-  .achpop.shen .aseal{background:radial-gradient(circle at 35% 30%,#e0a020,var(--zhu-d))}
+  .achpop .ak{font-size:var(--fs-2xs);letter-spacing:.32em;color:var(--ak)}
+  .achpop .an{font-size:var(--fs-base);font-weight:600;color:var(--an);letter-spacing:.06em}
+  .achpop .ab{font-size:var(--fs-xs);color:var(--ab);letter-spacing:.03em}
+  .achpop.shen{background:var(--shen-pop);border-color:var(--q4-line)}
+  .achpop.shen .aseal{background:var(--shen-seal)}
 
-  /* ---------- 成就面板 ---------- */
-  .achhd{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  /* 面板顶部的总览行（成就 / 图鉴共用） */
+  .achhd{display:flex;align-items:center;gap:var(--sp4);margin-bottom:6px}
+  .achsum{font-size:var(--fs-xs);color:var(--ink3);letter-spacing:.08em;flex:0 0 auto}
+  .achsum b{color:var(--zhu-d)}
   .achbar{flex:1 1 auto;height:8px;background:var(--track);border-radius:5px;overflow:hidden}
-  .achbar i{display:block;height:100%;background:linear-gradient(90deg,var(--jin),var(--zhu2));border-radius:5px;transition:width .4s}
-  .achsec{font-size:11.5px;letter-spacing:.3em;color:var(--ink3);margin:15px 0 8px;display:flex;align-items:center;gap:9px}
-  .achsec::after{content:"";flex:1 1 auto;height:1px;background:var(--line)}
-  .achg{display:grid;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));gap:7px}
-  .ach{padding:9px 11px;border:1px solid var(--line);border-radius:3px;background:rgba(255,255,255,.34);position:relative;overflow:hidden}
-  .ach .ant{font-size:12.5px;font-weight:600;color:var(--ink4);display:flex;align-items:center;gap:6px;padding-right:34px}
-  .ach .ad{font-size:11px;color:var(--ink4);margin-top:3px;line-height:1.5}
-  .ach .ab2{font-size:10.5px;color:var(--ink4);margin-top:4px}
+  .achbar i{display:block;height:100%;background:linear-gradient(90deg,var(--jin),var(--zhu2));border-radius:5px;transition:width .4s var(--ease)}
+  .achg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--sp2)}
+  .ach{
+    padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);
+    background:var(--sel-bg);position:relative;overflow:hidden;
+    transition:border-color var(--dur) var(--ease),background-color var(--dur) var(--ease);
+  }
+  .ach:hover{border-color:var(--line2)}
+  .ach .ant{font-size:var(--fs-sm2);font-weight:600;color:var(--ink4);display:flex;align-items:center;gap:var(--sp2);padding-right:36px}
+  .ach .ad{font-size:var(--fs-2xs);color:var(--ink4);margin-top:3px;line-height:1.6}
+  .ach .ab2{font-size:var(--fs-2xs);color:var(--ink4);margin-top:5px}
   .ach .tier{font-size:9.5px;padding:1px 5px;border-radius:2px;border:1px solid currentColor;flex:0 0 auto}
-  .ach .tick{position:absolute;right:9px;top:9px;font-size:10px;color:#2f6b63;letter-spacing:.05em}
-  .ach.got{background:linear-gradient(180deg,rgba(255,252,244,.92),rgba(250,240,220,.72));border-color:var(--line2)}
+  .ach .tick{position:absolute;right:10px;top:10px;font-size:var(--fs-2xs);color:var(--ok);letter-spacing:.05em}
+  .ach.got{background:var(--got-bg);border-color:var(--line2)}
   .ach.got .ant{color:var(--ink)}
   .ach.got .ad{color:var(--ink3)}
   .ach.got .ab2{color:var(--jin)}
 
-  /* ---------- 奇遇 ---------- */
+  /* =========================================================================
+     十二、奇遇
+     ========================================================================= */
   .encintro{
-    font-size:13.5px;line-height:2;color:var(--ink2);margin-bottom:15px;
-    padding:12px 15px;border-left:3px solid rgba(160,122,44,.55);
-    background:var(--raise);border-radius:0 3px 3px 0;
+    font-size:var(--fs-sm2);line-height:2;color:var(--ink2);margin-bottom:var(--sp5);
+    padding:12px 15px;border-left:3px solid var(--q3-line);
+    background:var(--raise);border-radius:0 var(--r-xs) var(--r-xs) 0;
   }
-  .encopts{display:grid;gap:9px}
+  .encopts{display:grid;gap:var(--sp3)}
   .encopt{
-    padding:11px 15px;border:1px solid var(--line2);border-radius:3px;cursor:pointer;
-    background:linear-gradient(180deg,var(--raise2),var(--raise3));transition:.14s;
+    padding:12px 16px;border:1px solid var(--line2);border-radius:var(--r-sm);cursor:pointer;
+    background:linear-gradient(180deg,var(--raise2),var(--raise3));
+    transition:border-color var(--dur) var(--ease),background-color var(--dur) var(--ease),transform var(--dur) var(--ease);
   }
-  .encopt:hover{border-color:var(--jin);background:#fffdf8;transform:translateX(2px)}
-  .encopt .et{font-size:13.5px;font-weight:600;color:var(--ink);letter-spacing:.06em}
-  .encopt .ed{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.6}
+  .encopt:hover{border-color:var(--jin);background:var(--hover-bg);transform:translateX(2px)}
+  .encopt .et{font-size:var(--fs-base);font-weight:600;color:var(--ink);letter-spacing:.06em}
+  .encopt .ed{font-size:var(--fs-xs);color:var(--ink3);margin-top:3px;line-height:1.65}
 
-  /* ---------- 储物袋两行式 ---------- */
-  .bagrow2{padding:7px 8px;border-bottom:1px dotted var(--line);position:relative;overflow:hidden}
-  .bagrow2 .l1{display:flex;align-items:center;gap:8px}
-  .bagrow2 .l2{display:flex;align-items:center;gap:6px;margin-top:5px}
-  .bagrow2 .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
-  .bagrow2 .pw{font-size:10.5px;color:var(--ink3);flex:0 0 auto}
-  .bagrow2 .pr{font-size:10.5px;color:var(--jin);margin-left:auto;white-space:nowrap}
-  .bagrow2 button{
-    font-size:11px;padding:2px 10px;border:1px solid var(--line2);background:var(--raise);
-    color:var(--ink2);border-radius:2px;cursor:pointer;flex:0 0 auto;
+  /* =========================================================================
+     十三、游玩声明 / 道法纲要
+     ========================================================================= */
+  .notice{font-size:var(--fs-sm2);line-height:1.95;color:var(--ink2)}
+  .notice > p:first-child{margin:0 0 var(--sp4);color:var(--ink);font-size:var(--fs-base)}
+  .notice ul{margin:0 0 10px;padding:0;list-style:none}
+  .notice li{padding:8px 0 8px 14px;border-left:2px solid var(--line2);margin-bottom:var(--sp3);border-radius:0 var(--r-xs) var(--r-xs) 0}
+  .notice li:hover{border-left-color:var(--zhu);background:var(--raise)}
+  .notice li b{color:var(--zhu);letter-spacing:.06em}
+  .notice .dim{
+    font-size:var(--fs-xs);color:var(--ink4);line-height:1.95;margin:var(--sp5) 0 0;
+    border-top:1px dotted var(--line);padding-top:var(--sp4);
   }
-  .bagrow2 button:hover{border-color:var(--zhu);color:var(--zhu);background:#fff}
-
-  /* ---------- 战斗敌情 / 秘境进度 ---------- */
-  .foe{display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--ink3);margin-bottom:10px}
-  .foe span{background:var(--raise);border:1px solid var(--line);border-radius:2px;padding:2px 9px}
-  .foe b{color:var(--ink2)}
-  .foe .up{color:var(--zhu-d);font-weight:600}
-  .foe .dn{color:#2f6b63;font-weight:600}
-  .dtrack{height:6px;background:var(--track);border-radius:4px;overflow:hidden;margin:8px 0 2px}
-  .dtrack i{display:block;height:100%;background:linear-gradient(90deg,var(--mp1),var(--mp2));border-radius:4px;transition:width .3s}
-
-  /* ---------- 日志新类型 ---------- */
-  .l-ach{color:var(--zhu-d);font-weight:600;letter-spacing:.05em}
-  .l-enc{color:#7a5b12;font-weight:600;letter-spacing:.04em}
-
-  @media (prefers-reduced-motion: reduce){
-    .flow{animation:none}
-    .god::after,.shen::after{animation:none;display:none}
-    .achpop{animation:none}
+  /* 道法纲要：文档式排版（分段 + 悬挂小节标题） */
+  .doc{font-size:var(--fs-sm2);line-height:1.95;color:var(--ink2)}
+  .doc-toc{
+    display:flex;flex-wrap:wrap;gap:var(--sp2);margin-bottom:var(--sp5);
+    padding-bottom:var(--sp4);border-bottom:1px solid var(--line-soft);
   }
-
-  /* =========================================================
-     工具类（替代渲染层里散落的内联色值）
-     ========================================================= */
-  .muted{color:var(--ink3)}
-  .muted-sm{color:var(--ink3);font-size:11.5px}
-  .dim{color:var(--ink4)}
-  .gold{color:var(--jin)}
-  .jade{color:var(--qing)}
-  .warnc{color:var(--warn)}
-  .zhu{color:var(--zhu)}
-  .tier-tag{font-size:11px;color:var(--ink3);font-weight:400}
-  .sell-btn{color:var(--jin);border-color:var(--jin)}
-  .qc0{color:var(--q0)}
-  .qc1{color:var(--q1)}
-  .qc2{color:var(--q2)}
-  .qc3{color:var(--q3)}
-  .qc4{color:var(--q4)}
-  .qname{font-weight:600}
-
-  /* =========================================================
-     响应式 · 移动优先
-     桌面（≥821px）双栏；移动（≤820px）单栏 + 底部导航 + 底部抽屉
-     ========================================================= */
-  .only-m{display:none!important}
-  .util-panel{display:none}
-  #veil{
-    position:fixed;inset:0;background:var(--veil);z-index:58;
-    opacity:0;pointer-events:none;transition:opacity .26s;
+  .doc-sec{border-top:1px dotted var(--line-soft);padding:var(--sp5) 0 4px}
+  .doc-sec:first-of-type{border-top:0;padding-top:2px}
+  .doc-sec > b{
+    display:block;font-family:var(--serif);font-size:var(--fs-base);
+    color:var(--zhu);letter-spacing:.2em;margin-bottom:5px;
   }
-  body.sheet-on #veil{opacity:1;pointer-events:auto}
-  .sheetbar{display:none}
-  .top-acts{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .doc-sec p{margin:0}
 
-  @media (max-width:820px){
-    :root{--gap:9px;--navh:52px;--tap:40px}   /* 阶段五：压缩触摸目标与导航，给内容腾出一屏 */
-    html,body{height:auto}
-    body{padding:0;font-size:var(--fs-md)}
-    .wrap{
-      height:auto;max-width:none;gap:0;
-      padding-bottom:calc(var(--navh) + env(safe-area-inset-bottom,0px));
-    }
-
-    /* ---- 顶栏：粘性 · 紧凑 · 统计可横向滑动 ---- */
-    .top{
-      position:sticky;top:0;z-index:30;gap:8px;
-      padding:8px 12px;border-radius:0;border-left:0;border-right:0;
-      background:var(--paper);backdrop-filter:saturate(1.2) blur(10px);
-    }
-    .top::after{display:none}
-    .brand{gap:0;flex:0 0 auto}
-    .brand h1{font-size:15px;letter-spacing:.18em}
-    .brand span{display:none}
-    .top-stats{
-      flex:1 1 auto;gap:0;overflow-x:auto;scrollbar-width:none;
-      -webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,#000 88%,transparent);
-    }
-    .top-stats::-webkit-scrollbar{display:none}
-    .ts{flex:0 0 auto;padding:0 10px}
-    .ts i{font-size:9.5px;letter-spacing:.12em}
-    .ts b{font-size:13.5px}
-    .act-d{display:none}
-    .only-m{display:flex!important}
-    .sheetbar.only-m{
-      display:flex!important;align-items:center;gap:10px;
-      padding:14px 14px 9px;border-bottom:1px solid var(--line);
-      position:sticky;top:0;background:var(--paper2);z-index:2;
-    }
-    .sheetbar .grip{
-      position:absolute;left:50%;top:6px;transform:translateX(-50%);
-      width:38px;height:4px;border-radius:2px;background:var(--line2);
-    }
-    .sheetbar .stitle{flex:1 1 auto;font-size:var(--fs-sm2);letter-spacing:.24em;color:var(--ink3)}
-    .sheetbar .sclose{
-      width:34px;height:34px;flex:0 0 auto;padding:0;font-size:13px;
-      border:1px solid var(--line2);border-radius:50%;
-      background:var(--raise);color:var(--ink2);
-      display:flex;align-items:center;justify-content:center;
-    }
-    #menuBtn{
-      width:42px;height:42px;flex:0 0 auto;padding:0;font-size:19px;line-height:1;
-      display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);
-    }
-
-    /* ---- 主区：单栏 ---- */
-    .main{display:block;padding:0 10px}
-    .right{gap:var(--gap)}
-
-    /* ---- 左栏 → 底部抽屉 ---- */
-    .left{
-      position:fixed;left:0;right:0;bottom:0;z-index:60;
-      max-height:86dvh;overflow-y:auto;overscroll-behavior:contain;
-      padding:0 12px calc(16px + env(safe-area-inset-bottom,0px));
-      background:var(--paper2);
-      border-top:1px solid var(--line2);
-      border-radius:var(--r-lg) var(--r-lg) 0 0;
-      box-shadow:0 -16px 48px rgba(0,0,0,.24);
-      transform:translateY(102%);
-      transition:transform .3s cubic-bezier(.22,.8,.28,1);
-      display:flex;flex-direction:column;gap:var(--gap);
-    }
-    body.sheet-on .left{transform:none}
-    .util-panel{display:block}
-
-    /* ---- 动作区 ---- */
-    .actwrap{padding:11px 12px}
-    .actgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
-    .card{padding:11px 12px;min-height:var(--tap)}
-    .card .t{font-size:14px}
-    .card .d{font-size:12px}
-
-    /* ---- 日志 ---- */
-    .logpanel{min-height:0}
-    .log{max-height:46dvh;font-size:14px;line-height:1.9;padding:10px 12px}
-
-    /* ---- 页签 → 底部导航 ---- */
-    #tabs{
-      position:fixed;left:0;right:0;bottom:0;z-index:50;
-      display:grid;grid-template-columns:repeat(5,1fr);gap:0;
-      border-top:1px solid var(--line2);border-bottom:0;
-      padding:0 0 env(safe-area-inset-bottom,0px);
-      background:var(--paper2);margin:0;
-    }
-    .tab{
-      padding:0;height:var(--navh);margin:0;
-      display:flex;align-items:center;justify-content:center;
-      font-size:12.5px;letter-spacing:.06em;
-      border-bottom:0;border-top:2px solid transparent;
-    }
-    .tab.on{
-      border-top-color:var(--zhu);border-bottom-color:transparent;
-      background:linear-gradient(180deg,var(--raise),transparent);
-    }
-    .tab.dis{opacity:.35}
-
-    /* ---- 触摸目标 ---- */
-    .btn-mini{padding:9px 12px}
-    .bagrow2 button,.slotcard .sb,.heritage .hb,.mbtn,.chip{min-height:36px}
-    .bagrow2 .l2{gap:8px;margin-top:7px}
-    .bagrow2 button{padding:6px 12px}
-    .slot{padding:8px 9px}
-    .grid2{gap:6px 12px;font-size:13px}
-
-    /* ---- 弹层 → 底部上滑 ---- */
-    .mask{align-items:flex-end;padding:0}
-    .modal{
-      max-width:none;width:100%;
-      border-radius:var(--r-lg) var(--r-lg) 0 0;
-      max-height:90dvh;
-      padding:22px 18px calc(20px + env(safe-area-inset-bottom,0px));
-      animation:sheetup .32s cubic-bezier(.22,.8,.28,1);
-    }
-    @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
-    .modal h2{font-size:var(--fs-lg);margin-bottom:12px}
-    .modal .btns{
-      position:sticky;bottom:calc(-20px - env(safe-area-inset-bottom,0px));
-      background:linear-gradient(180deg,transparent,var(--paper2) 34%);
-      padding:14px 0 4px;margin-top:12px;
-    }
-    @media (prefers-reduced-motion: reduce){ .modal{animation:none} }
-
-    /* ---- 其余移动端微调 ---- */
-    .achg{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-    .foe{gap:6px;font-size:11px;margin-bottom:8px}
-    .foe span{padding:3px 8px}
-    .savecode{height:62px}
-    .toast{
-      top:auto;bottom:calc(var(--navh) + 18px);
-      width:calc(100% - 32px);max-width:none;text-align:center;
-    }
-    .achpop{
-      width:100%;min-width:0;padding:10px 16px;
-      border-radius:0 0 var(--r-md) var(--r-md);
-    }
-    .encopt{padding:12px 14px}
-    .encintro{font-size:13px;padding:11px 13px}
-    .heritage .hb{padding:7px 12px}
-    .filters{gap:6px}
-    .sellbox{padding:10px 12px}
-  }
-
-  @media (max-width:400px){
-    .brand h1{font-size:14px;letter-spacing:.12em}
-    .actgrid{grid-template-columns:1fr 1fr}
-    .achg{grid-template-columns:1fr}
-    .ts{padding:0 8px}
-  }
-
-  /* =========================================================
-     反 馈 系 统（阶段五）
-     ---------------------------------------------------------
-     四级：L0 顶栏数字浮动 / L1 toast 队列 / L2 中央浮层 / L3 全屏重弹
-     配色全部走既有令牌；动效尊重 prefers-reduced-motion
-     ========================================================= */
-
-  /* ---------- L0 · 数字浮动 ---------- */
+  /* =========================================================================
+     十四、浮动反馈（L0 数字 / L1 toast / L2·L3 中央浮层）
+     ========================================================================= */
   .fb-delta{
     position:fixed;z-index:140;pointer-events:none;
-    font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+    font-size:var(--fs-base);font-weight:700;font-variant-numeric:tabular-nums;
     white-space:nowrap;transform:translate(-50%,-50%);
     text-shadow:0 1px 0 var(--paper),0 0 6px var(--paper);
-    animation:fbDeltaUp 1.35s cubic-bezier(.2,.8,.3,1) forwards;
+    animation:fbDeltaUp 1.35s var(--ease) forwards;
   }
   .fb-delta-gain{color:var(--qing)}
   .fb-delta-cost{color:var(--zhu)}
@@ -720,21 +867,19 @@
     75% {opacity:1;transform:translate(-50%,-215%) scale(1)}
     100%{opacity:0;transform:translate(-50%,-255%) scale(.95)}
   }
-
-  /* ---------- L1 · toast 队列 ---------- */
   .fb-toast-root{
     position:fixed;right:14px;bottom:calc(var(--navh) + 22px);z-index:130;
-    display:flex;flex-direction:column;gap:6px;align-items:flex-end;
-    pointer-events:none;max-width:min(340px,78vw);
+    display:flex;flex-direction:column;gap:var(--sp2);align-items:flex-end;
+    pointer-events:none;max-width:min(340px, 78vw);
   }
   .fb-toast{
-    padding:7px 12px;border-radius:var(--r-sm);
+    padding:8px 13px;border-radius:var(--r-sm);
     background:linear-gradient(180deg,var(--raise2),var(--raise3));
     border:1px solid var(--line2);color:var(--ink2);
-    font-size:12.5px;line-height:1.5;
-    box-shadow:0 2px 12px var(--glow);
+    font-size:var(--fs-sm2);line-height:1.5;
+    box-shadow:var(--sh1);
     transform:translateX(110%);opacity:0;pointer-events:none;
-    transition:transform .26s cubic-bezier(.2,.8,.3,1.1),opacity .22s;
+    transition:transform .26s var(--ease),opacity .22s;
   }
   .fb-toast.on{transform:none;opacity:1}
   .fb-toast.out{transform:translateX(18%);opacity:0}
@@ -743,10 +888,8 @@
   .fb-toast.q2{border-color:var(--q2)}
   .fb-toast.q3{border-color:var(--q3)}
   .fb-toast.q4{border-color:var(--q4)}
-
-  /* ---------- L2 / L3 · 中央浮层 ---------- */
   .fb-center-mask{
-    position:fixed;inset:0;z-index:150;padding:22px;
+    position:fixed;inset:0;z-index:150;padding:var(--sp6);
     display:flex;align-items:center;justify-content:center;
     background:transparent;opacity:0;pointer-events:none;
     transition:opacity .26s,background-color .26s;
@@ -754,70 +897,298 @@
   .fb-center-mask.heavy{background:var(--veil)}
   .fb-center-mask.on{opacity:1;pointer-events:auto}
   .fb-center{
-    max-width:min(420px,86vw);padding:22px 26px;
+    max-width:min(420px, 86vw);padding:22px 26px;
     border-radius:var(--r-md);border:1px solid var(--line2);
-    background:var(--modal-bg);box-shadow:0 16px 48px var(--glow);
+    background:var(--modal-bg);box-shadow:var(--sh3);
     text-align:center;
     transform:scale(.92) translateY(10px);
-    transition:transform .3s cubic-bezier(.2,.9,.3,1.2);
+    transition:transform .3s cubic-bezier(.2, .9, .3, 1.2);
   }
   .fb-center-mask.on .fb-center{transform:none}
-  .fb-center.tier-3{max-width:min(500px,88vw);padding:26px 30px}
+  .fb-center.tier-3{max-width:min(500px, 88vw);padding:26px 30px}
   .fb-center .fb-c-title{
-    font-family:var(--serif);font-size:13px;letter-spacing:.34em;
+    font-family:var(--serif);font-size:var(--fs-sm2);letter-spacing:.32em;
     color:var(--ink3);margin-bottom:10px;
   }
-  .fb-center.tier-3 .fb-c-title{font-size:15px;color:var(--zhu)}
-  .fb-center .fb-c-body{font-size:14px;line-height:1.9;color:var(--ink)}
-  .fb-center.tier-3 .fb-c-body{font-size:15px}
-  .fb-center .fb-c-hint{font-size:11.5px;color:var(--ink3);margin-top:12px;letter-spacing:.08em}
-  .fb-center .fb-c-btn{margin-top:16px;padding:7px 22px;font-size:12.5px}
+  .fb-center.tier-3 .fb-c-title{font-size:var(--fs-md);color:var(--zhu)}
+  .fb-center .fb-c-body{font-size:var(--fs-base);line-height:1.9;color:var(--ink)}
+  .fb-center.tier-3 .fb-c-body{font-size:var(--fs-md)}
+  .fb-center .fb-c-hint{font-size:var(--fs-xs);color:var(--ink3);margin-top:12px;letter-spacing:.08em}
+  .fb-center .fb-c-btn{margin-top:16px;padding:7px 22px;font-size:var(--fs-sm2)}
   .fb-center.god{border-color:var(--q3)}
   .fb-center.shen{border-color:var(--q4)}
-
-  /* ---------- 移动端浮动反馈条（桌面由 .only-m 隐藏） ---------- */
+  /* 移动端浮动反馈条（桌面由 .only-m 隐藏） */
   .fb-strip{
     display:flex;
     position:fixed;left:10px;right:10px;z-index:45;
     bottom:calc(var(--navh) + 8px);
-    align-items:center;gap:8px;padding:8px 12px;
-    border-radius:var(--r-md);border:1px solid var(--line2);
+    align-items:center;gap:var(--sp3);padding:9px 13px;
+    border-radius:var(--r-sm);border:1px solid var(--line2);
     background:linear-gradient(180deg,var(--paper2),var(--paper));
-    box-shadow:0 -2px 16px var(--glow);cursor:pointer;
+    box-shadow:var(--sh2);cursor:pointer;
     transform:translateY(140%);opacity:0;
-    transition:transform .28s cubic-bezier(.2,.8,.3,1),opacity .22s;
+    transition:transform .28s var(--ease),opacity .22s;
   }
   .fb-strip.on{transform:none;opacity:1}
   .fb-strip .fb-strip-txt{
-    flex:1 1 auto;min-width:0;font-size:12.5px;line-height:1.5;color:var(--ink2);
+    flex:1 1 auto;min-width:0;font-size:var(--fs-sm2);line-height:1.5;color:var(--ink2);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
-  .fb-strip .fb-strip-hint{
-    flex:0 0 auto;font-size:10px;letter-spacing:.14em;color:var(--ink4);
+  .fb-strip .fb-strip-hint{flex:0 0 auto;font-size:9.5px;letter-spacing:.14em;color:var(--ink4)}
+
+  /* =========================================================================
+     十五、Toast / 抽屉遮罩 / 通用工具
+     ========================================================================= */
+  .toast{
+    position:fixed;left:50%;top:22px;transform:translateX(-50%);
+    background:var(--toast-bg);color:var(--toast-fg);
+    padding:10px 22px;border-radius:var(--r-sm);
+    font-size:var(--fs-sm2);letter-spacing:.1em;z-index:99;pointer-events:none;
+    animation:tin .25s var(--ease);box-shadow:var(--sh2);
+  }
+  @keyframes tin{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+  .only-m{display:none!important}
+  .util-panel{display:none}
+  #veil{
+    position:fixed;inset:0;background:var(--veil);z-index:58;
+    opacity:0;pointer-events:none;transition:opacity .26s var(--ease);
+  }
+  body.sheet-on #veil{opacity:1;pointer-events:auto}
+  .sheetbar{display:none}
+
+  /* =========================================================================
+     十六、响应式
+     -------------------------------------------------------------------------
+     三段式：宽屏（>1180）单行顶栏 · 中屏（≤1180）统计带折行独占一行
+            窄屏（≤820）单栏 + 底部导航 + 底部抽屉
+     ========================================================================= */
+
+  /* 中屏：品牌与操作同排，统计带独占一行，避免按钮被挤扁、数字被裁切 */
+  @media (max-width:1180px){
+    .top{flex-wrap:wrap;gap:var(--sp3) var(--sp5)}
+    .top-stats{flex:1 1 100%;order:3;overflow-x:auto;scrollbar-width:none}
+    .top-stats::-webkit-scrollbar{display:none}
+    .top-acts{flex:1 1 auto;justify-content:flex-end}
+    .main{grid-template-columns:312px 1fr}
+    .actgrid{grid-template-columns:repeat(auto-fill,minmax(172px,1fr))}
   }
 
+  /* 窄屏：单栏 + 底部导航 + 底部抽屉 */
+  @media (max-width:820px){
+    :root{--gap:9px;--sp4:10px;--sp5:12px;--sp6:16px;--navh:52px;--tap:40px}
+    html,body{height:auto}
+    body{padding:0;font-size:var(--fs-md)}
+    .wrap{
+      height:auto;max-width:none;gap:0;
+      padding-bottom:calc(var(--navh) + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ---- 顶栏：粘性 · 紧凑 · 统计带可横向滑动（单行，不折行） ---- */
+    .top{
+      position:sticky;top:0;z-index:30;gap:var(--sp2);
+      padding:7px 10px;border-radius:0;border-left:0;border-right:0;
+      background:var(--paper);backdrop-filter:saturate(1.2) blur(10px);
+      flex-wrap:nowrap;
+    }
+    .top::after{display:none}
+    .brand{gap:8px;flex:0 0 auto}
+    .brand .seal{width:28px;height:28px;font-size:14px}
+    .brand h1{font-size:14px;letter-spacing:.14em}
+    .brand span{display:none}
+    .top-stats{
+      flex:1 1 auto;order:0;gap:0;min-width:0;overflow-x:auto;scrollbar-width:none;
+      -webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,#000 88%,transparent);
+      border:0;background:none;
+    }
+    .top-stats::-webkit-scrollbar{display:none}
+    .ts{flex:0 0 auto;padding:0 10px;border-left-color:var(--line-soft)}
+    .ts i{font-size:9px;letter-spacing:.1em}
+    .ts b{font-size:13px}
+    .top-acts{justify-content:flex-start}
+    .act-d{display:none}
+    .only-m{display:flex!important}
+    #menuBtn{
+      width:42px;height:42px;flex:0 0 auto;padding:0;font-size:19px;line-height:1;
+      display:flex;align-items:center;justify-content:center;
+    }
+    /* 抽屉顶部的把手与标题 */
+    .sheetbar.only-m{
+      display:flex!important;align-items:center;gap:10px;
+      padding:14px 14px 9px;border-bottom:1px solid var(--line);
+      position:sticky;top:0;background:var(--paper2);z-index:2;
+    }
+    .sheetbar .grip{
+      position:absolute;left:50%;top:6px;transform:translateX(-50%);
+      width:38px;height:4px;border-radius:2px;background:var(--line2);
+    }
+    .sheetbar .stitle{flex:1 1 auto;font-size:var(--fs-sm2);letter-spacing:.22em;color:var(--ink3)}
+    .sheetbar .sclose{
+      width:34px;height:34px;flex:0 0 auto;padding:0;font-size:13px;
+      border:1px solid var(--line2);border-radius:50%;
+      background:var(--raise);color:var(--ink2);
+      display:flex;align-items:center;justify-content:center;
+    }
+
+    /* ---- 主区：单栏 ---- */
+    .main{display:block;padding:0 10px}
+    .right{gap:var(--gap)}
+
+    /* ---- 左栏 → 底部抽屉 ---- */
+    .left{
+      position:fixed;left:0;right:0;bottom:0;z-index:60;
+      max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;
+      padding:0 12px calc(16px + env(safe-area-inset-bottom, 0px));
+      background:var(--paper2);
+      border-top:1px solid var(--line2);
+      border-radius:var(--r-lg) var(--r-lg) 0 0;
+      box-shadow:var(--sh3);
+      transform:translateY(102%);
+      transition:transform .3s var(--ease);
+      display:flex;flex-direction:column;gap:var(--gap);
+    }
+    body.sheet-on .left{transform:none}
+    .util-panel{display:block}
+    .lgrp{padding-top:6px}
+
+    /* ---- 动作区 ---- */
+    .actwrap{padding:11px 12px}
+    .actgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp3)}
+    .card{padding:12px 13px;min-height:var(--tap)}
+    .card .t{font-size:var(--fs-md)}
+    .card .d{font-size:var(--fs-sm)}
+    /* 手机上卡片不跟随 hover，改用按下反馈 */
+    .card:hover{transform:none;box-shadow:none}
+
+    /* ---- 日志 ---- */
+    .logpanel{min-height:0}
+    .log{max-height:46dvh;font-size:var(--fs-md);line-height:1.9;padding:11px 13px}
+
+    /* ---- 页签 → 底部导航 ---- */
+    #tabs{
+      position:fixed;left:0;right:0;bottom:0;z-index:50;
+      display:grid;grid-template-columns:repeat(5,1fr);gap:0;
+      border-top:1px solid var(--line2);border-bottom:0;border-left:0;border-right:0;
+      border-radius:0;padding:0 0 env(safe-area-inset-bottom, 0px);
+      background:var(--paper2);margin:0;
+    }
+    .tab{
+      flex:none;padding:0;height:var(--navh);margin:0;border-radius:0;
+      display:flex;align-items:center;justify-content:center;
+      font-size:var(--fs-sm2);letter-spacing:.06em;
+    }
+    .tab.on{
+      background:linear-gradient(180deg,var(--raise),transparent);
+      box-shadow:inset 0 2px 0 var(--zhu);
+      color:var(--zhu);
+    }
+    .tab.dis{opacity:.35}
+
+    /* ---- 触摸目标 ---- */
+    .btn,.btn-mini,.mbtn,.heritage .hb,.slotcard .sb,.bagrow2 button,.chip{min-height:36px}
+    .btn-mini{padding:8px 12px}
+    .bagrow2 .l2{gap:var(--sp3);margin-top:7px}
+    .bagrow2 button{padding:6px 12px}
+    .slot{padding:9px 10px}
+    .grid2{gap:2px 14px;font-size:var(--fs-sm2)}
+    .slotcard{padding:12px}
+    .slotcard .sb{min-height:34px}
+
+    /* ---- 弹层 → 底部上滑 ---- */
+    .mask{align-items:flex-end;padding:0}
+    .modal{
+      max-width:none;width:100%;
+      border-radius:var(--r-lg) var(--r-lg) 0 0;
+      max-height:92dvh;
+      padding:0;
+      animation:sheetup .32s var(--ease);
+    }
+    @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+    .modal h2{
+      font-size:var(--fs-lg);padding:16px 16px 12px;
+      position:sticky;top:0;
+    }
+    .modal .txt{padding:14px 16px 2px}
+    .modal .btns{
+      position:sticky;bottom:0;z-index:3;
+      background:linear-gradient(180deg,transparent,var(--paper2) 34%);
+      padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+      margin:0;
+    }
+    .seg{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+    .seg::-webkit-scrollbar{display:none}
+    .seg-i{flex:0 0 auto;padding:7px 14px}
+    .kv-r{font-size:var(--fs-sm2)}
+
+    /* ---- 其余移动端微调 ---- */
+    .achg{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+    .achhd{flex-wrap:wrap;gap:var(--sp3)}
+    .foe{gap:6px;font-size:var(--fs-2xs);margin-bottom:8px}
+    .foe span{padding:3px 9px}
+    .savecode{height:64px}
+    .toast{
+      top:auto;bottom:calc(var(--navh) + 18px);
+      width:calc(100% - 32px);max-width:none;text-align:center;
+    }
+    .achpop{
+      width:100%;min-width:0;padding:11px 16px;
+      border-radius:0 0 var(--r-md) var(--r-md);
+    }
+    .encopt{padding:13px 15px}
+    .encintro{font-size:var(--fs-sm2);padding:11px 13px}
+    .heritage .hb{padding:7px 12px}
+    .filters{gap:6px}
+    .sellbox{padding:10px 12px}
+    .sec{margin:16px 0 9px}
+    .doc-sec{padding:var(--sp4) 0 2px}
+    .btnrow .btn,.btnrow .mbtn{flex:1 1 42%}
+  }
+
+  /* 超窄屏（小屏手机）：进一步压缩 */
+  @media (max-width:400px){
+    .brand h1{font-size:13px;letter-spacing:.1em}
+    .actgrid{grid-template-columns:1fr 1fr}
+    .achg{grid-template-columns:1fr}
+    .ts{padding:0 8px}
+    .brand .seal{width:26px;height:26px;font-size:13px}
+  }
+
+  /* 反馈层在窄屏的补偿 */
   @media (max-width:820px){
     .fb-toast-root{right:10px;left:10px;align-items:stretch;max-width:none}
-    .fb-toast{font-size:13px;padding:8px 12px}
-    .fb-center{padding:20px 20px}
+    .fb-toast{font-size:var(--fs-sm2);padding:9px 12px}
+    .fb-center{padding:20px}
     /* 日志区为浮动反馈条留白 */
     .logpanel{padding-bottom:44px}
   }
+
+  /* =========================================================================
+     十七、动效降级
+     ========================================================================= */
   @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+    .flow{animation:none}
+    .god::after,.shen::after{animation:none;display:none}
+    .achpop{animation:none}
+    .modal{animation:none}
     .fb-delta{animation-duration:.55s}
     .fb-center{transition:none;transform:none}
     .fb-center-mask{transition:opacity .1s}
     .fb-strip{transition:opacity .15s;transform:none}
+    .live-dot{animation:none;opacity:1}
   }
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <!-- ===== 顶栏：品牌 · 统计带 · 操作簇 ===== -->
   <div class="top">
     <div class="brand">
-      <h1 class="serif">修 仙 模 拟 器</h1>
-      <span>L I T E R A R Y &nbsp; C U L T I V A T I O N</span>
+      <span class="seal" aria-hidden="true">仙</span>
+      <span class="btxt">
+        <h1 class="serif">修 仙 模 拟 器</h1>
+        <span>L I T E R A R Y &nbsp; C U L T I V A T I O N</span>
+      </span>
     </div>
     <div class="top-stats">
       <div class="ts realm"><i>境 界</i><b id="topRealm">炼气一层</b></div>
@@ -828,32 +1199,39 @@
       <div class="ts" id="metaTs" style="display:none"><i>轮 回 印 记</i><b id="topMeta">0</b></div>
     </div>
     <div class="top-acts">
-      <button class="btn-mini act-d" onclick="showHelp()">道 法</button>
-      <button class="btn-mini act-d" onclick="openAchievements()" id="achBtn">成 就</button>
-      <button class="btn-mini act-d" onclick="openGongfa()" id="gfBtn">功 法</button>
-      <button class="btn-mini act-d" onclick="openSavePanel()">存 档</button>
-      <button class="btn-mini act-d" onclick="openHeritage()">传 承</button>
-      <button class="btn-mini act-d" onclick="openRebirth()">轮 回</button>
-      <button class="btn-mini act-d" onclick="toggleTheme()" id="themeBtn" title="明暗切换">☾</button>
-      <button class="btn-mini only-m" onclick="toggleSheet()" id="menuBtn" aria-label="状态与功能">≡</button>
+      <button class="btn btn-sm act-d" onclick="showHelp()">道 法</button>
+      <button class="btn btn-sm act-d" onclick="openAchievements()" id="achBtn">成 就</button>
+      <button class="btn btn-sm act-d" onclick="openGongfa()" id="gfBtn">功 法</button>
+      <span class="gap1 act-d" aria-hidden="true"></span>
+      <button class="btn btn-sm act-d" onclick="openSavePanel()">存 档</button>
+      <button class="btn btn-sm act-d" onclick="openHeritage()">传 承</button>
+      <button class="btn btn-sm act-d" onclick="openRebirth()">轮 回</button>
+      <button class="btn btn-sm btn-icon act-d" onclick="toggleTheme()" id="themeBtn" title="明暗切换" aria-label="明暗切换">☾</button>
+      <button class="btn btn-sm btn-icon only-m" onclick="toggleSheet()" id="menuBtn" aria-label="状态与功能">≡</button>
     </div>
   </div>
 
   <div class="main">
-    <!-- 左栏（移动端为底部抽屉） -->
+    <!-- ===== 左栏（移动端为底部抽屉） ===== -->
     <div class="left" id="leftPane">
       <div class="sheetbar only-m">
         <span class="grip"></span>
         <span class="stitle serif">道 体 · 囊 中 之 物</span>
         <button class="sclose" onclick="closeSheet()" aria-label="收起">✕</button>
       </div>
+
       <div class="panel util-panel">
         <div class="ph">功 能</div>
-        <div class="pb" id="utilBox" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        <div class="pb" id="utilBox"></div>
       </div>
-      <div class="panel">
-        <div class="ph">道 体</div>
+
+      <!-- 道体：左栏的头等面板 -->
+      <div class="panel hero">
         <div class="pb">
+          <div class="hero-hd">
+            <span class="realm serif" id="heroRealm">炼气一层</span>
+            <span class="sub" id="heroSub">第 1 日 · 战力 0</span>
+          </div>
           <div class="bar">
             <div class="lab"><span>修 为</span><em id="expTxt">0 / 140</em></div>
             <div class="track"><div class="fill f-exp" id="expBar" style="width:0%"></div></div>
@@ -879,60 +1257,64 @@
         </div>
       </div>
 
+      <div class="lgrp"><span class="lgrp-t">身 外 之 物</span></div>
+
       <div class="panel">
-        <div class="ph">法 器 <span id="autoTag" style="margin-left:auto;letter-spacing:.04em;color:var(--ink4);cursor:pointer" onclick="toggleAutoEquip()"></span></div>
+        <div class="ph">法 器 <span class="ph-tag" id="autoTag" onclick="toggleAutoEquip()"></span></div>
         <div class="pb" id="equipBox"></div>
       </div>
 
       <div class="panel">
-        <div class="ph">坐 骑 <span id="mountTag" style="margin-left:auto;letter-spacing:.04em;color:var(--ink4)"></span></div>
+        <div class="ph">坐 骑 <span class="ph-tag" id="mountTag"></span></div>
         <div class="pb" id="mountBox"></div>
       </div>
 
       <div class="panel">
-        <div class="ph">功 法 <span id="gfTag" style="margin-left:auto;letter-spacing:.04em;color:var(--ink4)"></span></div>
+        <div class="ph">功 法 <span class="ph-tag" id="gfTag"></span></div>
         <div class="pb" id="gfBox"></div>
       </div>
 
       <div class="panel">
         <div class="ph">丹 药</div>
-        <div class="pb" id="pillBox" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <div class="pb btnrow" id="pillBox" style="margin-top:0"></div>
       </div>
 
       <div class="panel">
-        <div class="ph">材 料 <span id="matTag" style="margin-left:auto;letter-spacing:0;color:var(--ink4)"></span></div>
+        <div class="ph">材 料 <span class="ph-tag" id="matTag"></span></div>
         <div class="pb" id="matBox"></div>
       </div>
 
       <div class="panel">
-        <div class="ph">洞 府 <span id="caveTag" style="margin-left:auto;letter-spacing:0;color:var(--ink4)"></span></div>
+        <div class="ph">洞 府 <span class="ph-tag" id="caveTag"></span></div>
         <div class="pb" id="caveBox"></div>
       </div>
 
       <div class="panel">
-        <div class="ph">储 物 袋 <span style="margin-left:auto;letter-spacing:0;color:var(--ink4)" id="bagCount"></span></div>
-        <div class="pb" id="bagBox" style="padding:6px 8px"></div>
+        <div class="ph">储 物 袋 <span class="ph-tag" id="bagCount"></span></div>
+        <div class="pb" id="bagBox" style="padding:6px"></div>
       </div>
+
+      <div class="lgrp"><span class="lgrp-t">收 录</span></div>
 
       <div class="panel">
         <div class="ph">图 鉴 · 称 号</div>
-        <div class="pb" style="display:flex;gap:8px">
-          <button class="mbtn" style="flex:1;padding:8px 0;font-size:12px;letter-spacing:.08em" onclick="openCodex()">
-            图 鉴 <span id="cdTag" class="muted-sm">0/0</span>
+        <div class="pb btnrow" style="margin-top:0">
+          <button class="btn btn-sm" onclick="openCodex()">
+            图 鉴 <span class="muted-sm" id="cdTag">0/0</span>
           </button>
-          <button class="mbtn" style="flex:1;padding:8px 0;font-size:12px;letter-spacing:.08em" onclick="openTitles()">
-            称 号 <span id="ttTag" class="muted-sm">0/0</span>
+          <button class="btn btn-sm" onclick="openTitles()">
+            称 号 <span class="muted-sm" id="ttTag">0/0</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 右栏 -->
+    <!-- ===== 右栏 ===== -->
     <div class="right">
       <div class="tabs" id="tabs"></div>
       <div class="panel actwrap" id="actPanel"></div>
       <div class="panel logpanel">
-        <div class="ph">天 机 录</div>
+        <div class="ph">天 机 录 <span class="live-dot" aria-hidden="true"></span></div>
         <div class="log" id="log"></div>
       </div>
     </div>
@@ -5211,25 +5593,140 @@ function toggleSheet(){
 
 /* ── ui/modal.js ────────────────────────────────────────────────── */
 
-/* ---------------- 弹层 ---------------- */
-function showModal(title, html, buttons, cls){
+/* =========================================================
+   弹 层（第二版外壳）
+   ---------------------------------------------------------
+   结构：.mask > .modal > h2（粘性标题 + ✕）+ .txt（内容）+ .btns（粘性底栏）
+   约定：buttons 为 [{label, fn, primary}]，fn 缺省时只关窗
+         opt.sub        标题下的副标题（小字）
+         opt.onClose    ✕ 的行为，默认 closeModal
+   ========================================================= */
+function showModal(title, html, buttons, cls, opt){
   closeSheet();
+  opt = opt || {};
   const root = $('modalRoot');
+  if(!root) return;
+
   let b = '';
-  (buttons||[]).forEach((x,i) => {
-    b += '<button class="mbtn'+(x.primary?' primary':'')+'" data-i="'+i+'">'+x.label+'</button>';
+  (buttons || []).forEach((x, i) => {
+    b += '<button class="mbtn' + (x.primary ? ' primary' : '') + '" data-i="' + i + '">' + x.label + '</button>';
   });
-  root.innerHTML = '<div class="mask"><div class="modal'+(cls ? ' '+cls : '')+'">'
-    + '<h2 class="serif">'+title+'</h2>'
-    + '<div class="txt">'+html+'</div>'
-    + (b ? '<div class="btns">'+b+'</div>' : '')
+
+  /* ✕ 用 data-close 标记，事件在下面挂，避免再引一个全局函数 */
+  const head = '<h2 class="serif">' + title
+    + (opt.sub ? '<span class="sub">' + opt.sub + '</span>' : '')
+    + '<button class="modal-x" data-close="1" aria-label="关闭">✕</button>'
+    + '</h2>';
+
+  root.innerHTML = '<div class="mask"><div class="modal' + (cls ? ' ' + cls : '') + '">'
+    + head
+    + '<div class="txt">' + html + '</div>'
+    + (b ? '<div class="btns">' + b + '</div>' : '')
     + '</div></div>';
-  (buttons||[]).forEach((x,i) => {
-    const el = root.querySelector('.mbtn[data-i="'+i+'"]');
+
+  (buttons || []).forEach((x, i) => {
+    const el = root.querySelector('.mbtn[data-i="' + i + '"]');
     if(el) el.onclick = () => { if(x.fn) x.fn(); };
   });
+  const x = root.querySelector('.modal-x');
+  if(x) x.onclick = () => { if(opt.onClose) opt.onClose(); else closeModal(); };
 }
 function closeModal(){ $('modalRoot').innerHTML = ''; }
+
+/* ── ui/kit.js ──────────────────────────────────────────────────── */
+
+/* =========================================================
+   UI 组件层（kit）
+   ---------------------------------------------------------
+   用途：给所有弹层提供一套共用的构件，避免每个面板各写一套排版
+     · uiSec      区块标题（替代裸的 .tip / .meta-note）
+     · uiSeg      分段筛选条（纯 DOM 切换，不重渲染整块）
+     · uiEmpty    空状态
+     · uiKV       键值行
+     · uiDots     进度点阵
+     · uiJump     弹层内滚动锚点
+   约定
+     · 构建后所有模块同处一个作用域，顶层函数名必须全局唯一 → 统一 ui 前缀
+     · 只用具名导入（禁止 import * as / 默认导入）
+     · 不写死颜色，一切走类名与 :root 令牌
+   ========================================================= */
+
+/* ---------- 区块标题 ---------- */
+function uiSec(t, d, n){
+  return '<div class="sec">'
+    + '<div class="sec-t">' + t + (n ? '<span class="n">' + n + '</span>' : '') + '</div>'
+    + (d ? '<div class="sec-d">' + d + '</div>' : '')
+    + '</div>';
+}
+
+/* ---------- 空状态 ---------- */
+function uiEmpty(t, hint){
+  return '<div class="empty-state">' + t + '</div>'
+    + (hint ? '<div class="hint-mini">' + hint + '</div>' : '');
+}
+
+/* ---------- 键值行 ---------- */
+function uiKV(rows){
+  let h = '<div class="kv">';
+  for(const r of rows){
+    if(!r) continue;
+    h += '<div class="kv-r"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>';
+  }
+  return h + '</div>';
+}
+
+/* ---------- 进度点阵 ---------- */
+function uiDots(lv, max){
+  let s = '<span class="dots">';
+  for(let i = 0; i < max; i++) s += '<i class="' + (i < lv ? 'f' : '') + '"></i>';
+  return s + '</span>';
+}
+
+/* ---------- 分段筛选条 ----------
+   items: [{ k:'all', n:'全 部', c:3 }]    active: 当前段 key
+   配套：被筛选的元素挂 data-seg="key1 key2"（空格分隔，可属多段） */
+function uiSeg(id, items, active){
+  let h = '<div class="seg" id="' + id + '">';
+  for(const it of items){
+    h += '<span class="seg-i' + (it.k === active ? ' on' : '') + '" data-k="' + it.k + '"'
+      + ' onclick="uiSegPick(\'' + id + '\',\'' + it.k + '\')">' + it.n
+      + (it.c === undefined ? '' : '<span class="n">' + it.c + '</span>')
+      + '</span>';
+  }
+  return h + '</div>';
+}
+
+/* 切换分段：只改 display 与高亮，不重建 DOM（因此不丢滚动位置与输入内容） */
+function uiSegPick(id, key){
+  const box = (typeof document !== 'undefined') ? document.getElementById(id) : null;
+  if(!box) return;
+  const items = box.querySelectorAll('.seg-i');
+  for(let i = 0; i < items.length; i++){
+    const it = items[i];
+    if(it.getAttribute('data-k') === key) it.className = 'seg-i on';
+    else it.className = 'seg-i';
+  }
+  /* 同一弹层内所有挂 data-seg 的元素一起过滤 */
+  const modal = box.closest ? box.closest('.modal') : null;
+  const scope = modal || (typeof document !== 'undefined' ? document : null);
+  if(!scope || !scope.querySelectorAll) return;
+  const all = scope.querySelectorAll('[data-seg]');
+  for(let i = 0; i < all.length; i++){
+    const el = all[i];
+    const keys = String(el.getAttribute('data-seg') || '').split(/\s+/);
+    const show = (key === 'all') || keys.indexOf(key) >= 0;
+    el.style.display = show ? '' : 'none';
+  }
+}
+
+/* ---------- 弹层内锚点滚动 ---------- */
+function uiJump(anchor){
+  try{
+    const d = (typeof document !== 'undefined') ? document : null;
+    const el = d ? d.getElementById(anchor) : null;
+    if(el && el.scrollIntoView) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }catch(e){}
+}
 
 /* ── ui/feedback.js ─────────────────────────────────────────────── */
 
@@ -5749,8 +6246,13 @@ function importSave(text){
 /* ── ui/panels/notice.js ────────────────────────────────────────── */
 
 /* =========================================================
-   游玩声明 —— 首次进入需点「我已知晓」，之后可随时从「道 法」重看
-   独立存档键：不随游戏存档或轮回变化，只有「彻底抹除」才会再次弹出
+   游玩声明 / 道法纲要
+   ---------------------------------------------------------
+   声明：首次进入需点「我已知晓」，之后可随时从「道 法」重看
+        独立存档键，不随游戏存档或轮回变化，只有「彻底抹除」才会再次弹出
+   纲要：第二版重排为「目录 + 分段」的文档式版式（原为一大块 <br><br> 文本）
+        注意：若干小节标题被回归测试当作锚点字串（如「洞 府</b>」「图 鉴</b>」），
+        改版式时这些 <b> 标签必须原样保留
    ========================================================= */
 const NOTICE_KEY = 'xiuxian_notice_v1';
 const NOTICE_VER = 1;
@@ -5781,79 +6283,127 @@ function noticeHtml(){
 }
 function showNotice(){
   showModal('游 玩 声 明', noticeHtml(),
-    [{ label:'我 已 知 晓', primary:true, fn: acceptNotice }], 'wide');
+    [{ label:'我 已 知 晓', primary:true, fn: acceptNotice }], 'wide',
+    { sub:'首次进入须阅读' });
 }
 
-function showHelp(){
-  showModal('道 法 纲 要',
-      '<b>修 炼</b>　打坐吐纳最稳；灵石修炼耗财而快，约为枯坐四倍；闭关七日所得最丰，然心魔与顿悟皆在一线之间。'
-    + '共 <b>13 个大境界、41 层</b>，由炼气直至准圣、圣人、天道。<br><br>'
-    + '<b>突 破</b>　修为圆满即可冲击境界，<b>溢出的修为会结转下去</b>，一次修满便可<b>连续突破</b>。'
+/* ---------- 纲要的分段数据（保持原章节顺序） ---------- */
+const HELP_SECS = [
+  ['修 炼',
+    '打坐吐纳最稳；灵石修炼耗财而快，约为枯坐四倍；闭关七日所得最丰，然心魔与顿悟皆在一线之间。'
+    + '共 <b>13 个大境界、41 层</b>，由炼气直至准圣、圣人、天道。'],
+  ['突 破',
+    '修为圆满即可冲击境界，<b>溢出的修为会结转下去</b>，一次修满便可<b>连续突破</b>。'
     + '基础成功率随大境界递减（约 74% → 45%），失败倒退「当前境界所需修为的三成二」并大损气血。'
     + '成功率另有四路加成：<b>破境丹</b>（每个境界皆可用，加成随大境界增厚，至多连服三枚叠加）、'
     + '器物提供的<b>修速</b>（至多 +20%）、<b>丹道传承</b>（每重 +1.5%）、以及连破代价——'
-    + '每连破一境，下一境成功率 -3%（至多 -12%），失败即清零。<br><br>'
-    + '<b>妖 兽</b>　五处历练地随境界解锁。斩妖得修为、灵石与法器，唯有高阶妖兽才掉落上品货色；'
-    + '凶兽以上的妖兽还有机会留下可驯服的灵兽幼崽。气血耗尽则重伤三日，修为流失两成五。<br><br>'
-    + '<b>坐 骑</b>　只占一格，除属性外独有 <b>遁速</b>：按百分比缩短历练与秘境的赶路耗时，'
+    + '每连破一境，下一境成功率 -3%（至多 -12%），失败即清零。'],
+  ['妖 兽',
+    '五处历练地随境界解锁。斩妖得修为、灵石与法器，唯有高阶妖兽才掉落上品货色；'
+    + '凶兽以上的妖兽还有机会留下可驯服的灵兽幼崽。气血耗尽则重伤三日，修为流失两成五。'],
+  ['坐 骑',
+    '只占一格，除属性外独有 <b>遁速</b>：按百分比缩短历练与秘境的赶路耗时，'
     + '并提高战斗中脱身的成功率。可用灵石「喂养」逐阶淬炼（至多九阶），也可随时放生或出售。'
-    + '来路有三：驯服高阶妖兽、秘境深处收服、坊市灵兽栏购买。<br><br>'
-    + '<b>秘 境</b>　消耗灵力开启，逐层深入。每层可「搜寻」一次，或得宝，或引杀机；'
-    + '行至终点须挑战守关妖王，胜则秘境尽归你手。随时可「退出」见好就收。<br><br>'
-    + '<b>装 备</b>　武器一件、防具一件、法宝三件、坐骑一匹。法宝提供修炼速度加成，坐骑提供遁速。'
+    + '来路有三：驯服高阶妖兽、秘境深处收服、坊市灵兽栏购买。'],
+  ['秘 境',
+    '消耗灵力开启，逐层深入。每层可「搜寻」一次，或得宝，或引杀机；'
+    + '行至终点须挑战守关妖王，胜则秘境尽归你手。随时可「退出」见好就收。'],
+  ['装 备',
+    '武器一件、防具一件、法宝三件、坐骑一匹。法宝提供修炼速度加成，坐骑提供遁速。'
     + '法器分凡·灵·宝·仙·神五品，<b>仙品与神品带流光</b>，得来不易而威能远超同阶。'
-    + '品质越高越是稀有——运气不足时，多数所得都会止步于凡、灵二品。<br><br>'
-    + '<b>买 卖</b>　坊市可购法器、坐骑与丹药；「出售台」可按<b>类型与品质</b>筛选，把用不上的器物'
-    + '按约四成的价钱换成灵石，亦可一键清空凡品、灵品。储物袋每行与身上每件都带「售」字快捷按钮。<br><br>'
-    + '<b>自动换装</b>　左栏「法器」标题右侧可切换。开启时（默认），任何新得的器物只要战力高于在身者，'
+    + '品质越高越是稀有——运气不足时，多数所得都会止步于凡、灵二品。'],
+  ['买 卖',
+    '坊市可购法器、坐骑与丹药；「出售台」可按<b>类型与品质</b>筛选，把用不上的器物'
+    + '按约四成的价钱换成灵石，亦可一键清空凡品、灵品。储物袋每行与身上每件都带「售」字快捷按钮。'],
+  ['自动换装',
+    '左栏「法器」标题右侧可切换。开启时（默认），任何新得的器物只要战力高于在身者，'
     + '便自动祭炼认主；法宝三格会先填坑位，满了才替换最弱的一件。关闭后一律先进储物袋，由你亲自过目。'
-    + '也可随时点「择优换装」把囊中之物一次配到最好。战斗中不可换装、不可服丹（战斗面板的「服丹」除外）。<br><br>'
-    + '<b>存 档</b>　顶栏「存 档」：进度每步自动存于本机，另有 <b>3 枚玉简</b>可手动封存与读取；'
-    + '存档还能导出为<b>存档码或文件</b>，换机、备份、分享皆可，也能粘贴存档码导入。<br><br>'
-    + '<b>轮 回</b>　顶栏「轮 回」：舍弃今生，以境界与斩妖结算<b>轮回点</b>（境界 ÷ 3 ＋ 斩妖 ÷ 30）。'
+    + '也可随时点「择优换装」把囊中之物一次配到最好。战斗中不可换装、不可服丹（战斗面板的「服丹」除外）。'],
+  ['存 档',
+    '顶栏「存 档」：进度每步自动存于本机，另有 <b>3 枚玉简</b>可手动封存与读取；'
+    + '存档还能导出为<b>存档码或文件</b>，换机、备份、分享皆可，也能粘贴存档码导入。'],
+  ['轮 回',
+    '顶栏「轮 回」：舍弃今生，以境界与斩妖结算<b>轮回点</b>（境界 ÷ 3 ＋ 斩妖 ÷ 30）。'
     + '每一世<b>永久 +2% 修炼速度</b>（至多 +20%），轮回点可在「传 承」中永久点化五项传承：'
     + '悟性（修速）、丹道（突破率）、财源（初始灵石）、气运（掉落运气）、体魄（气血上限）。'
-    + '传承与轮回印记不随轮回消散，所以每一世都从更高处起步。<br><br>'
-    + '<b>成 就</b>　顶栏「成 就」。共 <b>42 项</b>，分凡·灵·宝·仙·神五品，覆盖境界、斩妖、秘境、财富、器物、'
+    + '传承与轮回印记不随轮回消散，所以每一世都从更高处起步。'],
+  ['成 就',
+    '顶栏「成 就」。共 <b>42 项</b>，分凡·灵·宝·仙·神五品，覆盖境界、斩妖、秘境、财富、器物、'
     + '闭关、顿悟、连破、轮回等各类行为。成就<b>永久留存，轮回不灭</b>，累积提供属性加成'
-    + '（攻击 / 防御 / 气血 / 修速 / 突破率）；品阶越高，附带的<b>气运</b>越多。<br><br>'
-    + '<b>气 运</b>　一条统一的福缘乘区，来源为成就（主）、「气运传承」与心法。它同时增益三处：'
-    + '掉落品质（更易出仙品、神品）、灵石收益、以及器物与坐骑的掉落概率。顶栏与左栏「道体」皆可查看。<br><br>'
-    + '<b>功 法</b>　顶栏「功 法」。分<b>被动</b>（心法）与<b>主动</b>（术法）二类：被动只可运转 <b>3 部</b>，'
+    + '（攻击 / 防御 / 气血 / 修速 / 突破率）；品阶越高，附带的<b>气运</b>越多。'],
+  ['气 运',
+    '一条统一的福缘乘区，来源为成就（主）、「气运传承」与心法。它同时增益三处：'
+    + '掉落品质（更易出仙品、神品）、灵石收益、以及器物与坐骑的掉落概率。顶栏与左栏「道体」皆可查看。'],
+  ['功 法',
+    '顶栏「功 法」。分<b>被动</b>（心法）与<b>主动</b>（术法）二类：被动只可运转 <b>3 部</b>，'
     + '主动只可备于识海 <b>2 式</b>——习得多寡不等同于强弱，<b>如何取舍才是关键</b>。'
     + '被动给属性、修速、突破率与气运；主动则让你在战斗的「灵 力 斩」之外另出二式，'
     + '各带<b>冷却</b>与不同效果：护体减伤、虚空闪避、冰封（敌伤减半）、灼烧（持续掉血）、吸血、破防、反噬。'
     + '来路有二：<b>秘境妖王</b>必遗一部、坊市<b>藏经阁</b>可购。'
     + '已习得的功法<b>刻入道基、轮回不灭</b>，但重数与装备归本局，须重新参悟；参悟同时耗<b>灵石与修为</b>，'
-    + '故「冲境界」与「厚积功法」需自行权衡。<br><br>'
-    + '<b>材 料 · 炼 制</b>　斩妖剥皮、秘境采撷、岩缝拾矿，可得六种材料：灵草、兽皮、妖丹、玄铁、星辰砂、混沌石。'
+    + '故「冲境界」与「厚积功法」需自行权衡。'],
+  ['材 料 · 炼 制',
+    '斩妖剥皮、秘境采撷、岩缝拾矿，可得六种材料：灵草、兽皮、妖丹、玄铁、星辰砂、混沌石。'
     + '坊市页内有<b>丹房</b>（回春 · 聚灵 · 归元 · 破境）与<b>器坊</b>（兵器 · 护甲 · 法宝），另有<b>材料铺</b>可应急补货。'
     + '炼制消耗<b>灵力与天数</b>（不耗灵石），失败返还四成材料。成丹率受<b>丹道传承</b>与<b>境界差</b>影响'
     + '——高境界炼低配方有加成，越级炼则每差一档 -6%。所炼之器品质随机，最低宝品，'
     + '<b>气运</b>与越级炼器可再提一阶。坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。'
-    + '材料归本局所有，不随轮回带走。<br><br>'
-    + '<b>洞 府</b>　左栏「洞 府」面板进入。五处设施：<b>灵田</b>产灵草、<b>聚灵阵</b>加修速并自动凝灵石、'
+    + '材料归本局所有，不随轮回带走。'],
+  ['洞 府',
+    '左栏「洞 府」面板进入。五处设施：<b>灵田</b>产灵草、<b>聚灵阵</b>加修速并自动凝灵石、'
     + '<b>丹房</b>加成丹率、<b>器坊</b>加成器率、<b>静室</b>延长离线可累积时长。'
     + '升级消耗<b>灵石与天数</b>——天数即时光流逝，与出门打怪形成节奏竞争。'
     + '<b>离线时灵田与聚灵阵仍在运转</b>，可累积上限为 <b>8 小时 + 静室等级 × 2</b>（满级 26 小时），'
     + '超出的部分不再计入，故升静室才有意义。离线收益在下次打开时以「闭关归来」面板一次性结算。'
-    + '洞府归本局所有，<b>轮回清零</b>。<br><br>'
-    + '<b>图 鉴</b>　左栏「图 鉴 · 称 号」进入。每次获得器物、习得功法、剥取材料、遭遇妖兽、进入秘境、'
+    + '洞府归本局所有，<b>轮回清零</b>。'],
+  ['图 鉴',
+    '左栏「图 鉴 · 称 号」进入。每次获得器物、习得功法、剥取材料、遭遇妖兽、进入秘境、'
     + '撞上奇遇，都会在图鉴上点亮一格。<b>每 10 项 +1 气运</b>（并入统一气运乘区），'
-    + '每 <b>25 项</b>会有一次里程碑提示。图鉴<b>轮回不灭</b>——它属于「知识 / 成就 / 传承」这一侧的永久进度。<br><br>'
-    + '<b>称 号</b>　称号是玩法行为的具象化印记，共 <b>' + TITLES.length + ' 个</b>，覆盖凡 · 灵 · 宝 · 仙 · 神五品。'
-    + '解锁后<b>永久留存</b>，但同时<b>只可佩戴一个</b>——效果是独立乘区，不与功法 / 成就叠乘混淆。<br><br>'
-    + '<b>奇 遇</b>　打坐、灵石修炼、闭关与历练之后，你有机会撞上奇遇——共 <b>25 段</b>，按大境界分五段，'
+    + '每 <b>25 项</b>会有一次里程碑提示。图鉴<b>轮回不灭</b>——它属于「知识 / 成就 / 传承」这一侧的永久进度。'],
+  ['称 号',
+    '称号是玩法行为的具象化印记，共 <b>' + TITLES.length + ' 个</b>，覆盖凡 · 灵 · 宝 · 仙 · 神五品。'
+    + '解锁后<b>永久留存</b>，但同时<b>只可佩戴一个</b>——效果是独立乘区，不与功法 / 成就叠乘混淆。'],
+  ['奇 遇',
+    '打坐、灵石修炼、闭关与历练之后，你有机会撞上奇遇——共 <b>25 段</b>，按大境界分五段，'
     + '每段内容各不相同。奇遇弹出数条选项，<b>各有得失、不可兼得</b>：稳妥的拿小利，冒险的可能翻倍，'
-    + '也可能重伤。两次奇遇至少相隔 5 日，不会反复打断你。<br><br>',
+    + '也可能重伤。两次奇遇至少相隔 5 日，不会反复打断你。']
+];
+
+function showHelp(){
+  let h = '<div class="doc">';
+
+  /* 目录：点击跳到对应小节 */
+  h += '<div class="doc-toc">';
+  HELP_SECS.forEach((s, i) => {
+    h += '<span class="chip" onclick="uiJump(\'dc-' + i + '\')">' + s[0] + '</span>';
+  });
+  h += '</div>';
+
+  HELP_SECS.forEach((s, i) => {
+    h += '<div class="doc-sec" id="dc-' + i + '">'
+      + '<b>' + s[0] + '</b>'
+      + '<p>' + s[1] + '</p>'
+      + '</div>';
+  });
+
+  h += '</div>';
+
+  showModal('道 法 纲 要', h,
     [{ label:'游 玩 声 明', fn: showNotice },
-     { label:'受 教 了', primary:true, fn: closeModal }], 'wide');
+     { label:'受 教 了', primary:true, fn: closeModal }], 'wide',
+    { sub: HELP_SECS.length + ' 节' });
 }
 
 /* ── ui/render.js ───────────────────────────────────────────────── */
 
 /* =========================================================
-   渲染
+   渲染（第二版 · 重排）
+   ---------------------------------------------------------
+   分层：
+     · renderAll  —— 一次画全（顶栏 / 左栏 / 右栏 / 抽屉）
+     · 左栏各面板 —— 只画摘要，详情与操作进弹层
+     · 右栏动作区 —— 页签内容，卡片式（.actgrid > .card）
+   约定：只用具名导入；顶层函数名全局唯一；不写死颜色
    ========================================================= */
 function renderAll(){
   if(!S) return;
@@ -5932,6 +6482,21 @@ function renderChar(){
   $('sLuck').style.color = f >= 50 ? 'var(--zhu)' : '';
   $('sKill').textContent = num(S.kills);
   $('sDeath').textContent = num(S.deaths);
+  /* 左栏头等面板上的境界与一行摘要（第二版：把「我现在什么水平」提到最上面） */
+  const hr = $('heroRealm'), hs = $('heroSub');
+  if(hr) hr.textContent = realmName();
+  if(hs){
+    hs.textContent = '第 ' + num(S.day) + ' 日 · 战力 ' + num(st.power)
+      + (META.rebirths > 0 ? ' · 第 ' + META.rebirths + ' 世' : '');
+  }
+}
+
+/* ---------- 面板标题角标 ---------- */
+function uiPhTag(id, text, cls){
+  const el = $(id);
+  if(!el) return;
+  el.className = cls ? ('ph-tag ' + cls) : 'ph-tag';
+  el.textContent = text;
 }
 
 function slotRow(label, it, key, idx){
@@ -5954,24 +6519,18 @@ function renderEquip(){
     h += slotRow('法宝'+(i+1), S.equip.treasures[i], 'treasure', i);
   }
   $('equipBox').innerHTML = h;
-
-  const tag = $('autoTag');
-  tag.textContent = '自动换装 · ' + (S.autoEquipOn ? '开' : '关');
-  tag.style.color = S.autoEquipOn ? 'var(--qing)' : 'var(--ink4)';
-  tag.style.border = '1px solid ' + (S.autoEquipOn ? 'var(--qing)' : 'var(--line2)');
-  tag.style.borderRadius = '2px';
-  tag.style.padding = '1px 6px';
+  uiPhTag('autoTag', '自动换装 · ' + (S.autoEquipOn ? '开' : '关'),
+    'link' + (S.autoEquipOn ? ' on' : ''));
 }
 
 function renderMount(){
   const m = S.equip.mount;
   const box = $('mountBox');
-  const tag = $('mountTag');
 
   if(!m){
     box.innerHTML = '<div class="empty-row">' + slotRow('坐骑', null, 'mount', 0) + '</div>'
       + '<div class="hint-mini">尚无坐骑。驯服高阶妖兽、潜入秘境、或于坊市灵兽栏购买。</div>';
-    tag.textContent = '';
+    uiPhTag('mountTag', '');
     return;
   }
 
@@ -5979,15 +6538,12 @@ function renderMount(){
   const maxed = m.lv >= MOUNT_MAX_LV;
   box.innerHTML = slotRow('坐骑', m, 'mount', 0)
     + '<div class="hint-mini">'+MOUNT_TIER_NAME[m.tier]+' · '+m.lv+' / '+MOUNT_MAX_LV+' 阶 · 战力 '+num(m.power)+'</div>'
-    + '<div style="display:flex;gap:6px;margin-top:6px">'
-    + '<button class="mbtn" style="flex:1;padding:5px 0;font-size:11.5px;letter-spacing:.08em;'
-      + (maxed?'opacity:.4;':'') + '" onclick="feedMount()">'
+    + '<div class="btnrow">'
+    + '<button class="btn btn-sm' + (maxed ? ' dis' : '') + '" onclick="' + (maxed ? '' : 'feedMount()') + '">'
       + (maxed ? '已 至 化 境' : '喂 养 · '+num(cost)) + '</button>'
-    + '<button class="mbtn" style="padding:5px 12px;font-size:11.5px;letter-spacing:.08em" onclick="releaseMount()">放 生</button>'
+    + '<button class="btn btn-sm" onclick="releaseMount()">放 生</button>'
     + '</div>';
-
-  tag.textContent = '遁速 +' + m.speed + '%';
-  tag.style.color = 'var(--qing)';
+  uiPhTag('mountTag', '遁速 +' + m.speed + '%', 'on');
 }
 
 /* --- 功法（左栏面板）：只做摘要，详情与操作都在「悟道录」弹层 --- */
@@ -6030,9 +6586,7 @@ function renderGongfa(){
     : (n ? '被动槽尚未装心法，点「改 修」择一部运转。' : '尚未习得。秘境妖王与坊市藏经阁皆可求得功法。');
   h += '<div class="hint-mini">'+tip+'</div>';
   box.innerHTML = h;
-
-  const tag = $('gfTag');
-  if(tag) tag.textContent = '已 习 ' + n + ' / ' + GONGFA.length;
+  uiPhTag('gfTag', '已 习 ' + n + ' / ' + GONGFA.length);
 }
 
 function renderPills(){
@@ -6042,10 +6596,9 @@ function renderPills(){
     const n = S.pills[p.name]||0;
     const off = !n || lock;
     const bonus = (p.name === '破境丹' && (S.pillStack||0) > 0)
-      ? ' <span style="color:var(--zhu)">+'+pillBonus()+'%</span>' : '';
-    h += '<button class="mbtn" style="padding:6px 12px;font-size:12px;letter-spacing:.06em;'
-      + (off?'opacity:.4;':'') + '"'
-      + (off ? '' : ' onclick="usePill(\''+p.name+'\')"')
+      ? ' <span class="zhu">+'+pillBonus()+'%</span>' : '';
+    h += '<button class="btn btn-sm'+(off?' dis':'')+'"'
+      + (off ? ' disabled' : ' onclick="usePill(\''+p.name+'\')"')
       + ' title="'+p.desc+(lock?'（战斗中请在战斗面板用「服丹」）':'')+'">'
       + p.name + ' ×' + n + bonus + '</button>';
   }
@@ -6054,7 +6607,8 @@ function renderPills(){
 
 function renderBag(){
   const box = $('bagBox');
-  $('bagCount').textContent = S.bag.length + ' / 40';
+  const cnt = $('bagCount');
+  if(cnt) cnt.textContent = S.bag.length + ' / 40';
   if(!S.bag.length){ box.innerHTML = '<div class="empty-note">囊 中 空 空</div>'; return; }
   const lock = busy();
   let h = '';
@@ -6067,9 +6621,9 @@ function renderBag(){
       h += '<div class="l2"><span class="pw" style="opacity:.7">战 中 不 可 取 用</span></div>';
     }else{
       h += '<div class="l2">'
-        + '<button onclick="equipBag('+it.id+')">'+ (isMount(it) ? '骑 乘' : '装 备') +'</button>'
-        + '<button class="sell-btn" onclick="sellBagItem('+it.id+')">售 '+num(sellPrice(it))+'</button>'
-        + '<button onclick="dropItem('+it.id+')" style="opacity:.6">弃</button>'
+        + '<button class="btn btn-sm" onclick="equipBag('+it.id+')">'+ (isMount(it) ? '骑 乘' : '装 备') +'</button>'
+        + '<button class="btn btn-sm sell-btn" onclick="sellBagItem('+it.id+')">售 '+num(sellPrice(it))+'</button>'
+        + '<button class="btn btn-sm btn-ghost" onclick="dropItem('+it.id+')">弃</button>'
         + '</div>';
     }
     h += '</div>';
@@ -6100,16 +6654,34 @@ function switchTab(k){
   renderTabs(); renderActions(); save();
 }
 
+/* 把「名称 + 属性串」拆成两段。
+   itemLabel() / mountLabel() 统一以 <span class="muted-sm"> 引出属性串；
+   槽位与储物袋需要单行标签（overflow:hidden 截断），而卡片要两行排布 ——
+   否则长属性串会把卡片标题撑成四五行的参差高度。 */
+function uiSplitLabel(label){
+  const mk = '<span class="muted-sm">';
+  const i = label.indexOf(mk);
+  if(i < 0) return [label, ''];
+  return [label.slice(0, i), label.slice(i + mk.length).replace(/<\/span>\s*$/, '').trim()];
+}
+
+/* ---------- 卡片 ----------
+   cost 支持字符串或数组（数组会渲染成一排小标签，排布更整齐） */
 function card(title, desc, cost, fn, opt){
   opt = opt || {};
   const cls = 'card' + (opt.lock?' lock':'') + (opt.hot?' hot':'') + (opt.danger?' danger':'')
     + (opt.q !== undefined ? godCls(opt.q) : '');
   const oc = (opt.lock || !fn) ? '' : ' onclick="'+fn+'"';
-  return '<div class="'+cls+'"'+oc+'>'
-    + '<div class="t">'+title+'</div>'
-    + '<div class="d">'+desc+'</div>'
-    + (cost ? '<div class="cost">'+cost+'</div>' : '')
-    + '</div>';
+  const tags = Array.isArray(cost) ? cost.filter(Boolean) : (cost ? [cost] : []);
+  let h = '<div class="'+cls+'"'+oc+'>'
+    + '<div class="t">'+title+'</div>';
+  if(desc) h += '<div class="d">'+desc+'</div>';
+  if(tags.length){
+    h += '<div class="cost">';
+    for(const t of tags) h += '<span class="tag">'+t+'</span>';
+    h += '</div>';
+  }
+  return h + '</div>';
 }
 
 function renderActions(){
@@ -6129,13 +6701,14 @@ function renderActions(){
 function renderCombat(){
   const c = S.combat, m = c.m, st = stats();
   const hpPct = clamp(m.hp/m.hpMax*100,0,100);
-  let h = '<div class="fbar" style="margin:-13px -14px 12px;border-radius:0">'
+  const mpCost = Math.round(st.mpMax*0.15)+8;
+  let h = '<div class="fbar" style="margin:-14px -15px 12px;border-radius:0">'
     + '<span class="fname">'+m.name+'</span>'
     + '<span class="ftrack"><span class="ffill" style="width:'+hpPct+'%"></span></span>'
     + '<span class="fnum">'+num(Math.max(0,m.hp))+' / '+num(m.hpMax)+'</span>'
     + '</div>';
   h += '<div class="tip">第 <b>'+c.turn+'</b> 回合 · 灵力 '+num(S.mp)+' / '+num(st.mpMax)
-    + ' · 灵技需 '+num(Math.round(st.mpMax*0.15)+8)+' 灵力</div>';
+    + ' · 灵技需 '+num(mpCost)+' 灵力</div>';
   const myDmg  = Math.max(1, Math.round(st.atk - m.def*0.6));
   const foeDmg = Math.max(1, Math.round(m.atk - st.def*0.6));
   const myTurns  = Math.ceil(Math.max(0, m.hp) / myDmg);
@@ -6160,7 +6733,7 @@ function renderCombat(){
 
   h += '<div class="actgrid">';
   h += card('挥 击','以手中法器直取要害，不耗灵力。','', "fightAttack()");
-  h += card('灵 力 斩','催动灵力一击，伤害约 2.3 倍。','耗灵力 '+num(Math.round(st.mpMax*0.15)+8), "fightSkill()", S.mp < Math.round(st.mpMax*0.15)+8 ? {lock:true}:{});
+  h += card('灵 力 斩','催动灵力一击，伤害约 2.3 倍。','耗灵力 '+num(mpCost), "fightSkill()", S.mp < mpCost ? {lock:true}:{});
   /* 识海中的主动功法（功法系统）：带冷却与附加效果 */
   const skills = gfActiveList();
   for(const sk of skills){
@@ -6179,7 +6752,7 @@ function renderCombat(){
   }
   h += card('御 守','架起护体灵光，本回合受伤减至三成，并回灵力。','', "fightAction('defend')");
   const hasPill = (S.pills['回春丹']||0) > 0;
-  h += card('服 丹','服一枚回春丹，恢复气血 45%。', (S.pills['回春丹']||0)+' 枚 · 至多 3 次', "fightPill()", hasPill?{}:{lock:true});
+  h += card('服 丹','服一枚回春丹，恢复气血 45%。', [(S.pills['回春丹']||0)+' 枚','至多 3 次'], "fightPill()", hasPill?{}:{lock:true});
   h += card('遁 走','有五成八的把握脱身。妖王当前则无从遁走。','', "fightAction('flee')", m.boss?{lock:true}:{});
   h += '</div>';
   return h;
@@ -6189,12 +6762,15 @@ function renderCombat(){
 function renderDungeon(){
   const d = S.dungeon, def = SECRETS[d.idx];
   const maxFloor = d.floor === d.total;
-  let h = '<div class="tip">秘境：<b>'+def.name+'</b> · 当前第 <b>'+d.floor+'/'+d.total+'</b> 层'
-    + ' · 已获灵石 <b>'+num(d.gained)+'</b> · 得宝 <b>'+d.items+'</b> 件'
-    + (maxFloor ? ' · <b style="color:var(--warn)">终点已至，妖王在前</b>' : '')
-    + '</div>'
-    + '<div class="dtrack"><i style="width:'+Math.round(d.floor/d.total*100)+'%"></i></div>';
-  h += '<div class="actgrid">';
+  let h = uiSec('秘 境 · ' + def.name, '当前第 <b>' + d.floor + ' / ' + d.total + '</b> 层'
+    + (maxFloor ? '　<b>终点已至，妖王在前</b>' : '　逐层深入，见好就收'), d.total + ' 层');
+  h += uiKV([
+    ['已得灵石', '<b>' + num(d.gained) + '</b>'],
+    ['所得器物', '<b>' + d.items + '</b> 件'],
+    ['本层搜寻', d.searched ? '已翻检殆尽' : '<b>尚可搜寻一次</b>']
+  ]);
+  h += '<div class="dtrack"><i style="width:'+Math.round(d.floor/d.total*100)+'%"></i></div>';
+  h += '<div class="actgrid" style="margin-top:12px">';
   if(maxFloor){
     h += card('挑 战 妖 王','守关妖王镇于此层，胜则秘境尽归你手，败则前功尽弃。','', "dungeonBoss()", {hot:true, danger:true});
   }else{
@@ -6215,8 +6791,19 @@ function actionsCult(){
   const ready = S.exp >= need;
   const chain = atMax ? 0 : readyCount();
   const cost = 25 + S.level*6;
-  let h = '<div class="actgrid">';
 
+  let h = uiSec('修 炼 · ' + realmName(),
+    '打坐最稳、灵石最快、闭关最丰 —— 三条路各有代价，越到高处越是取舍。',
+    atMax ? '天道境' : '距下一境 ' + num(Math.max(0, need - S.exp)));
+  h += uiKV([
+    ['修为', '<b>' + num(S.exp) + '</b> / ' + num(need) + (ready ? '　<span class="zhu">圆满</span>' : '')],
+    ['修速加成', '<b>+' + st.cult + '%</b>（法宝 · 坐骑 · 传承 · 洞府 · 功法）'],
+    ready && S.exp > need ? ['修为溢出', '<b>' + num(S.exp - need) + '</b>（突破后结转）'] : null,
+    (S.pillStack || 0) > 0 ? ['丹田药力', '破境丹 <b>+' + pillBonus() + '%</b>（成或败皆耗尽）'] : null,
+    (S.breakStreak || 0) > 0 ? ['连破代价', '成功率 <b>-' + Math.min(12, S.breakStreak*3) + '%</b>'] : null
+  ]);
+
+  h += '<div class="actgrid" style="margin-top:12px">';
   if(atMax){
     if(ready){
       h += card('白 日 飞 升','凡世修行的尽头已至。九霄雷云为你聚拢，只待踏出最后一步。',
@@ -6224,48 +6811,43 @@ function actionsCult(){
     }
   }else if(ready){
     h += card('冲 击 境 界','修为圆满，尝试晋升至【'+realmAt(S.level+1).name+'】。',
-      '成功率 ' + breakChance() + '%' + pillTip(), "doBreakthrough()", {hot:true});
+      ['成率 ' + breakChance() + '%'].concat(pillTip() ? [pillTip()] : []), "doBreakthrough()", {hot:true});
     if(chain >= 2){
       h += card('连 续 突 破','气机已足，一次冲到尽处。每成一境修为便结转下去，失败即止。',
-        '可连破 ' + chain + ' 境 · 首破 ' + breakChance() + '%', "doBreakthroughChain()", {hot:true});
+        ['可连破 ' + chain + ' 境','首破 ' + breakChance() + '%'], "doBreakthroughChain()", {hot:true});
     }
   }
 
   if(!atMax && (S.pills['破境丹']||0) > 0){
     const stack = S.pillStack||0;
     h += card('服 破 境 丹','药力随大境界增厚，每个境界皆可用；至多连服三枚叠加。',
-      '丹田已蓄 ' + stack + ' 枚 · 本次 +' + pillBonus() + '%',
+      ['丹田已蓄 ' + stack + ' 枚','本次 +' + pillBonus() + '%'],
       "usePill('破境丹')", stack >= 3 ? {lock:true} : {});
   }
 
-  h += card('打 坐 吐 纳','盘膝运转周天，凝聚天地灵气。回复少量气血灵力。','1 日 · 修为 +'+num(Math.floor(askExp(S.level)*(1+st.cult/100))), "actMeditate()", ready?{}:{hot:true});
-  h += card('灵 石 修 炼','布下聚灵阵，以灵石催发磅礴灵气，约四倍于枯坐。','1 日 · '+num(cost)+' 灵石', "actStoneCultivate()", S.stones<cost?{lock:true}:{});
-  h += card('闭 关 七 日','封洞苦修，所得丰厚，然心魔或顿悟难料。需气血灵力皆满九成。','7 日 · 修为 +'+num(Math.floor(need*4.2*(1+st.cult/100))), "actSeclusion()",
+  h += card('打 坐 吐 纳','盘膝运转周天，凝聚天地灵气。回复少量气血灵力。',
+    ['1 日','修为 +'+num(Math.floor(askExp(S.level)*(1+st.cult/100)))], "actMeditate()", ready?{}:{hot:true});
+  h += card('灵 石 修 炼','布下聚灵阵，以灵石催发磅礴灵气，约四倍于枯坐。',
+    ['1 日', num(cost)+' 灵石'], "actStoneCultivate()", S.stones<cost?{lock:true}:{});
+  h += card('闭 关 七 日','封洞苦修，所得丰厚，然心魔或顿悟难料。需气血灵力皆满九成。',
+    ['7 日','修为 +'+num(Math.floor(need*4.2*(1+st.cult/100)))], "actSeclusion()",
     (S.mp<st.mpMax*0.9||S.hp<st.hpMax*0.9)?{lock:true}:{});
-
   h += '</div>';
-
-  h += '<div class="tip" style="margin-top:12px">'
-    + '当前境界 <b>'+realmName()+'</b> · 距下一境还需修为 <b>'+num(Math.max(0,need-S.exp))+'</b>'
-    + (ready && S.exp > need ? ' · <b>修为溢出 '+num(S.exp-need)+'</b>，突破后结转' : '')
-    + ' · 修速加成 <b>+'+st.cult+'%</b>（法宝 · 坐骑 · 传承 · 功法）</div>';
-  if((S.pillStack||0) > 0){
-    h += '<div class="tip" style="font-size:11px">丹田中已蓄破境丹之力，本次突破 <b>+'+pillBonus()+'%</b>，成或败皆会耗尽。'
-      + ((S.breakStreak||0) > 0 ? ' 连破已 '+S.breakStreak+' 境，气机浮动，成功率 -'+Math.min(12,S.breakStreak*3)+'%。' : '') + '</div>';
-  }else if((S.breakStreak||0) > 0){
-    h += '<div class="tip" style="font-size:11px">连破已 '+S.breakStreak+' 境，气机未稳，本次突破成功率 <b>-'+Math.min(12,S.breakStreak*3)+'%</b>。</div>';
-  }
   return h;
 }
 
 /* --- 妖兽 --- */
 function actionsHunt(){
-  let h = '<div class="tip">选择历练之地。斩妖可得修为、灵石与法器掉落，凶兽以上还可能驯得坐骑，但有重伤之险。</div><div class="actgrid">';
+  let h = uiSec('妖 兽 · 历 练',
+    '斩妖可得修为、灵石与法器掉落，凶兽以上还可能驯得坐骑，但有重伤之险。',
+    GROUNDS.length + ' 处');
+  h += '<div class="actgrid">';
   for(let i=0;i<GROUNDS.length;i++){
     const g = GROUNDS[i];
     const lk = S.level < g.min;
     h += card(g.name + ' <span class="tier-tag">'+TIER_NAME[g.tier]+'</span>',
-      g.desc, (lk ? '需 '+realmAt(g.min).name : travelDays(g.days)+' 日 · 推荐战力 '+num(estPower(g.tier))),
+      g.desc,
+      lk ? ['需 ' + realmAt(g.min).name] : [travelDays(g.days)+' 日','推荐战力 '+num(estPower(g.tier))],
       "hunt("+i+")", lk?{lock:true}:{hot: i===curGround()});
   }
   h += '</div>';
@@ -6274,15 +6856,18 @@ function actionsHunt(){
 
 /* --- 秘境 --- */
 function actionsSecret(){
-  let h = '<div class="tip">秘境为高风险之地，一旦踏入，气血不济便可能重创而归。层数越深，收获越丰。'
-    + (stats().speed ? '坐骑遁速已令赶路耗时降至 <b>'+Math.round((1-stats().speed/100)*100)+'%</b>。' : '') + '</div><div class="actgrid">';
+  let h = uiSec('秘 境 · 探 幽',
+    '高风险之地，一旦踏入，气血不济便可能重创而归。层数越深，收获越丰。'
+    + (stats().speed ? '　坐骑遁速已令赶路耗时降至 <b>'+Math.round((1-stats().speed/100)*100)+'%</b>。' : ''),
+    SECRETS.length + ' 处');
+  h += '<div class="actgrid">';
   for(let i=0;i<SECRETS.length;i++){
     const d = SECRETS[i];
     const lk = S.level < d.min;
     const lm = S.mp < d.mp;
     h += card(d.name + ' <span class="tier-tag">' + d.floors + ' 层</span>',
       d.desc,
-      (lk ? '需 '+realmAt(d.min).name : travelDays(d.days)+' 日 · 灵力 '+num(d.mp) + (lm ? '（不足）':'')),
+      (lk ? ['需 '+realmAt(d.min).name] : [travelDays(d.days)+' 日','灵力 '+num(d.mp) + (lm ? '（不足）':'')]),
       "enterSecret("+i+")", (lk||lm)?{lock:true}:{});
   }
   h += '</div>';
@@ -6292,15 +6877,21 @@ function actionsSecret(){
 /* --- 装备 --- */
 function actionsGear(){
   const st = stats();
-  let h = '<div class="tip">法器分 <span style="color:#8a8378">凡</span>·<span style="color:#2f7d63">灵</span>·<span style="color:#5b4a9e">宝</span>·<span style="color:#b0701c">仙</span>·<span style="color:var(--zhu)">神</span> 五品。'
-    + '法宝可同时温养三件，额外提供修炼速度加成；坐骑独有<b>遁速</b>，可缩短赶路耗时并提高脱身成功率。</div>';
-  h += '<div class="actgrid">';
-  h += card('当前战力','攻 '+num(st.atk)+' · 防 '+num(st.def)+' · 气血 '+num(st.hpMax)+' · 灵力 '+num(st.mpMax)
-    + ' · 暴击 '+st.crit+'% · 修速 +'+st.cult+'% · 遁速 +'+st.speed+'%','', '');
-  h += card('择 优 换 装','以神识扫过储物袋，自动挑出威能最盛者祭炼上身。', S.bag.length+' 件备选', "autoEquip()", S.bag.length?{hot:true}:{lock:true});
+  let h = uiSec('装 备 · 战 力',
+    '法器分 <span class="qc0">凡</span>·<span class="qc1">灵</span>·<span class="qc2">宝</span>·<span class="qc3">仙</span>·<span class="qc4">神</span> 五品。'
+    + '法宝可同时温养三件并提供修速；坐骑独有<b>遁速</b>。');
+  h += uiKV([
+    ['攻 / 防', '<b>' + num(st.atk) + '</b> / <b>' + num(st.def) + '</b>'],
+    ['气血 / 灵力', '<b>' + num(st.hpMax) + '</b> / <b>' + num(st.mpMax) + '</b>'],
+    ['暴击', '<b>' + st.crit + '%</b>'],
+    ['修速 / 遁速', '<b>+' + st.cult + '%</b> / <b>+' + st.speed + '%</b>']
+  ]);
+  h += '<div class="actgrid" style="margin-top:12px">';
+  h += card('择 优 换 装','以神识扫过储物袋，自动挑出威能最盛者祭炼上身。',
+    [S.bag.length+' 件备选'], "autoEquip()", S.bag.length?{hot:true}:{lock:true});
   h += card('自 动 换 装 · ' + (S.autoEquipOn ? '开' : '关'),
     S.autoEquipOn ? '开关开启：此后所得器物若胜于在身者，自动认主。' : '开关关闭：所得器物一律先收进储物袋，由你亲自过目。',
-    '点击切换', "toggleAutoEquip()", S.autoEquipOn?{hot:true}:{});
+    ['点击切换'], "toggleAutoEquip()", S.autoEquipOn?{hot:true}:{});
   h += card('卸 下 全 部','将身上法器与坐骑尽数收回储物袋。','', "unequipAll()");
   h += '</div>';
   return h;
@@ -6308,42 +6899,47 @@ function actionsGear(){
 
 /* --- 坊市 --- */
 function actionsShop(){
-  let h = '<div class="tip">坊市每 6 日自动换新，也可花 <b>3 灵石</b> 请掌柜再换一批。</div>';
+  let h = uiSec('坊 市 · 易 物',
+    '每 <b>6 日</b>自动换新，也可花 <b>3 灵石</b> 请掌柜再换一批。法器、坐骑、丹药、功法、材料，皆在此处。');
+
   h += '<div class="actgrid">';
   for(let i=0;i<S.shop.length;i++){
     const it = S.shop[i];
     const cost = itemCost(it);
-    h += card(itemLabel(it), '战力 '+num(it.power)+' · '+(it.lv+1)+' 阶',
-      cost+' 灵石 · 售 '+num(sellPrice(it)), "buyItem("+i+")", { q:it.q, lock:S.stones<cost });
+    const lp = uiSplitLabel(itemLabel(it));
+    h += card(lp[0],
+      [lp[1], '战力 '+num(it.power)+' · '+(it.lv+1)+' 阶'].filter(Boolean).join('　'),
+      [cost+' 灵石','售 '+num(sellPrice(it))], "buyItem("+i+")", { q:it.q, lock:S.stones<cost });
   }
+  if(!S.shop.length) h += card('货 架 空 空','这一批法器已被买走，换货后或有新物。','', '', {lock:true});
   h += '</div>';
 
-  h += '<div class="tip" style="margin-top:14px">灵兽栏 · 坐骑</div>';
+  h += uiSec('灵 兽 栏 · 坐 骑', '坐骑独有遁速：缩短赶路耗时，并提高战斗中脱身的成功率。');
   h += '<div class="actgrid">';
   if(S.shopMount){
     const m = S.shopMount;
-    h += card(mountLabel(m),
-      MOUNT_TIER_NAME[m.tier] + ' · 战力 '+num(m.power)+' · 遁速 +'+m.speed+'%',
-      mountCost(m)+' 灵石', "buyMount()", { q:m.q, lock:S.stones<mountCost(m) });
+    const lp = uiSplitLabel(mountLabel(m));
+    h += card(lp[0],
+      [lp[1], MOUNT_TIER_NAME[m.tier] + ' · 战力 ' + num(m.power) + ' · 遁速 +' + m.speed + '%'].filter(Boolean).join('　'),
+      [mountCost(m)+' 灵石'], "buyMount()", { q:m.q, lock:S.stones<mountCost(m) });
   }else{
     h += card('栏 中 空 空','这一批灵兽已被买走，换货后或有新兽。','', '', {lock:true});
   }
   h += '</div>';
 
-  h += '<div class="tip" style="margin-top:14px">丹药铺 · 常备三味</div>';
+  h += uiSec('丹 药 铺 · 常 备', '只能自炼的丹药不在架上，需去「丹 房」动手。');
   h += '<div class="actgrid">';
   for(const p of PILLS){
     if(p.craft) continue;                      /* 只能自炼的丹药不上架（如归元丹） */
     const pr = pillPrice(p);
-    h += card(p.name, p.desc, pr+' 灵石', "buyPill('"+p.name+"')", S.stones<pr?{lock:true}:{});
+    h += card(p.name, p.desc, [pr+' 灵石'], "buyPill('"+p.name+"')", S.stones<pr?{lock:true}:{});
   }
-  h += '</div>';
-  h += '<div class="actgrid" style="margin-top:10px">';
-  h += card('换 一 批 货','支付 3 灵石，请掌柜重新取货。','3 灵石', "refreshShop(false)", S.stones<3?{lock:true}:{});
+  h += card('换 一 批 货','支付 3 灵石，请掌柜重新取货。全坊市的货架与书阁一并刷新。',
+    ['3 灵石'], "refreshShop(false)", S.stones<3?{lock:true}:{});
   h += '</div>';
 
   /* ---------- 藏经阁 · 功法 ---------- */
-  h += '<div class="tip" style="margin-top:18px">藏 经 阁 · 功 法</div>';
+  h += uiSec('藏 经 阁 · 功 法', '买下即习得。心法一格、术法两格 —— 习得多寡不等同于强弱。');
   h += '<div class="actgrid">';
   const books = gfShopBook();
   if(!books.length){
@@ -6354,11 +6950,11 @@ function actionsShop(){
     if(!gf) continue;
     const p = gfBookPrice(gf);
     h += card('《'+gf.n+'》', gfGrade(gf) + ' · ' + gfPerLvText(gf),
-      p+' 灵石 · 买下即习得', "gfBuyBook("+i+")", { q:gf.t, lock:S.stones<p });
+      [p+' 灵石','买下即习得'], "gfBuyBook("+i+")", { q:gf.t, lock:S.stones<p });
   }
   const learnedN = gfLearnedList().length;
   h += card('悟 道 录','心法一格、术法两格——习得多寡不等同于强弱，如何取舍才是关键。',
-    '已习得 '+learnedN+' / '+GONGFA.length+' 部', "openGongfa()", {hot:true});
+    ['已习得 '+learnedN+' / '+GONGFA.length+' 部'], "openGongfa()", {hot:true});
   h += '</div>';
 
   /* ---------- 丹房 · 炼丹 ---------- */
@@ -6371,7 +6967,8 @@ function actionsShop(){
   h += renderMatShopSection();
 
   /* ---------- 出售台 ---------- */
-  h += '<div class="tip" style="margin-top:18px">出 售 台 · 以 器 易 石</div>';
+  h += uiSec('出 售 台 · 以 器 易 石',
+    '出售价约为购入价的四成，坐骑亦在可售之列。储物袋每行右侧的「售」可单件出手。');
   h += '<div class="filters"><span class="fl">类 型</span>';
   for(const t of SELL_TYPES){
     h += '<span class="chip'+(SELL.type===t.k?' on':'')+'" onclick="setSell(\''+t.k+'\',null)">'+t.n+'</span>';
@@ -6386,26 +6983,25 @@ function actionsShop(){
   const list = S.bag.filter(matchSell);
   const tot = list.reduce((a,it)=>a+sellPrice(it), 0);
   h += '<div class="sellbox"><span class="sv">符合条件 <b>'+list.length+'</b> 件 · 可得 <b>'+num(tot)+'</b> 灵石</span>'
-    + '<button class="mbtn" style="margin-left:auto;padding:6px 18px;font-size:12px;letter-spacing:.12em;'
-      + (list.length?'':'opacity:.4;') + '"' + (list.length?' onclick="sellBatch()"':'') + '>全 部 售 出</button></div>';
+    + '<button class="btn btn-sm' + (list.length?'':' dis') + '" style="margin-left:auto"'
+      + (list.length?' onclick="sellBatch()"':'') + '>全 部 售 出</button></div>';
 
   const q0 = S.bag.filter(x=>x.q===0);
   const q1 = S.bag.filter(x=>x.q<=1);
   h += '<div class="actgrid" style="margin-top:9px">';
   h += card('清 空 凡 品','一应凡品法器与坐骑尽数售出，只留可用之物。',
-    q0.length ? '共 '+num(q0.reduce((a,it)=>a+sellPrice(it),0))+' 灵石' : '囊中并无凡品',
+    q0.length ? ['共 '+num(q0.reduce((a,it)=>a+sellPrice(it),0))+' 灵石'] : ['囊中并无凡品'],
     "sellQuality(0)", q0.length?{}:{lock:true});
   h += card('清 空 凡 品 与 灵 品','连灵品一起处理，腾出囊中空位。',
-    q1.length ? '共 '+num(q1.reduce((a,it)=>a+sellPrice(it),0))+' 灵石' : '囊中并无凡灵之物',
+    q1.length ? ['共 '+num(q1.reduce((a,it)=>a+sellPrice(it),0))+' 灵石'] : ['囊中并无凡灵之物'],
     "sellQuality(1)", q1.length?{}:{lock:true});
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px;margin-top:8px">出售价约为购入价的四成，坐骑亦在可售之列。'
-    + '储物袋每行右侧的「售」可单件出手；若怕误售，可先在左栏「法器」中关闭自动换装。</div>';
+  h += '<div class="tip" style="margin-top:10px;font-size:11px">若怕误售，可先在左栏「法 器」里关闭自动换装。</div>';
   return h;
 }
 
 /* =========================================================
-   收尾 / 存档 / 弹层
+   收尾 / 抽屉
    ========================================================= */
 function after(){
   clampVitals();
@@ -6423,18 +7019,28 @@ function renderUtil(){
     ['存 档', 'openSavePanel()'],
     ['传 承' + (META.points ? ' · ' + META.points + ' 点' : ''), 'openHeritage()'],
     ['轮 回', 'openRebirth()'],
+    ['图 鉴', 'openCodex()'],
+    ['称 号', 'openTitles()'],
     ['明 暗', 'toggleTheme()'],
     ['收 起', 'closeSheet()']
   ];
-  let h = '';
+  let h = '<div class="util-grid">';
   for(const [n, f] of items){
-    h += '<button class="mbtn" style="padding:9px 14px;font-size:12.5px;letter-spacing:.08em"'
-       + ' onclick="' + f + '">' + n + '</button>';
+    h += '<button class="btn btn-sm" onclick="' + f + '">' + n + '</button>';
   }
-  box.innerHTML = h;
+  box.innerHTML = h + '</div>';
 }
 
 /* ── ui/panels/save.js ──────────────────────────────────────────── */
+
+/* =========================================================
+   存 档 · 玉 简（面板 · 第二版重排）
+   ---------------------------------------------------------
+   第二版改动
+     · 顶部一行「当前进度」摘要，替掉原来的大段说明
+     · 三枚玉简改为并列卡片，操作按钮规格统一
+     · 导出 / 导入分成两段，danger 操作单独收在最后
+   ========================================================= */
 
 /* -------- 玉简（手动槽位） -------- */
 function slotInfo(i){
@@ -6514,58 +7120,68 @@ function fmtTime(ts){
 }
 
 function openSavePanel(){
-  let h = '<div class="meta-note">进度每走一步都会自动存入本机。此处另有 <b>3 枚玉简</b>可手动封存；'
-    + '存档亦可导出为存档码或文件，用于备份、换机或分享。<br>'
-    + '当前：<b>'+realmName()+'</b> · 第 '+num(S.day)+' 日 · 战力 '+num(stats().power)
-    + ' · 斩妖 '+num(S.kills)+' 头 · 轮回 '+META.rebirths+' 世</div>';
+  /* ---- 当前进度摘要 ---- */
+  let h = uiKV([
+    ['当前境界', '<b>'+realmName()+'</b>'],
+    ['修行日 / 战力', '第 '+num(S.day)+' 日 · <b>'+num(stats().power)+'</b>'],
+    ['斩妖 / 殒身', num(S.kills)+' 头 · '+num(S.deaths)+' 次'],
+    ['轮回印记', META.rebirths ? ('第 <b>'+META.rebirths+'</b> 世') : '尚无']
+  ]);
+  h += '<div class="meta-note">进度每走一步都会自动存入本机。此处另有 <b>3 枚玉简</b>可手动封存；'
+    + '存档亦可导出为存档码或文件，用于备份、换机或分享。</div>';
 
+  /* ---- 三枚玉简 ---- */
+  h += uiSec('玉 简 · 手 动 封 存', '存下的每一枚都独立于自动存档，可随时读取或抹去。');
   for(let i=0;i<SLOT_N;i++){
     const d = slotInfo(i);
     const sd = d
       ? realmNameOf(d.level) + ' · 第 ' + num(d.day||0) + ' 日 · 灵石 ' + num(d.stones||0)
         + (d.kills ? ' · 斩妖 ' + num(d.kills) : '') + (d.t ? ' · ' + fmtTime(d.t) : '')
-      : '空 白';
+      : '空 白　尚未封存任何进度';
     h += '<div class="slotcard">'
-      + '<div class="si"><div class="sn">玉简 '+(i+1)+'</div><div class="sd">'+sd+'</div></div>'
-      + '<button class="sb" onclick="saveToSlot('+i+')">存 档</button>'
-      + '<button class="sb'+(d?'':' dis')+'" onclick="'+ (d ? 'loadFromSlot('+i+')' : "toast('此玉简空空如也')") +'">读 档</button>'
-      + '<button class="sb'+(d?'':' dis')+'" onclick="'+ (d ? 'clearSlot('+i+')' : "toast('此玉简空空如也')") +'">抹 除</button>'
+      + '<div class="si"><div class="sn">玉 简 '+(i+1)+'</div><div class="sd">'+sd+'</div></div>'
+      + '<button class="btn btn-sm" onclick="saveToSlot('+i+')">存 档</button>'
+      + '<button class="btn btn-sm'+(d?'':' dis')+'" onclick="'+ (d ? 'loadFromSlot('+i+')' : "toast('此玉简空空如也')") +'">读 档</button>'
+      + '<button class="btn btn-sm'+(d?'':' dis')+'" onclick="'+ (d ? 'clearSlot('+i+')' : "toast('此玉简空空如也')") +'">抹 除</button>'
       + '</div>';
   }
 
-  h += '<div class="hrline"></div>';
-  h += '<div class="meta-note" style="margin-bottom:6px">存 档 码（可另存为文本，或粘贴他人的存档码导入）</div>';
+  /* ---- 导出 ---- */
+  h += uiSec('导 出', '存档码是一串纯文本，可另存为文件，也可发给别人。');
   h += '<textarea class="savecode" id="saveCode" readonly>'+exportCode()+'</textarea>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="sb" onclick="copyCode()">复 制 存 档 码</button>'
-    + '<button class="sb" onclick="downloadSave()">下 载 为 文 件</button>'
-    + '<button class="sb" onclick="importFile()">从 文 件 导 入</button>'
-    + '</div>';
-  h += '<textarea class="savecode" id="impCode" style="height:58px;margin-top:10px" placeholder="在此粘贴存档码…"></textarea>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="sb" onclick="importSave(document.getElementById(\'impCode\').value)">导 入 此 码</button>'
-    + '<button class="sb" onclick="wipeConfirm()">抹 除 全 部 进 度</button>'
+  h += '<div class="btnrow">'
+    + '<button class="btn btn-sm" onclick="copyCode()">复 制 存 档 码</button>'
+    + '<button class="btn btn-sm" onclick="downloadSave()">下 载 为 文 件</button>'
+    + '<button class="btn btn-sm" onclick="importFile()">从 文 件 导 入</button>'
     + '</div>';
 
-  showModal('存 档 · 玉 简', h, [{label:'关 闭', primary:true, fn:closeModal}], 'wide');
+  /* ---- 导入 / 抹除 ---- */
+  h += uiSec('导 入', '粘贴他人或自己备份的存档码，覆盖当前进度。');
+  h += '<textarea class="savecode" id="impCode" style="height:58px" placeholder="在此粘贴存档码…"></textarea>';
+  h += '<div class="btnrow">'
+    + '<button class="btn btn-sm" onclick="importSave(document.getElementById(\'impCode\').value)">导 入 此 码</button>'
+    + '<button class="btn btn-sm btn-danger" onclick="wipeConfirm()">抹 除 全 部 进 度</button>'
+    + '</div>';
+
+  showModal('存 档 · 玉 简', h, [{label:'关 闭', primary:true, fn:closeModal}], 'wide',
+    { sub: realmName() + ' · 第 ' + num(S.day) + ' 日' });
 }
 
 /* ── ui/panels/gongfa.js ────────────────────────────────────────── */
 
 /* =========================================================
-   功 法 · 悟 道 录（面板）
+   功 法 · 悟 道 录（面板 · 第二版重排）
    ---------------------------------------------------------
-   全部复用既有样式类（.heritage / .hr / .hn / .hl / .dots / .hb / .hd
-   / .achsec / .meta-note / .pb-scroll），学院配色走 .gfs-* 类，不写死颜色
-   注意：本文件的 UI 操作函数一律以 gfUi 开头，避免与 sys/gongfa.js 的
-   顶层函数重名（构建后同处一个作用域，重名会让后者覆盖前者）
+   第二版改动
+     · 顶部固定「槽位总览」，一眼看到 3 被动 + 2 主动装了什么
+     · 新增分段筛选（全部 / 已习得 / 被动 / 主动 / 未习得），30 部不必一路滚
+     · 条目改为两块式：抬头行（名 · 学派 · 重数 · 操作）+ 说明行
+   规则
+     · 操作函数一律 gfUi 前缀（构建后同作用域，重名会让后者静默覆盖前者）
+     · 复用既有样式类，不写死颜色
+     · data-seg 供 uiSegPick 过滤（空格分隔可属多段）
    ========================================================= */
 
-function gfDots(lv, max){
-  let s = '<span class="dots">';
-  for(let i = 0; i < max; i++) s += '<i class="' + (i < lv ? 'f' : '') + '"></i>';
-  return s + '</span>';
-}
 function gfSchoolTag(gf){
   const sc = gfSchoolOf(gf);
   return '<span class="gfs gfs-' + gfSchoolKey(gf) + '">' + sc.n + '</span>';
@@ -6582,25 +7198,26 @@ function gfRow(gf, owned){
   const short = owned && (S.stones < cost || S.exp < ce);
   const isPas = gf.kind === 'xin';
   const profName = isPas ? GF_XIN[gf.p].n : GF_SHU[gf.sk].n;
+  const seg = (owned ? 'owned' : 'unowned') + ' ' + (isPas ? 'xin' : 'shu');
 
   let acts = '';
   if(owned){
-    acts = '<span style="margin-left:auto;display:flex;gap:6px;flex:0 0 auto">'
-      + '<button class="hb" style="margin-left:0;padding:4px 10px" onclick="gfUiToggle(\'' + gf.k + '\')">'
+    acts = '<span class="hbrow">'
+      + '<button class="btn btn-sm" onclick="gfUiToggle(\'' + gf.k + '\')">'
         + (on ? '卸 下' : (isPas ? '装 被 动' : '装 主 动')) + '</button>'
       + (full
-          ? '<button class="hb dis" style="margin-left:0;padding:4px 10px">已 圆 满</button>'
-          : '<button class="hb' + (short ? ' dis' : '') + '" style="margin-left:0;padding:4px 10px" onclick="'
+          ? '<button class="btn btn-sm dis">已 圆 满</button>'
+          : '<button class="btn btn-sm' + (short ? ' dis' : '') + '" onclick="'
             + (short ? "toast('灵石或修为不足')" : "gfUiUp('" + gf.k + "')") + '">参 悟 · ' + num(cost) + '</button>')
       + '</span>';
   }
 
-  return '<div class="heritage' + godCls(gf.t) + (owned ? '' : ' off') + '">'
+  return '<div class="heritage' + godCls(gf.t) + (owned ? '' : ' off') + '" data-seg="' + seg + '">'
     + '<div class="hr">'
     + '<span class="hn">' + qName(gf.n, gf.t) + '</span>'
     + gfSchoolTag(gf)
     + '<span class="hl">' + (owned ? lv + ' / ' + max + ' 重' : '第 ' + (gf.seg + 1) + ' 段') + '</span>'
-    + (owned ? gfDots(lv, max) : '')
+    + (owned ? uiDots(lv, max) : '')
     + acts
     + '</div>'
     + '<div class="hd">' + gfGrade(gf) + ' · ' + profName + ' · '
@@ -6609,7 +7226,7 @@ function gfRow(gf, owned){
       + (owned && !full ? '　参悟需 <b>' + num(cost) + '</b> 灵石 + <b>' + num(ce) + '</b> 修为' : '')
       + (owned ? '' : '　秘境妖王或坊市藏经阁可得')
     + '</div>'
-    + '<div class="hd" style="opacity:.72">' + gf.d + '</div>'
+    + '<div class="hd" style="opacity:.78">' + gf.d + '</div>'
     + '<div class="hd" style="opacity:.62">　' + gfPerLvText(gf) + '</div>'
     + '</div>';
 }
@@ -6626,7 +7243,7 @@ function gfSlotLine(kind, idx){
     + (gf
         ? '<span class="hn" style="font-size:12.5px">' + qName(gf.n, gf.t)
           + '<span class="muted-sm">　' + gfLevel(gf.k) + ' 重' + (sk ? ' · ' + sk.n + '（冷却 ' + sk.cd + '）' : '') + '</span></span>'
-          + '<span style="margin-left:auto"><button class="hb" style="margin-left:0;padding:3px 9px" onclick="gfUiOff(\'' + kind + '\',' + idx + ')">卸 下</button></span>'
+          + '<span style="margin-left:auto"><button class="btn btn-sm" onclick="gfUiOff(\'' + kind + '\',' + idx + ')">卸 下</button></span>'
         : '<span class="hl">— 空 —</span>')
     + '</div>';
 }
@@ -6634,35 +7251,47 @@ function gfSlotLine(kind, idx){
 function openGongfa(){
   const learned = gfLearnedList();
   const cur = gfSeg();
+  const owned = GONGFA.filter(g => gfLearned(g.k)).sort((a, b) => b.seg - a.seg || b.t - a.t);
+  const rest  = GONGFA.filter(g => !gfLearned(g.k));
+  const nXin  = GONGFA.filter(g => g.kind === 'xin').length;
+  const nShu  = GONGFA.length - nXin;
 
-  let h = '<div class="meta-note">'
-    + '功法分 <b>被动</b>（心法）与 <b>主动</b>（术法）二类。被动只可运转 <b>' + GF_SLOT.passive + ' 部</b>，'
+  /* 顶部说明（收敍成三行，替掉原来的大段文字） */
+  let h = '<div class="meta-note" style="margin-bottom:10px">'
+    + '功法分 <b>被动</b>（心法）与 <b>主动</b>（术法）二类：被动只可运转 <b>' + GF_SLOT.passive + ' 部</b>，'
     + '主动只可备于识海 <b>' + GF_SLOT.active + ' 式</b>——习得多寡不等同于强弱，<b>如何取舍才是关键</b>。<br>'
     + '主动功法带<b>冷却</b>与附加效果（护体 / 虚空 / 冰封 / 灼烧 / 吸血 / 破防 / 反噬），'
-    + '战斗中于「灵 力 斩」之外另出此二式。<br>'
-    + '已习得的功法<b>刻入道基、轮回不灭</b>；重数与装备则归本局，须重新参悟（同时耗灵石与修为）。<br>'
-    + '来路：<b>秘境妖王</b>必有所遗、坊市<b>藏经阁</b>可购。当前境界段 <b>' + GF_SEG_NAME[cur] + '</b>，'
-    + '已习得 <b>' + learned.length + '</b> / ' + GONGFA.length + ' 部。'
+    + '战斗中于「灵 力 斩」之外另出此二式。已习得者<b>刻入道基、轮回不灭</b>；重数与装备归本局。'
+    + '当前境界段 <b>' + GF_SEG_NAME[cur] + '</b>，已习得 <b>' + learned.length + '</b> / ' + GONGFA.length + ' 部。'
     + '</div>';
 
+  /* 槽位总览 */
   h += '<div class="heritage">';
   for(let i = 0; i < GF_SLOT.passive; i++) h += gfSlotLine('xin', i);
   for(let i = 0; i < GF_SLOT.active; i++) h += gfSlotLine('shu', i);
   h += '<div class="hd" style="margin-top:4px">被动提供属性 / 修速 / 突破率 / 气运；主动提供战斗技能与效果。'
-    + '<span style="margin-left:6px"><button class="hb" style="margin-left:0;padding:3px 9px" onclick="gfUiAllOff()">尽 数 卸 下</button></span></div>';
+    + '<span style="margin-left:6px"><button class="btn btn-sm" onclick="gfUiAllOff()">尽 数 卸 下</button></span></div>';
   h += '</div>';
+
+  /* 分段筛选 */
+  h += uiSeg('gfSeg', [
+    { k:'all',     n:'全 部',   c:GONGFA.length },
+    { k:'owned',   n:'已 习 得', c:owned.length },
+    { k:'xin',     n:'被 动',   c:nXin },
+    { k:'shu',     n:'主 动',   c:nShu },
+    { k:'unowned', n:'未 习 得', c:rest.length }
+  ], 'all');
 
   h += '<div class="pb-scroll">';
 
-  const owned = GONGFA.filter(g => gfLearned(g.k)).sort((a, b) => b.seg - a.seg || b.t - a.t);
-  h += '<div class="achsec" style="color:var(--zhu-d)">已 习 得 · ' + owned.length + '</div>';
+  h += '<div class="achsec" style="color:var(--zhu-d)" data-seg="owned">已 习 得 · ' + owned.length + '</div>';
   if(!owned.length){
-    h += '<div class="meta-note" style="margin-bottom:6px">尚无一部在身。秘境妖王与坊市藏经阁，是功法唯二的来路。</div>';
+    h += '<div data-seg="owned">' + uiEmpty('尚 无 一 部 在 身',
+      '秘境妖王与坊市藏经阁，是功法唯二的来路。') + '</div>';
   }
   for(const gf of owned) h += gfRow(gf, true);
 
-  const rest = GONGFA.filter(g => !gfLearned(g.k));
-  h += '<div class="achsec" style="color:var(--ink3)">未 习 得 · ' + rest.length + '</div>';
+  h += '<div class="achsec" style="color:var(--ink3)" data-seg="unowned">未 习 得 · ' + rest.length + '</div>';
   for(const gf of rest) h += gfRow(gf, false);
 
   h += '</div>';
@@ -6707,11 +7336,12 @@ function gfUiPick(key){
     h += '<div class="hr" style="padding:6px 0">'
       + '<span class="hn">第 ' + (i + 1) + ' 格</span>'
       + '<span class="hl">' + (old ? old.n + ' · ' + gfLevel(old.k) + ' 重' : '空') + '</span>'
-      + '<span style="margin-left:auto"><button class="hb" style="margin-left:0;padding:4px 12px" onclick="gfUiSet(\'' + key + '\',' + i + ')">换 上</button></span>'
+      + '<span style="margin-left:auto"><button class="btn btn-sm" onclick="gfUiSet(\'' + key + '\',' + i + ')">换 上</button></span>'
       + '</div>';
   }
   h += '</div>';
-  showModal('选 择 槽 位', h, [{ label: '取 消', fn: () => openGongfa() }], 'wide');
+  showModal('选 择 槽 位', h, [{ label: '取 消', fn: () => openGongfa() }], 'wide',
+    { sub:(isPas ? '被动' : '主动') + '槽 ' + arr.length + ' 格' });
 }
 
 /* ── ui/panels/craft.js ─────────────────────────────────────────── */
@@ -6735,9 +7365,8 @@ function renderMaterials(){
   if(tag) tag.textContent = owned.length + ' / ' + MAT_ORDER.length;
 
   if(!owned.length){
-    box.innerHTML = '<div class="empty-note">囊 中 尚 无 材 料</div>'
-      + '<div class="hint-mini">斩妖剥皮、秘境采撷、岩缝拾矿皆有所得。'
-      + '材料可在「坊 市」页炼丹与炼器。</div>';
+    box.innerHTML = uiEmpty('囊 中 尚 无 材 料',
+      '斩妖剥皮、秘境采撷、岩缝拾矿皆有所得。材料可在「坊 市」页炼丹与炼器。');
     return;
   }
 
@@ -6761,33 +7390,32 @@ function renderMaterials(){
 
 /* ---------- 丹 房 ---------- */
 function renderPillSection(){
-  let h = '<div class="tip" style="margin-top:18px">丹 房 · 炼 丹'
-    + ((S.pillStack || 0) > 0 ? '　<span class="muted-sm">丹田已蓄破境丹药力 '+S.pillStack+' 枚</span>' : '')
-    + '</div>';
+  let h = uiSec('丹 房 · 炼 丹',
+    '炼制消耗<b>灵力与天数</b>（不耗灵石）；失败返还四成材料。'
+    + '丹道传承与境界优势可提升成丹率——越级炼则每差一档 -6%。',
+    (S.pillStack || 0) > 0 ? '丹田已蓄 ' + S.pillStack + ' 枚' : '');
   h += '<div class="actgrid">';
   for(const r of PILL_RECIPES) h += crRecipeCard(r, 'pill');
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px">炼制消耗<b>灵力与天数</b>（不耗灵石）；失败返还四成材料。'
-    + '丹道传承与境界优势可提升成丹率——越级炼则每差一档 -6%。</div>';
   return h;
 }
 
 /* ---------- 器 坊 ---------- */
 function renderGearSection(){
-  let h = '<div class="tip" style="margin-top:18px">器 坊 · 炼 器</div>';
+  let h = uiSec('器 坊 · 炼 器',
+    '所成之器品质随机，至少为 <span class="qname qc2">宝品</span>；<b>气运</b>与<b>越级炼器</b>可再提一阶，'
+    + '最高 <span class="flow q4">神品</span>。坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。');
   h += '<div class="actgrid">';
   for(const r of GEAR_RECIPES) h += crRecipeCard(r, 'gear');
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px">所成之器品质随机，至少为'
-    + ' <span class="qname qc2">宝品</span>；<b>气运</b>与<b>越级炼器</b>可再提一阶，'
-    + '最高 <span class="flow q4">神品</span>。'
-    + '坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。</div>';
   return h;
 }
 
 /* ---------- 材 料 铺 ---------- */
 function renderMatShopSection(){
-  let h = '<div class="tip" style="margin-top:18px">材 料 铺</div>';
+  let h = uiSec('材 料 铺',
+    '材料主要靠<b>打怪与探秘境</b>捡，近乎免费；材料铺只是<b>应急补差</b>，故标价略高于成品。'
+    + '星辰砂与混沌石不上架——只能自己去高阶秘境与妖王身上找。');
   h += '<div class="actgrid">';
   for(const row of MAT_SHOP){
     const m = MATERIALS[row.k];
@@ -6797,13 +7425,11 @@ function renderMatShopSection(){
       + (can ? ' onclick="crUiBuyMat(\''+row.k+'\',1)"' : '')+'>'
       + '<div class="t">'+qName(m.n, m.t)+' <span class="tier-tag">'+matTierName(m.t)+'</span></div>'
       + '<div class="d">来路：'+m.src+'</div>'
-      + '<div class="cost">'+row.price+' 灵石 · 已有 '+countMat(row.k)+'</div>'
+      + '<div class="cost"><span class="tag">'+row.price+' 灵石</span>'
+      + '<span class="tag">已有 '+countMat(row.k)+'</span></div>'
       + '</div>';
   }
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px">材料主要靠<b>打怪与探秘境</b>捡，近乎免费；'
-    + '材料铺只是<b>应急补差</b>，故标价略高于成品。'
-    + '星辰砂与混沌石不上架——只能自己去高阶秘境与妖王身上找。</div>';
   return h;
 }
 
@@ -6822,19 +7448,21 @@ function crRecipeCard(r, type){
     : ({ weapon:'铸 · 兵 器', armor:'铸 · 护 甲', treasure:'铸 · 法 宝' }[r.slot] || '铸 器');
   const lvTag = (r.lv > 0) ? ' <span class="tier-tag">需 '+realmNameOf(r.lv)+'</span>' : '';
 
-  let h = '<div class="card'+(canOne ? ' hot' : ' lock')+'">';
+  let h = '<div class="card'+(canOne ? '' : ' lock')+'">';
   h += '<div class="t">'+title+lvTag+'</div>';
   h += '<div class="d">'+r.d+'</div>';
-  h += '<div class="d" style="margin-top:4px">用料：'+matText(r.need)+'</div>';
-  h += '<div class="cost">成率 '+rate+'% · 灵力 '+num(mp)+' · '+r.days+' 日/次'
-    + (isPill ? '' : ' · 最低 '+matTierName(r.qiMin))+'</div>';
+  h += '<div class="cost">'
+    + '<span class="tag">成率 '+rate+'%</span>'
+    + '<span class="tag">灵力 '+num(mp)+'</span>'
+    + '<span class="tag">'+r.days+' 日 / 次</span>'
+    + (isPill ? '' : '<span class="tag">最低 '+matTierName(r.qiMin)+'</span>')
+    + '</div>';
+  h += '<div class="d" style="margin-top:5px">用料：'+matText(r.need)+'</div>';
 
   if(canOne){
-    h += '<div style="display:flex;gap:6px;margin-top:7px">'
-      + '<button class="mbtn" style="flex:1;padding:5px 0;font-size:11.5px;letter-spacing:.06em"'
-      + ' onclick="'+fn+'(\''+r.k+'\',1)">炼 一 次</button>'
-      + (canFive ? '<button class="mbtn" style="padding:5px 12px;font-size:11.5px;letter-spacing:.06em"'
-          + ' onclick="'+fn+'(\''+r.k+'\',5)">×5</button>' : '')
+    h += '<div class="acts">'
+      + '<button class="btn btn-sm" style="flex:1" onclick="'+fn+'(\''+r.k+'\',1)">炼 一 次</button>'
+      + (canFive ? '<button class="btn btn-sm" onclick="'+fn+'(\''+r.k+'\',5)">×5</button>' : '')
       + '</div>';
   }else{
     const why = craftBlockReason(r) || '暂无余裕';
@@ -6854,13 +7482,16 @@ function crUiBuyMat(k, n){ buyMaterial(k, n); }
 /* ── ui/panels/cave.js ──────────────────────────────────────────── */
 
 /* =========================================================
-   洞 府 · 面 板
+   洞 府 · 面 板（第二版重排）
    ---------------------------------------------------------
-   规则：
-   · 面板操作函数一律 cvUi 前缀（构建后同作用域，重名会静默覆盖）
-   · 只用具名导入（禁止 import * as / 默认导入，构建器会剥掉整行）
-   · 不新增配色：面板行复用 .heritage / .hr / .hn / .hl / .dots / .hd / .hb
-   · 弹层而非新页签（#tabs 移动端写死 5 等分，加第 6 个会破坏布局）
+   第二版改动
+     · 弹层顶部加一块「当前总加成 + 进度」总览
+     · 五处设施改为「名称 / 等级点阵 / 当前→下级 / 一个按钮」的等高行
+     · 离线结算面板改为键值式，一眼看清收了多少
+   规则
+     · 操作函数一律 cvUi 前缀（构建后同作用域，重名会静默覆盖）
+     · 只用具名导入；不新增配色
+     · 弹层而非新页签（#tabs 移动端写死 5 等分，加第 6 个会破坏布局）
    ========================================================= */
 
 /* ---------- 左栏摘要 ---------- */
@@ -6880,12 +7511,11 @@ function renderCave(){
   if(b.pillRate) parts.push('成丹 +' + Math.round(b.pillRate*100) + '%');
   if(b.gearRate) parts.push('成器 +' + Math.round(b.gearRate*100) + '%');
 
-  let h = '<div class="hint-mini">'
+  let h = '<div class="hint-mini" style="margin-top:0">'
     + (parts.length ? parts.join(' · ') : '洞府尚未开垦，点下方开始布置。')
     + '</div>';
-  h += '<div style="margin-top:8px">'
-    + '<button class="mbtn" style="width:100%;padding:6px 0;font-size:11.5px;letter-spacing:.08em"'
-    + ' onclick="cvUiOpen()">整 修 洞 府</button></div>';
+  h += '<div class="btnrow">'
+    + '<button class="btn btn-sm btn-block" onclick="cvUiOpen()">整 修 洞 府</button></div>';
   box.innerHTML = h;
 }
 
@@ -6893,59 +7523,64 @@ function renderCave(){
 function cvUiOpen(){
   const capH = cvOfflineCapHours();
   const full = caveFullCost();
-  let h = '<div class="meta-note" style="margin-bottom:10px">'
-    + '洞府五处：<b>灵田</b>产灵草、<b>聚灵阵</b>加修速并自动凝石、<b>丹房</b>加成丹率、'
-    + '<b>器坊</b>加成器率、<b>静室</b>延长离线可累积时长。<br>'
-    + '升级消耗<b>灵石与天数</b>（天数即时光流逝，与出门打怪形成节奏竞争）。'
-    + '离线时灵田与聚灵阵仍在运转 —— 可累积时长上限为 <b>' + capH + ' 小时</b>，超出的部分不再计入。<br>'
-    + '洞府归本局所有，<b>轮回清零</b>（与装备、灵石、材料同轴）。'
-    + '<span class="muted-sm">五处全满约需 ' + num(full.stones) + ' 灵石 · ' + full.days + ' 日。</span>'
-    + '</div>';
+  const b = cvBonus();
+  const prod = [];
+  if(b.herb)  prod.push('灵草 <b>' + b.herb.toFixed(2) + '</b>/时');
+  if(b.stone) prod.push('灵石 <b>' + b.stone + '</b>/时');
 
+  let h = uiKV([
+    ['已开垦', '<b>' + cvTotalLv() + '</b> / ' + cvTotalMax() + ' 级'],
+    ['灵田 · 聚灵阵', prod.length ? prod.join('　') : '未 建'],
+    ['丹房 · 器坊', '成丹 <b>+' + Math.round(b.pillRate*100) + '%</b>　成器 <b>+' + Math.round(b.gearRate*100) + '%</b>'],
+    ['修速', '<b>+' + b.cult + '%</b>'],
+    ['离线可累积', '<b>' + capH + ' 小时</b>（静室等级决定）'],
+    ['五处全满约需', num(full.stones) + ' 灵石 · ' + full.days + ' 日']
+  ]);
+  h += '<div class="meta-note">升级消耗<b>灵石与天数</b>——天数即时光流逝，与出门打怪形成节奏竞争。'
+    + '<b>离线时灵田与聚灵阵仍在运转</b>，超时可累积上限的部分不再计入，故升静室才有意义。'
+    + '洞府归本局所有，<b>轮回清零</b>。</div>';
+
+  h += uiSec('五 处 设 施', '灵田产灵草 · 聚灵阵加修速并凝石 · 丹房加成丹率 · 器坊加成器率 · 静室延长离线时长。');
   h += '<div class="pb-scroll">';
   for(const f of CAVE_FACILITIES) h += cvFacRow(f);
   h += '</div>';
 
-  showModal('洞 府 · 经 营', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide');
+  showModal('洞 府 · 经 营', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide',
+    { sub: cvTotalLv() + ' / ' + cvTotalMax() + ' 级' });
 }
 
 function cvFacRow(f){
   const lv = cvFacLv(f.k);
   const max = f.max;
-  const full = lv >= max;
-  const cost = full ? null : f.cost(lv + 1);
+  const isFull = lv >= max;
+  const cost = isFull ? null : f.cost(lv + 1);
   const can = !!(cost && S && S.stones >= cost.stones);
   const eff = lv > 0 ? cvFacSummary(f, lv) : '未 建';
-  const nextEff = full ? null : cvFacSummary(f, lv + 1);
-
-  let dots = '<span class="dots">';
-  for(let i = 0; i < max; i++) dots += '<i class="' + (i < lv ? 'f' : '') + '"></i>';
-  dots += '</span>';
+  const nextEff = isFull ? null : cvFacSummary(f, lv + 1);
 
   let acts;
-  if(full){
-    acts = '<button class="hb dis" style="margin-left:0;padding:4px 10px">已 圆 满</button>';
+  if(isFull){
+    acts = '<button class="btn btn-sm dis">已 圆 满</button>';
   }else{
     const price = num(cost.stones);
     const onclick = can
       ? 'cvUiUp(\'' + f.k + '\')'
       : 'toast(\'灵石不足（需 ' + price + '）\')';
-    acts = '<button class="hb' + (can ? '' : ' dis') + '"'
-      + ' style="margin-left:0;padding:4px 10px"'
+    acts = '<button class="btn btn-sm' + (can ? '' : ' dis') + '"'
       + ' onclick="' + onclick + '">整 修 · ' + price + '</button>';
   }
 
   return '<div class="heritage">'
     + '<div class="hr">'
     +   '<span class="hn">' + f.n + '</span>'
-    +   '<span class="hl">' + lv + ' / ' + max + '</span>'
-    +   dots
-    +   '<span style="margin-left:auto">' + acts + '</span>'
+    +   '<span class="hl">' + lv + ' / ' + max + ' 级</span>'
+    +   uiDots(lv, max)
+    +   '<span class="hbrow">' + acts + '</span>'
     + '</div>'
     + '<div class="hd">' + f.d + '</div>'
-    + '<div class="hd">当前 <b>' + eff + '</b>'
-    +   (nextEff ? '　→　下级 <b>' + nextEff + '</b>' : '')
-    +   (cost ? '　（费 ' + num(cost.stones) + ' 灵石 · ' + cost.days + ' 日）' : '')
+    + '<div class="hd"><span class="muted-sm">当前</span> <b>' + eff + '</b>'
+    +   (nextEff ? '　<span class="muted-sm">下级</span> <b>' + nextEff + '</b>' : '')
+    +   (cost ? '　<span class="muted-sm">费 ' + num(cost.stones) + ' 灵石 · ' + cost.days + ' 日</span>' : '')
     + '</div>'
     + '</div>';
 }
@@ -6962,16 +7597,11 @@ function cvShowOfflineReport(report){
     + '你自入定中醒来，洞府一切如常。离山 <b>' + timeTxt + '</b>'
     + (report.capped ? '（已达上限）' : '')
     + '，灵田与聚灵阵一日未曾停歇。</div>';
-  h += '<div class="heritage">';
-  if(report.herb > 0){
-    h += '<div class="hr"><span class="hn">灵 田</span>'
-      + '<span class="hl" style="margin-left:auto">已收 <b>' + report.herb + '</b> 株灵草</span></div>';
-  }
-  if(report.stone > 0){
-    h += '<div class="hr"><span class="hn">聚 灵 阵</span>'
-      + '<span class="hl" style="margin-left:auto">已凝 <b>' + num(report.stone) + '</b> 枚灵石</span></div>';
-  }
-  h += '</div>';
+  h += uiKV([
+    report.herb > 0 ? ['灵 田', '已收 <b>' + report.herb + '</b> 株灵草'] : null,
+    report.stone > 0 ? ['聚 灵 阵', '已凝 <b>' + num(report.stone) + '</b> 枚灵石'] : null,
+    ['离线时长', timeTxt + (report.capped ? '　（已达上限）' : '')]
+  ].filter(Boolean));
   if(report.capped){
     h += '<div class="meta-note" style="margin-top:10px">'
       + '离线累积已达 <b>' + cvOfflineCapHours() + ' 小时</b>上限，超出的部分不再计入。'
@@ -6983,13 +7613,15 @@ function cvShowOfflineReport(report){
 /* ── ui/panels/codex.js ─────────────────────────────────────────── */
 
 /* =========================================================
-   图 鉴 · 面 板
+   图 鉴 · 收 藏 录（面板 · 第二版重排）
    ---------------------------------------------------------
-   规则：
-   · 面板操作函数一律 cdUi 前缀（构建后同作用域，重名会静默覆盖）
-   · 只用具名导入（禁止 import * as / 默认导入）
-   · 复用既有样式：.achhd / .achsum / .achbar / .achsec / .achg / .ach
-     （不新增配色，分类色走 CODEX_CATS 里已有的令牌）
+   第二版改动
+     · 顶部进度条 + 气运总览（补齐了此前只在 HTML 里写、CSS 里却缺定义的 .achsum）
+     · 分类条改为可横向滚动的导航描边（手机上不再折行挤成一团）
+     · 每条改为「品阶角标 + 名称」，未收录的显示为问号格
+   规则
+     · 操作函数一律 cdUi 前缀（构建后同作用域，重名会静默覆盖）
+     · 只用具名导入；分类色取数据表里已有的令牌
    ========================================================= */
 
 function openCodex(){
@@ -7000,24 +7632,24 @@ function openCodex(){
   const pct = total ? Math.round(own / total * 100) : 0;
 
   let h = '<div class="achhd">'
-    + '<span class="achsum">已点亮 <b style="color:var(--zhu-d)">' + own + '</b> / ' + total + '</span>'
+    + '<span class="achsum">已点亮 <b>' + own + '</b> / ' + total + '</span>'
     + '<span class="achbar"><i style="width:' + pct + '%"></i></span>'
-    + '<span class="achsum">气 运 <b style="color:var(--jin)">+' + luck + '</b></span>'
+    + '<span class="achsum">气 运 <b>+' + luck + '</b></span>'
     + '</div>';
-  h += '<div class="meta-note" style="margin-bottom:10px">'
+  h += '<div class="meta-note">'
     + '获得器物、习得功法、剥取材料、遭遇妖兽、进入秘境、撞上奇遇，都会在此点亮一格。'
     + '<b>每 10 项 +1 气运</b>（并入统一气运乘区）；每 <b>25 项</b>有一次里程碑提示。'
     + '图鉴<b>轮回不灭</b>——它是「知识 / 成就 / 传承」这一侧的永久进度。'
     + '</div>';
 
-  /* 分类概览 chips（点击滚动到对应分类） */
-  h += '<div class="filters" style="margin-bottom:10px">';
+  /* 分类导航：点击滚动到对应分类 */
+  h += '<div class="nav-strip">';
   for(const c of CODEX_CATS){
     const d = codexCountByCat(c.k);
     const full = d.total > 0 && d.own >= d.total;
     h += '<span class="chip' + (full ? ' on' : '') + '" onclick="cdUiJump(\'' + c.k + '\')"'
       + (full ? '' : ' style="color:' + c.color + '"')
-      + '>' + c.n + ' ' + d.own + '/' + d.total + '</span>';
+      + '>' + c.n + ' <span class="muted-sm">' + d.own + '/' + d.total + '</span></span>';
   }
   h += '</div>';
 
@@ -7045,25 +7677,25 @@ function openCodex(){
   }
   h += '</div>';
 
-  showModal('图 鉴 · 收 藏 录', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide');
+  showModal('图 鉴 · 收 藏 录', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide',
+    { sub: own + ' / ' + total + '　气运 +' + luck });
 }
 
 /* 滚动到某分类（面板内锚点） */
 function cdUiJump(cat){
-  try{
-    const d = (typeof document !== 'undefined') ? document : null;
-    const el = d ? d.getElementById('cd-sec-' + cat) : null;
-    if(el && el.scrollIntoView) el.scrollIntoView({ behavior:'smooth', block:'start' });
-  }catch(e){}
+  uiJump('cd-sec-' + cat);
 }
 
 /* ── ui/panels/titles.js ────────────────────────────────────────── */
 
 /* =========================================================
-   称 号 · 面 板
+   称 号 · 名 帖（面板 · 第二版重排）
    ---------------------------------------------------------
-   规则：操作函数一律 ttUi 前缀（防顶层重名）
-   复用 .heritage / .hr / .hn / .hl / .hd / .hb / .achsec 既有样式
+   第二版改动
+     · 顶部先给「当前佩戴」一个醒目的位置，再按品阶分段
+     · 新增品阶分段筛选（五品 + 全部），不必一路滚到底
+     · 未解锁的条目只留印记说明，不再与已解锁条目视觉等重
+   规则：操作函数一律 ttUi 前缀（防顶层重名）；复用 .heritage / .achsec 既有样式
    ========================================================= */
 
 const EF_LABEL = {
@@ -7087,34 +7719,58 @@ function ttEffectText(t){
 function openTitles(){
   const owned = titleOwnedList();
   const active = titleActiveKey();
+  const act = active ? titleDefOf(active) : null;
+  const cnt = {};
+  for(const t of TITLES) cnt[t.t] = (cnt[t.t] || 0) + 1;
 
-  let h = '<div class="meta-note" style="margin-bottom:10px">'
-    + '称号是玩法行为的具象化印记。解锁后<b>永久留存</b>，但同时<b>只可佩戴一个</b>'
-    + '——佩戴效果是独立乘区，不与功法 / 成就叠乘混淆。<br>'
-    + '已解锁 <b>' + owned.length + '</b> / ' + TITLES.length + '。'
-    + (active ? '当前佩戴：<b>' + titleDefOf(active).n + '</b>' : '当前未佩戴任何称号。')
+  let h = '<div class="achhd">'
+    + '<span class="achsum">已解锁 <b>' + owned.length + '</b> / ' + TITLES.length + '</span>'
+    + '<span class="achbar"><i style="width:' + Math.round(owned.length / TITLES.length * 100) + '%"></i></span>'
+    + '<span class="achsum">' + (act ? '佩戴中' : '未佩戴') + '</span>'
     + '</div>';
+
+  /* 当前佩戴（或提示去佩戴） */
+  if(act){
+    h += '<div class="heritage' + godCls(act.t) + '">'
+      + '<div class="hr">'
+      +   '<span class="hn">' + qName(act.n, act.t) + '</span>'
+      +   '<span class="q qc' + act.t + '">' + TITLE_TIER_NAME[act.t] + '品</span>'
+      +   '<span class="hl gold">当 前 佩 戴</span>'
+      +   '<span class="hbrow"><button class="btn btn-sm" onclick="ttUiUnequip()">卸 下</button></span>'
+      + '</div>'
+      + '<div class="hd">佩戴效果 <b>' + ttEffectText(act) + '</b>（独立乘区，不与功法 / 成就叠乘混淆）</div>'
+      + '</div>';
+  }else{
+    h += '<div class="meta-note">当前未佩戴任何称号。同一时刻<b>只可佩戴一个</b>——效果是独立乘区，不与功法 / 成就叠乘混淆。</div>';
+  }
+
+  /* 品阶分段 */
+  const items = [{ k:'all', n:'全 部', c:TITLES.length }];
+  for(let t = 4; t >= 0; t--){
+    if(cnt[t]) items.push({ k:'t' + t, n:TITLE_TIER_NAME[t] + ' 品', c:cnt[t] });
+  }
+  h += uiSeg('ttSeg', items, 'all');
 
   h += '<div class="pb-scroll">';
   for(let t = 4; t >= 0; t--){
     const list = TITLES.filter(x => x.t === t);
     if(!list.length) continue;
-    h += '<div class="achsec" style="color:' + ACH_TIER[t].c + '">'
+    h += '<div class="achsec" style="color:' + ACH_TIER[t].c + '" data-seg="t' + t + '">'
       + TITLE_TIER_NAME[t] + ' 品 · ' + list.length + ' 个</div>';
     for(const tt of list){
       const on = owned.indexOf(tt.k) >= 0;
-      const act = active === tt.k;
-      h += '<div class="heritage' + godCls(tt.t) + '">'
+      const cur = active === tt.k;
+      h += '<div class="heritage' + godCls(tt.t) + (on ? '' : ' off') + '" data-seg="t' + t + '">'
         + '<div class="hr">'
         +   '<span class="hn">' + (on ? qName(tt.n, tt.t) : '<span class="dim">' + tt.n + '</span>') + '</span>'
         +   '<span class="q qc' + tt.t + '">' + TITLE_TIER_NAME[tt.t] + '品</span>'
-        +   (act ? '<span class="hl gold">已 佩 戴</span>' : '')
-        +   '<span style="margin-left:auto">'
+        +   (cur ? '<span class="hl gold">已 佩 戴</span>' : '')
+        +   '<span class="hbrow">'
         +     (on
-              ? (act
-                ? '<button class="hb" style="margin-left:0;padding:4px 10px" onclick="ttUiUnequip()">卸 下</button>'
-                : '<button class="hb" style="margin-left:0;padding:4px 10px" onclick="ttUiEquip(\'' + tt.k + '\')">佩 戴</button>')
-              : '<button class="hb dis" style="margin-left:0;padding:4px 10px">未 解 锁</button>')
+              ? (cur
+                ? '<button class="btn btn-sm" onclick="ttUiUnequip()">卸 下</button>'
+                : '<button class="btn btn-sm" onclick="ttUiEquip(\'' + tt.k + '\')">佩 戴</button>')
+              : '<button class="btn btn-sm dis">未 解 锁</button>')
         +   '</span>'
         + '</div>'
         + '<div class="hd">' + tt.d + '</div>'
@@ -7125,7 +7781,8 @@ function openTitles(){
   }
   h += '</div>';
 
-  showModal('称 号 · 名 帖', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide');
+  showModal('称 号 · 名 帖', h, [{ label:'关 闭', primary:true, fn: closeModal }], 'wide',
+    { sub: '已解锁 ' + owned.length + ' / ' + TITLES.length });
 }
 
 function ttUiEquip(k){ if(titleEquip(k)) openTitles(); }

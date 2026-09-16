@@ -34,7 +34,7 @@ jobs:
             exit 1
           fi
 
-      - name: 游戏逻辑回归测试（126 项断言）
+      - name: 游戏逻辑回归测试
         run: node regression-test.js xiuxian.html 回归测试结果.txt
 
       - name: 站点自检（74 项）

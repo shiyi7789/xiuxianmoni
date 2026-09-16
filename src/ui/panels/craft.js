@@ -5,6 +5,7 @@ import { GEAR_RECIPES, PILL_RECIPES } from '../data/recipes.js';
 import { buyMaterial, canCraftGear, canCraftPill, countMat, craftBlockReason, craftGear, craftMp, craftPill, gearCraftRate, matTierName, matText, pillCraftRate } from '../sys/craft.js';
 import { godCls, qName } from '../sys/character.js';
 import { realmNameOf } from '../sys/cultivate.js';
+import { uiSec, uiEmpty } from '../kit.js';
 
 /* =========================================================
    材 料 · 炼 制 —— 界面层
@@ -25,9 +26,8 @@ export function renderMaterials(){
   if(tag) tag.textContent = owned.length + ' / ' + MAT_ORDER.length;
 
   if(!owned.length){
-    box.innerHTML = '<div class="empty-note">囊 中 尚 无 材 料</div>'
-      + '<div class="hint-mini">斩妖剥皮、秘境采撷、岩缝拾矿皆有所得。'
-      + '材料可在「坊 市」页炼丹与炼器。</div>';
+    box.innerHTML = uiEmpty('囊 中 尚 无 材 料',
+      '斩妖剥皮、秘境采撷、岩缝拾矿皆有所得。材料可在「坊 市」页炼丹与炼器。');
     return;
   }
 
@@ -51,33 +51,32 @@ export function renderMaterials(){
 
 /* ---------- 丹 房 ---------- */
 export function renderPillSection(){
-  let h = '<div class="tip" style="margin-top:18px">丹 房 · 炼 丹'
-    + ((S.pillStack || 0) > 0 ? '　<span class="muted-sm">丹田已蓄破境丹药力 '+S.pillStack+' 枚</span>' : '')
-    + '</div>';
+  let h = uiSec('丹 房 · 炼 丹',
+    '炼制消耗<b>灵力与天数</b>（不耗灵石）；失败返还四成材料。'
+    + '丹道传承与境界优势可提升成丹率——越级炼则每差一档 -6%。',
+    (S.pillStack || 0) > 0 ? '丹田已蓄 ' + S.pillStack + ' 枚' : '');
   h += '<div class="actgrid">';
   for(const r of PILL_RECIPES) h += crRecipeCard(r, 'pill');
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px">炼制消耗<b>灵力与天数</b>（不耗灵石）；失败返还四成材料。'
-    + '丹道传承与境界优势可提升成丹率——越级炼则每差一档 -6%。</div>';
   return h;
 }
 
 /* ---------- 器 坊 ---------- */
 export function renderGearSection(){
-  let h = '<div class="tip" style="margin-top:18px">器 坊 · 炼 器</div>';
+  let h = uiSec('器 坊 · 炼 器',
+    '所成之器品质随机，至少为 <span class="qname qc2">宝品</span>；<b>气运</b>与<b>越级炼器</b>可再提一阶，'
+    + '最高 <span class="flow q4">神品</span>。坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。');
   h += '<div class="actgrid">';
   for(const r of GEAR_RECIPES) h += crRecipeCard(r, 'gear');
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px">所成之器品质随机，至少为'
-    + ' <span class="qname qc2">宝品</span>；<b>气运</b>与<b>越级炼器</b>可再提一阶，'
-    + '最高 <span class="flow q4">神品</span>。'
-    + '坊市刷不出仙品武器，但你可以反复炼——这就是把随机产出变成可控产出。</div>';
   return h;
 }
 
 /* ---------- 材 料 铺 ---------- */
 export function renderMatShopSection(){
-  let h = '<div class="tip" style="margin-top:18px">材 料 铺</div>';
+  let h = uiSec('材 料 铺',
+    '材料主要靠<b>打怪与探秘境</b>捡，近乎免费；材料铺只是<b>应急补差</b>，故标价略高于成品。'
+    + '星辰砂与混沌石不上架——只能自己去高阶秘境与妖王身上找。');
   h += '<div class="actgrid">';
   for(const row of MAT_SHOP){
     const m = MATERIALS[row.k];
@@ -87,13 +86,11 @@ export function renderMatShopSection(){
       + (can ? ' onclick="crUiBuyMat(\''+row.k+'\',1)"' : '')+'>'
       + '<div class="t">'+qName(m.n, m.t)+' <span class="tier-tag">'+matTierName(m.t)+'</span></div>'
       + '<div class="d">来路：'+m.src+'</div>'
-      + '<div class="cost">'+row.price+' 灵石 · 已有 '+countMat(row.k)+'</div>'
+      + '<div class="cost"><span class="tag">'+row.price+' 灵石</span>'
+      + '<span class="tag">已有 '+countMat(row.k)+'</span></div>'
       + '</div>';
   }
   h += '</div>';
-  h += '<div class="tip" style="font-size:11px">材料主要靠<b>打怪与探秘境</b>捡，近乎免费；'
-    + '材料铺只是<b>应急补差</b>，故标价略高于成品。'
-    + '星辰砂与混沌石不上架——只能自己去高阶秘境与妖王身上找。</div>';
   return h;
 }
 
@@ -112,19 +109,21 @@ function crRecipeCard(r, type){
     : ({ weapon:'铸 · 兵 器', armor:'铸 · 护 甲', treasure:'铸 · 法 宝' }[r.slot] || '铸 器');
   const lvTag = (r.lv > 0) ? ' <span class="tier-tag">需 '+realmNameOf(r.lv)+'</span>' : '';
 
-  let h = '<div class="card'+(canOne ? ' hot' : ' lock')+'">';
+  let h = '<div class="card'+(canOne ? '' : ' lock')+'">';
   h += '<div class="t">'+title+lvTag+'</div>';
   h += '<div class="d">'+r.d+'</div>';
-  h += '<div class="d" style="margin-top:4px">用料：'+matText(r.need)+'</div>';
-  h += '<div class="cost">成率 '+rate+'% · 灵力 '+num(mp)+' · '+r.days+' 日/次'
-    + (isPill ? '' : ' · 最低 '+matTierName(r.qiMin))+'</div>';
+  h += '<div class="cost">'
+    + '<span class="tag">成率 '+rate+'%</span>'
+    + '<span class="tag">灵力 '+num(mp)+'</span>'
+    + '<span class="tag">'+r.days+' 日 / 次</span>'
+    + (isPill ? '' : '<span class="tag">最低 '+matTierName(r.qiMin)+'</span>')
+    + '</div>';
+  h += '<div class="d" style="margin-top:5px">用料：'+matText(r.need)+'</div>';
 
   if(canOne){
-    h += '<div style="display:flex;gap:6px;margin-top:7px">'
-      + '<button class="mbtn" style="flex:1;padding:5px 0;font-size:11.5px;letter-spacing:.06em"'
-      + ' onclick="'+fn+'(\''+r.k+'\',1)">炼 一 次</button>'
-      + (canFive ? '<button class="mbtn" style="padding:5px 12px;font-size:11.5px;letter-spacing:.06em"'
-          + ' onclick="'+fn+'(\''+r.k+'\',5)">×5</button>' : '')
+    h += '<div class="acts">'
+      + '<button class="btn btn-sm" style="flex:1" onclick="'+fn+'(\''+r.k+'\',1)">炼 一 次</button>'
+      + (canFive ? '<button class="btn btn-sm" onclick="'+fn+'(\''+r.k+'\',5)">×5</button>' : '')
       + '</div>';
   }else{
     const why = craftBlockReason(r) || '暂无余裕';

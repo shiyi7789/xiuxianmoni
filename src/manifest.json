@@ -45,6 +45,7 @@
     "ui/theme.js",
     "ui/sheet.js",
     "ui/modal.js",
+    "ui/kit.js",
     "ui/feedback.js",
     "core/save.js",
     "ui/panels/notice.js",

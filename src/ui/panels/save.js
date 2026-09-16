@@ -8,7 +8,17 @@ import { addLog, toast } from '../../sys/log.js';
 import { wipeConfirm } from '../../sys/rebirth.js';
 import { closeModal, showModal } from '../modal.js';
 import { after, renderAll } from '../render.js';
+import { uiKV, uiSec } from '../kit.js';
 
+
+/* =========================================================
+   存 档 · 玉 简（面板 · 第二版重排）
+   ---------------------------------------------------------
+   第二版改动
+     · 顶部一行「当前进度」摘要，替掉原来的大段说明
+     · 三枚玉简改为并列卡片，操作按钮规格统一
+     · 导出 / 导入分成两段，danger 操作单独收在最后
+   ========================================================= */
 
 /* -------- 玉简（手动槽位） -------- */
 export function slotInfo(i){
@@ -88,38 +98,49 @@ export function fmtTime(ts){
 }
 
 export function openSavePanel(){
-  let h = '<div class="meta-note">进度每走一步都会自动存入本机。此处另有 <b>3 枚玉简</b>可手动封存；'
-    + '存档亦可导出为存档码或文件，用于备份、换机或分享。<br>'
-    + '当前：<b>'+realmName()+'</b> · 第 '+num(S.day)+' 日 · 战力 '+num(stats().power)
-    + ' · 斩妖 '+num(S.kills)+' 头 · 轮回 '+META.rebirths+' 世</div>';
+  /* ---- 当前进度摘要 ---- */
+  let h = uiKV([
+    ['当前境界', '<b>'+realmName()+'</b>'],
+    ['修行日 / 战力', '第 '+num(S.day)+' 日 · <b>'+num(stats().power)+'</b>'],
+    ['斩妖 / 殒身', num(S.kills)+' 头 · '+num(S.deaths)+' 次'],
+    ['轮回印记', META.rebirths ? ('第 <b>'+META.rebirths+'</b> 世') : '尚无']
+  ]);
+  h += '<div class="meta-note">进度每走一步都会自动存入本机。此处另有 <b>3 枚玉简</b>可手动封存；'
+    + '存档亦可导出为存档码或文件，用于备份、换机或分享。</div>';
 
+  /* ---- 三枚玉简 ---- */
+  h += uiSec('玉 简 · 手 动 封 存', '存下的每一枚都独立于自动存档，可随时读取或抹去。');
   for(let i=0;i<SLOT_N;i++){
     const d = slotInfo(i);
     const sd = d
       ? realmNameOf(d.level) + ' · 第 ' + num(d.day||0) + ' 日 · 灵石 ' + num(d.stones||0)
         + (d.kills ? ' · 斩妖 ' + num(d.kills) : '') + (d.t ? ' · ' + fmtTime(d.t) : '')
-      : '空 白';
+      : '空 白　尚未封存任何进度';
     h += '<div class="slotcard">'
-      + '<div class="si"><div class="sn">玉简 '+(i+1)+'</div><div class="sd">'+sd+'</div></div>'
-      + '<button class="sb" onclick="saveToSlot('+i+')">存 档</button>'
-      + '<button class="sb'+(d?'':' dis')+'" onclick="'+ (d ? 'loadFromSlot('+i+')' : "toast('此玉简空空如也')") +'">读 档</button>'
-      + '<button class="sb'+(d?'':' dis')+'" onclick="'+ (d ? 'clearSlot('+i+')' : "toast('此玉简空空如也')") +'">抹 除</button>'
+      + '<div class="si"><div class="sn">玉 简 '+(i+1)+'</div><div class="sd">'+sd+'</div></div>'
+      + '<button class="btn btn-sm" onclick="saveToSlot('+i+')">存 档</button>'
+      + '<button class="btn btn-sm'+(d?'':' dis')+'" onclick="'+ (d ? 'loadFromSlot('+i+')' : "toast('此玉简空空如也')") +'">读 档</button>'
+      + '<button class="btn btn-sm'+(d?'':' dis')+'" onclick="'+ (d ? 'clearSlot('+i+')' : "toast('此玉简空空如也')") +'">抹 除</button>'
       + '</div>';
   }
 
-  h += '<div class="hrline"></div>';
-  h += '<div class="meta-note" style="margin-bottom:6px">存 档 码（可另存为文本，或粘贴他人的存档码导入）</div>';
+  /* ---- 导出 ---- */
+  h += uiSec('导 出', '存档码是一串纯文本，可另存为文件，也可发给别人。');
   h += '<textarea class="savecode" id="saveCode" readonly>'+exportCode()+'</textarea>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="sb" onclick="copyCode()">复 制 存 档 码</button>'
-    + '<button class="sb" onclick="downloadSave()">下 载 为 文 件</button>'
-    + '<button class="sb" onclick="importFile()">从 文 件 导 入</button>'
-    + '</div>';
-  h += '<textarea class="savecode" id="impCode" style="height:58px;margin-top:10px" placeholder="在此粘贴存档码…"></textarea>';
-  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
-    + '<button class="sb" onclick="importSave(document.getElementById(\'impCode\').value)">导 入 此 码</button>'
-    + '<button class="sb" onclick="wipeConfirm()">抹 除 全 部 进 度</button>'
+  h += '<div class="btnrow">'
+    + '<button class="btn btn-sm" onclick="copyCode()">复 制 存 档 码</button>'
+    + '<button class="btn btn-sm" onclick="downloadSave()">下 载 为 文 件</button>'
+    + '<button class="btn btn-sm" onclick="importFile()">从 文 件 导 入</button>'
     + '</div>';
 
-  showModal('存 档 · 玉 简', h, [{label:'关 闭', primary:true, fn:closeModal}], 'wide');
+  /* ---- 导入 / 抹除 ---- */
+  h += uiSec('导 入', '粘贴他人或自己备份的存档码，覆盖当前进度。');
+  h += '<textarea class="savecode" id="impCode" style="height:58px" placeholder="在此粘贴存档码…"></textarea>';
+  h += '<div class="btnrow">'
+    + '<button class="btn btn-sm" onclick="importSave(document.getElementById(\'impCode\').value)">导 入 此 码</button>'
+    + '<button class="btn btn-sm btn-danger" onclick="wipeConfirm()">抹 除 全 部 进 度</button>'
+    + '</div>';
+
+  showModal('存 档 · 玉 简', h, [{label:'关 闭', primary:true, fn:closeModal}], 'wide',
+    { sub: realmName() + ' · 第 ' + num(S.day) + ' 日' });
 }
