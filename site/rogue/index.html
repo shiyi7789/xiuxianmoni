@@ -18,11 +18,14 @@
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"VideoGame","name":"星际裂隙 · ROGUE THUNDER","url":"https://xiuxianmoni.me/rogue/","description":"竖屏弹幕 Roguelite，自动开火 + 走位闪避 + 升级三选一","genre":["弹幕射击","Roguelite","街机"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}
 </script>
-<!-- 子路径资源基准（subpathBase）—— 别删，删了线上就是「一坨没样式的纯文字」。
-     本站 /rogue 是「无尾斜杠的目录地址」（vercel.json：trailingSlash:false），它直接返回本页、
-     不做重定向，于是浏览器把 css/style.css 解析成 /css/style.css、js/game.js 解析成 /js/game.js
-     → 全部 404 → 没样式、没脚本，所有弹层裸露堆在页面上（2026-09-29 线上实际事故）。
-     这里按实际 location.pathname 补出目录基准，使 /rogue、/rogue/、/rogue/index.html 三种入口都能正常加载；
+<!-- 子路径资源基准（subpathBase）—— 线上事故的第二道保险。
+     事故（2026-09-29）：本页曾经在「无尾斜杠」的地址 /rogue 上直接交付（vercel.json 当时是
+     trailingSlash:false），浏览器于是把 css/style.css 解析成 /css/style.css、js/game.js 解析成
+     /js/game.js → 全部 404 → 页面变成「一坨没样式的纯文字、升级/暂停弹层全部裸露堆叠」。
+     主修法在服务端：vercel.json 已改 trailingSlash:true，/rogue 会 308 到 /rogue/，
+     相对子资源从此天然解析正确（不依赖 JS）。
+     本脚本是给「不读 vercel.json 的托管平台」和「直接落到无尾斜杠地址」兜底的：
+     按 location.pathname 补出目录基准，使 /rogue、/rogue/、/rogue/index.html 三种入口都能加载；
      本地用 file:// 直接打开时跳过（那时相对路径本来就是对的）。
      守卫：scripts/verify-site.mjs 与 scripts/verify-online.mjs 都会检查本标记。 -->
 <script id="subpathBase">

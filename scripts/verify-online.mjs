@@ -198,6 +198,15 @@ async function main() {
       '返回地址 ' + res.url.replace(BASE, '') + ' · ' + n + ' 条引用'
       + (miss.length ? ' · 断 ' + miss.join('、') : ' 全部命中'));
   }
+  /* JS 无关的硬不变量：目录型页面必须落在「带尾斜杠」的地址上 —— 这才是那次事故的正解。
+     不带尾斜杠时，浏览器会把 css/style.css 解析到上一层；这条断言只看服务端行为，不依赖页内脚本。 */
+  const dirRes = await fetch(bust(BASE + '/rogue'), { redirect: 'follow', headers: { 'user-agent': UA } });
+  const dirPath = new URL(dirRes.url).pathname;
+  chk('/rogue 最终落在带尾斜杠的地址（vercel.json 的 trailingSlash:true 生效）', dirPath.endsWith('/'),
+    '最终 ' + dirPath + ' · HTTP ' + dirRes.status);
+  const fileRes = await fetch(bust(BASE + '/version.json'), { redirect: 'follow', headers: { 'user-agent': UA } });
+  const filePath = new URL(fileRes.url).pathname;
+  chk('带扩展名的路径不被追加尾斜杠（trailingSlash 不影响静态文件）', filePath === '/version.json', '最终 ' + filePath);
 
   /* ---------- 5) 错误页 ---------- */
   out('');

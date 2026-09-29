@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.29-1627",
-  "build": "20260929-162725",
+  "v": "2026.09.29-1635",
+  "build": "20260929-163542",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 541822,
+  "totalGameBytes": 542049,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 162293,
-      "sha256": "c29baa3062f04ae6f3346f9240d36ff1315569032162b16446b1536c9799dfb7",
+      "bytes": 162520,
+      "sha256": "05d65f4d5674d20588a30d51e3cb3192c165cfa76991600594be2da1db0e05bd",
       "files": 8
     }
   ],
-  "note": "修线上事故：/rogue 无尾斜杠时相对子资源被解析到上一层而全 404（页内 subpathBase 补基准）；404 页出口改根绝对路径；自检新增「子路径页面资源基准」守卫",
-  "time": "2026-09-29T16:27:25.040+08:00"
+  "note": "修线上事故（正解）：vercel.json 开 trailingSlash:true，让目录型页面 /rogue 落到带尾斜杠的地址，相对子资源不再被解析到上一层；页内 subpathBase 作为非 Vercel 平台兜底；404 页出口改根绝对路径",
+  "time": "2026-09-29T16:35:42.325+08:00"
 }

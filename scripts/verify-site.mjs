@@ -378,6 +378,11 @@ chk('vercel.json 与 _headers 都短缓存 robots/sitemap',
   vsrc.includes('/robots.txt') && vsrc.includes('/sitemap.xml') && /\/robots\.txt[\s\S]{0,120}86400/.test(hd), '两文件已对齐');
 chk('vercel.json 保留全套安全响应头', ['X-Content-Type-Options', 'Referrer-Policy', 'X-Frame-Options', 'Permissions-Policy', 'Strict-Transport-Security', 'Content-Security-Policy']
   .every(k => JSON.stringify(vj).indexOf(k) >= 0), '6 项');
+/* ⚠ 这条别改回 false。站内有「子目录 + 相对子资源」的页面（rogue/ 那 8 个文件都是相对路径引用），
+   无尾斜杠的 /rogue 会让浏览器把 css/style.css 解析到上一层 → 2026-09-29 线上就是这么崩的。
+   trailingSlash:true 只规范化无扩展名路径，静态文件路径不受影响（见 verify-online.mjs 的线上实测）。 */
+chk('vercel.json 开启 trailingSlash（目录型页面必须落在带尾斜杠的地址上）', vj.trailingSlash === true,
+  '当前 ' + String(vj.trailingSlash) + '；改成 false 会让 /rogue 的子资源 404');
 
 /* GitHub Actions 工作流：YAML 不允许用制表符缩进，且必须有 on / jobs 顶层键 */
 for (const wf of ['ci.yml', 'pages.yml']) {
