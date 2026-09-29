@@ -27,7 +27,11 @@
      本脚本是给「不读 vercel.json 的托管平台」和「直接落到无尾斜杠地址」兜底的：
      按 location.pathname 补出目录基准，使 /rogue、/rogue/、/rogue/index.html 三种入口都能加载；
      本地用 file:// 直接打开时跳过（那时相对路径本来就是对的）。
-     守卫：scripts/verify-site.mjs 与 scripts/verify-online.mjs 都会检查本标记。 -->
+     ⚠ 本脚本注入的是 <base>，而 <base> 受 CSP 的 base-uri 管：
+       vercel.json 与 site/_headers 必须是 base-uri 'self'。
+       若写成 base-uri 'none'，浏览器会「静默」丢弃这个 <base>（控制台只留一条 violation），
+       兜底就变成了摆设 —— 主修法（服务端 308）仍在，但第二道保险没了。
+       守卫：scripts/verify-site.mjs 会同时检查本标记与 base-uri 取值。 -->
 <script id="subpathBase">
 (function () {
   if (location.protocol === 'file:') return;

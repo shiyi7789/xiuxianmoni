@@ -383,6 +383,16 @@ chk('vercel.json 保留全套安全响应头', ['X-Content-Type-Options', 'Refer
    trailingSlash:true 只规范化无扩展名路径，静态文件路径不受影响（见 verify-online.mjs 的线上实测）。 */
 chk('vercel.json 开启 trailingSlash（目录型页面必须落在带尾斜杠的地址上）', vj.trailingSlash === true,
   '当前 ' + String(vj.trailingSlash) + '；改成 false 会让 /rogue 的子资源 404');
+/* ⚠ 这条别改回 'none'。rogue 页的 subpathBase 兜底是靠注入 <base> 实现的，而 <base> 受 base-uri 管；
+   base-uri 'none' 会让浏览器「静默」丢弃它（只在 console 留一条 violation），兜底直接变摆设。
+   本站是纯静态、零用户输入、且 script-src 已允许 'unsafe-inline'，收窄到 'none' 换不来实际收益。 */
+{
+  const cspV = (vj.headers.find(r => r.headers && r.headers.some(h => h.key === 'Content-Security-Policy')) || { headers: [] })
+    .headers.find(h => h.key === 'Content-Security-Policy').value;
+  chk('CSP 允许同源 <base>（base-uri 不得为 none）',
+    /base-uri 'self'/.test(cspV) && /base-uri 'self'/.test(hd),
+    "vercel.json 与 _headers 都必须是 base-uri 'self'；写成 'none' 会让 subpathBase 兜底被静默丢弃");
+}
 
 /* GitHub Actions 工作流：YAML 不允许用制表符缩进，且必须有 on / jobs 顶层键 */
 for (const wf of ['ci.yml', 'pages.yml']) {
