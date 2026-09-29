@@ -7,6 +7,9 @@
   --pink:#ff5c8a; --green:#7cffb2; --red:#ff5566;
   --ink:#e8f2ff; --dim:#8fa3bf;
   --panel:rgba(12,18,34,.88); --line:rgba(126,249,255,.22);
+  /* 元素色令牌：JS 会在具体节点上内联覆盖（--ec 元素主色 / --bd 反应边框色 / --mix 混合色），
+     这里给一份中性兜底，保证「脚本未注入」时徽章、反应卡、图鉴也有可读配色 */
+  --ec:#9fb4d4; --bd:#9fb4d4; --mix:#9fb4d4;
   --font:"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
 }
 html,body{height:100%;overflow:hidden;background:#05070e;font-family:var(--font);color:var(--ink)}
@@ -48,6 +51,15 @@ body{display:flex;align-items:center;justify-content:center}
    font-size:8px;font-style:normal;letter-spacing:.04em;color:#fff;text-shadow:0 1px 3px #000;font-weight:600}
 .xpbar{height:5px}
 .xpbar i{background:linear-gradient(90deg,var(--cyan),#a9ffe8)}
+/* 能量条（持续光束 t_lance）：半宽细条 + 耗尽闪烁 */
+.energybar{height:5px;width:62%}
+.energybar i{background:linear-gradient(90deg,#7ef9ff,#d9c2ff)}
+.energybar.low i{background:linear-gradient(90deg,#ff5566,#ff8f6b);animation:elow .45s infinite alternate}
+@keyframes elow{from{opacity:.4}to{opacity:1}}
+/* 元素徽章（最多 2 个） */
+.elems{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.echip{font-size:9.5px;padding:1.5px 7px;border-radius:20px;font-weight:700;
+  color:var(--ec);border:1px solid var(--ec);background:rgba(0,0,0,.35)}
 
 .wave-tag{font-size:11px;letter-spacing:.14em;color:var(--dim)}
 .wave-tag b{font-size:17px;color:var(--ink);letter-spacing:0}
@@ -141,36 +153,74 @@ kbd{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font
 .site-note a:hover{color:var(--cyan)}
 .site-note a:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
 
-/* ===================== 升级卡 ===================== */
+/* ===================== 升级卡（五选一 / 六选一：卡高压缩到 ≤62px 量级） ===================== */
 .lvup-panel{width:min(470px,100%)}
 .lvup-head h2{margin-bottom:3px}
-.lvup-head p{font-size:11.5px;color:var(--dim);letter-spacing:.14em;margin-bottom:18px}
-.cards{display:flex;flex-direction:column;gap:11px}
-.card{position:relative;display:flex;gap:13px;align-items:center;text-align:left;cursor:pointer;
-  padding:14px 15px;border-radius:14px;background:rgba(16,24,42,.9);
+.lvup-head p{font-size:11.5px;color:var(--dim);letter-spacing:.14em;margin-bottom:14px}
+.cards{display:flex;flex-direction:column;gap:8px}
+.card{position:relative;display:flex;gap:11px;align-items:center;text-align:left;cursor:pointer;
+  padding:9px 12px;border-radius:12px;background:rgba(16,24,42,.9);
   border:1px solid rgba(255,255,255,.1);transition:.16s;overflow:hidden}
 .card:hover{transform:translateY(-2px);border-color:currentColor}
 .card::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:currentColor;box-shadow:0 0 16px currentColor}
-.card .ico{width:44px;height:44px;flex:0 0 44px;border-radius:11px;display:flex;align-items:center;justify-content:center;
-  font-size:23px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.card .ico{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
 .card .body{flex:1;min-width:0}
-.card .nm{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px;color:var(--ink)}
+.card .nm{font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px;color:var(--ink)}
 .card .lvl{font-size:9.5px;padding:1px 6px;border-radius:20px;background:rgba(255,255,255,.1);
   color:var(--dim);letter-spacing:.06em;font-weight:600}
-.card .ds{font-size:11.5px;color:var(--dim);line-height:1.55;margin-top:5px}
-.card .tags{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.card .ds{font-size:11px;color:var(--dim);line-height:1.45;margin-top:3px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .tags{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
 .card .tag{font-size:9px;letter-spacing:.1em;padding:1.5px 7px;border-radius:5px;
   background:rgba(255,255,255,.06);color:#8fa3bf}
-.card .key{position:absolute;top:8px;right:10px;font-size:9.5px;color:#4b5c76;letter-spacing:.05em}
+.card .key{position:absolute;top:7px;right:10px;font-size:9.5px;color:#4b5c76;letter-spacing:.05em}
 .card.is-new{animation:cardPop .34s cubic-bezier(.2,1.4,.5,1) backwards}
 @keyframes cardPop{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:none}}
 
 .r-common{color:#8fa3bf}
 .r-rare{color:var(--blue)}
 .r-epic{color:var(--violet)}
-.r-legend{color:var(--gold)}
-.lvup-foot{display:flex;gap:9px;margin-top:16px}
+.lvup-foot{display:flex;gap:9px;margin-top:14px}
 .lvup-foot .btn{margin-top:0}
+
+/* ===================== 元素门（Lv4 / Lv9） ===================== */
+.elempick-panel{width:min(520px,100%)}
+.elems-pick{display:grid;grid-template-columns:1fr 1fr;gap:9px;text-align:left}
+.ecard{position:relative;padding:9px 11px 9px 13px;border-radius:12px;cursor:pointer;
+  background:rgba(16,24,42,.92);border:1px solid rgba(255,255,255,.1);
+  border-left:3px solid var(--bd,var(--ec));transition:.16s}
+.ecard:hover{transform:translateY(-2px);box-shadow:0 0 22px -6px var(--bd,var(--ec))}
+.ecard .eg{font-size:19px;line-height:1;color:var(--ec)}
+.ecard .en{font-size:13.5px;font-weight:800;color:var(--ink);margin-top:4px;
+  display:flex;align-items:center;gap:6px}
+.ecard .est{font-size:9px;font-weight:600;color:var(--ec);border:1px solid var(--ec);
+  border-radius:20px;padding:0 5px;opacity:.9}
+.ecard .epos{font-size:10.5px;color:#cfe4ff;margin-top:4px;line-height:1.4}
+.ecard .el{font-size:9.5px;color:var(--dim);line-height:1.5;margin-top:4px}
+.ecard .erx{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(255,255,255,.14);
+  font-size:9.5px;line-height:1.5;color:#cfe4ff}
+.ecard .erx b{color:var(--bd,var(--ec))}
+.ecard.is-new{animation:cardPop .34s cubic-bezier(.2,1.4,.5,1) backwards}
+.ecard.locked{opacity:.45;cursor:default;border-left-color:#4b5c76}
+.ecard.locked:hover{transform:none;box-shadow:none}
+.elem-foot{margin-top:12px;font-size:10px;letter-spacing:.1em;color:#5f7391}
+
+/* ===================== 元素图鉴 ===================== */
+.codex-panel{width:min(520px,100%)}
+.codex-body{text-align:left;max-height:62vh;overflow:auto;margin-bottom:4px;padding-right:2px}
+.cx-h{font-size:10.5px;letter-spacing:.18em;color:var(--cyan);margin:12px 0 7px;
+  padding-bottom:5px;border-bottom:1px solid rgba(126,249,255,.18)}
+.cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.cx-el,.cx-rx{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-left:3px solid var(--ec,var(--mix));border-radius:9px;padding:7px 9px}
+.cx-el b,.cx-rx b{display:block;font-size:11.5px;color:var(--ec,var(--mix))}
+.cx-el span,.cx-rx span{display:block;font-size:9.5px;color:var(--dim);margin-top:2px}
+.cx-el em,.cx-rx em{display:block;font-size:9.5px;font-style:normal;color:#8fa3bf;margin-top:3px;line-height:1.5}
+.cx-el.off,.cx-rx.off{opacity:.5;border-left-color:#3a4a63}
+.cx-el.off b,.cx-rx.off b{color:#5f7391}
+.cx-tip{font-size:10px;color:#5f7391;margin-top:12px;line-height:1.7;text-align:center}
+.cx-tip b{color:var(--cyan)}
 
 /* ===================== 结算 ===================== */
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:18px 0}

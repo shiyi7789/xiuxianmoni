@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>星际裂隙 · 玩法详情 — 竖屏弹幕 Roguelite 游戏</title>
-<meta name="description" content="《星际裂隙 · ROGUE THUNDER》玩法详情：自动开火 + 走位闪避，8 种武器、15 项被动、3 个主动技组成 Build，10 种敌机原型、每 5 波一个递归 Boss。附操作键位、Boss 阶段表与公平性说明。">
+<meta name="description" content="《星际裂隙 · ROGUE THUNDER》玩法详情：自动开火 + 走位闪避，8 种武器、54 张升级卡五选一、6 元素 × 15 种元素反应、19 种敌机原型、5 个 Boss 起递归缝合。附元素门规则、操作键位、Boss 阶段表与公平性说明。">
 <meta name="keywords" content="星际裂隙,ROGUE THUNDER,弹幕射击,Roguelite,竖屏游戏,离线网页游戏,玩法详情">
 <meta name="theme-color" content="#efe7d8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101018" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="游戏大厅">
 <meta property="og:title" content="星际裂隙 · 玩法详情">
-<meta property="og:description" content="自动开火，你只负责走位。8 种武器、15 项被动、3 个主动技；每 5 波一个递归 Boss。">
+<meta property="og:description" content="自动开火，你只负责走位。8 种武器、54 张升级卡五选一、6 元素两两组合出 15 种反应；19 种敌机原型，每 5 波一个递归 Boss。">
 <meta property="og:url" content="https://xiuxianmoni.me/rogue-info.html">
 <meta property="og:locale" content="zh_CN">
 <meta name="twitter:card" content="summary">
@@ -21,7 +21,7 @@
 <meta name="twitter:description" content="竖屏弹幕 Roguelite：自动开火，你只负责走位。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%239e2b25'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fdf6ee' font-family='serif'%3E%E6%88%8F%3C/text%3E%3C/svg%3E">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"星际裂隙 · ROGUE THUNDER","url":"https://xiuxianmoni.me/rogue/","description":"竖屏弹幕 Roguelite，自动开火 + 走位闪避 + 升级三选一","genre":["弹幕射击","Roguelite","街机"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}
+{"@context":"https://schema.org","@type":"VideoGame","name":"星际裂隙 · ROGUE THUNDER","url":"https://xiuxianmoni.me/rogue/","description":"竖屏弹幕 Roguelite，自动开火 + 走位闪避 + 升级五选一 + 六元素觉醒与元素反应","genre":["弹幕射击","Roguelite","街机"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}
 </script>
 <link rel="stylesheet" href="assets/site.css">
 <script>
@@ -45,6 +45,7 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
       <a href="index.html#games">游戏</a>
       <a href="#howto">操作</a>
       <a href="#build">Build</a>
+      <a href="#elem">元素</a>
       <a href="#waves">敌机与 Boss</a>
       <a href="#fair">公平性</a>
       <a href="notice.html">网站声明</a>
@@ -67,7 +68,8 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
         <h1>你是最后一架<br><em>截击机</em>。</h1>
         <p class="lead">
           你的炮口永远是开着的——所以这款游戏里<strong>唯一需要你做的操作，是活下来</strong>。
-          移动、闪避、在弹幕缝里找那条路；每一次升级从三张卡里挑一张，二十多件强化会滚成一整套只属于这局的 Build。
+          移动、闪避、在弹幕缝里找那条路；每一次升级从<strong>五张卡</strong>里挑一张，54 张卡的池子会滚成一整套只属于这局的 Build。
+          到了 <strong>Lv4</strong> 与 <strong>Lv9</strong>，你还会额外拿到一次<strong>元素觉醒</strong>——两个元素两两组合，能撞出 15 种元素反应。
           死一次不代表输，只是下一局会更清楚该长成什么样。
         </p>
         <div class="cta">
@@ -77,9 +79,9 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
         <ul class="chips">
           <li><b>9:16</b> 竖屏</li>
           <li><b>8</b> 种武器</li>
-          <li><b>15</b> 项被动</li>
-          <li><b>3</b> 个主动技</li>
-          <li><b>10</b> 种敌机原型</li>
+          <li><b>54</b> 张升级卡</li>
+          <li><b>6</b> 元素 · <b>15</b> 反应</li>
+          <li><b>19</b> 种敌机原型</li>
           <li>每 <b>5</b> 波一个 Boss</li>
           <li>触屏可玩</li>
         </ul>
@@ -126,8 +128,12 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
           <p><kbd>E</kbd>：3 秒内敌方时间流速降到 35%，你自己不受影响。密集弹幕下的救命窗口。</p>
         </article>
         <article class="card">
-          <h3><span class="dot d2" aria-hidden="true"></span>升级三选一</h3>
-          <p>升级时弹出三张卡，用鼠标点击或按 <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 选择。另有<strong>重随一次</strong>和<strong>跳过换回血</strong>两个兜底选项。</p>
+          <h3><span class="dot d2" aria-hidden="true"></span>升级五选一</h3>
+          <p>升级时弹出<strong>五张</strong>卡，用鼠标点击或按 <kbd>1</kbd>–<kbd>5</kbd> 选择。另有<strong>重随 1 次</strong>（<kbd>R</kbd>）和<strong>跳过换回血</strong>两个兜底选项。选过「扩容选单」后，后续升级会变成<strong>六选一</strong>。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d3" aria-hidden="true"></span>元素门 · Lv4 / Lv9</h3>
+          <p>到 <strong>Lv4</strong> 和 <strong>Lv9</strong> 各开一次「元素门」，从六种元素里挑一种，附加到你的<strong>全部武器</strong>上。上限两种元素——<strong>不可重随、不可跳过，也不占升级卡池</strong>。按 <kbd>1</kbd>–<kbd>6</kbd> 选元素，<kbd>C</kbd> 随时查元素图鉴。</p>
         </article>
         <article class="card">
           <h3><span class="dot d6" aria-hidden="true"></span>存档</h3>
@@ -140,8 +146,8 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
   <section id="build">
     <div class="wrap">
       <div class="sec-h">
-        <h2>八 条 武 器 线，二 十 多 件 强 化</h2>
-        <p>每局能拿到的强化是随机的，所以「这一局长成什么」是你现场决定的。武器之间刻意保留了协同——黑洞聚怪会放大散射与电弧的收益，无人机则替黑洞近身兜底。</p>
+        <h2>八 条 武 器 线，五 十 四 张 升 级 卡</h2>
+        <p>每局能拿到的强化是随机的，所以「这一局长成什么」是你现场决定的。武器之间刻意保留了协同——黑洞聚怪会放大散射与电弧的收益，无人机则替黑洞近身兜底。卡池按波次<strong>分层解锁</strong>：开局只有 25 张，越往后新卡越多，避免一上来就被 54 张卡稀释成杂牌军。</p>
       </div>
       <div class="grid feats">
         <article class="card">
@@ -180,8 +186,8 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
 
       <div class="grid feats mt">
         <article class="card">
-          <h3><span class="dot d2" aria-hidden="true"></span>15 项被动</h3>
-          <p>攻击力 · 射速 · 移速 · 最大生命 · 弹速 · 穿透 · 暴击率 · 暴击伤害 · 拾取范围 · 幸运 · 经验获取 · 生命回复 · 能量护盾 · 抗撞击装甲 · 多重射击。</p>
+          <h3><span class="dot d2" aria-hidden="true"></span>数值型被动（15 项）</h3>
+          <p>攻击力 · 射速 · 移速 · 最大生命 · 弹速 · 穿透 · 暴击率 · 暴击伤害 · 拾取范围 · 幸运 · 经验获取 · 生命回复 · 能量护盾 · 抗撞击装甲 · 多重射击。它们负责把 Build 的底盘垫起来。</p>
           <div class="keyline">
             <div><span>拾取范围（磁力场）</span><b>降低走位压力</b></div>
             <div><span>幸运（幸运星）</span><b>提高高品质卡出现率</b></div>
@@ -189,22 +195,115 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
           </div>
         </article>
         <article class="card">
-          <h3><span class="dot d5" aria-hidden="true"></span>稀有度与兜底</h3>
-          <p>卡池权重为<strong>普通 100 / 稀有 45 / 史诗 18 / 传说 4</strong>，受「幸运」加成。当可选项不足三张（全满级）时，自动注入<strong>应急修复</strong>（回血 35%）与<strong>过载校准</strong>（全属性 +6%，可无限叠加），保证三选一永不卡死。</p>
+          <h3><span class="dot d6" aria-hidden="true"></span>行为转化卡</h3>
+          <p>另一类卡改的不是数值，而是<strong>武器的行为规则</strong>——聚焦透镜（宽度换密度）、散射聚合、无人机列阵、导弹分导、穿透连锁、弹幕共鸣、连锁爆破、暴击折射、碎冰回响、受伤反噬、拾取共鸣。它们决定你这局的「形状」，而不只是「强度」。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d5" aria-hidden="true"></span>三档品质与兜底</h3>
+          <p>卡池权重为<strong>普通 100 / 稀有 42 / 史诗 15</strong>，受「幸运」加成，并按你当前路线加权（已投武器 ×2.2、元素相关 ×2.6、收官级 ×1.6）。当五张全是普通卡时，系统会<strong>保底替换一张稀有以上</strong>；可选项不足时自动注入<strong>应急修复</strong>与<strong>过载校准</strong>（全属性 +6%，可无限叠加），保证五选一永不卡死。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d4" aria-hidden="true"></span>互斥协议</h3>
+          <p>有几组卡是<strong>刻意互斥</strong>的：「专精协议」会移除武器协同、「玻璃加农」会移除全部护盾类卡并把护盾清零、「生命献祭」与「静止炮台」不能同持。互斥不是惩罚，是让你在<strong>两个方向里真的选一个</strong>。</p>
         </article>
       </div>
+    </div>
+  </section>
+
+  <section id="elem">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>六 种 元 素，十 五 种 反 应</h2>
+        <p>元素不是「多一件武器」，而是给你<strong>已经拿到的一切</strong>加一条新规则：全部武器（含无人机接触、电弧、黑洞）都会开始施加元素。两个元素会两两组合出反应，所以「拿哪两个」本身就是这一局最重要的决定之一。</p>
+      </div>
+
+      <div class="grid feats">
+        <article class="card">
+          <h3><span class="dot" aria-hidden="true"></span>雷 · 电荷</h3>
+          <p>每层使该目标受到伤害 <strong>+2%</strong>；满 4 层放电，向 130 内最多 3 个敌人溅射 0.6× 伤害。<br><b>密集阵的答案：敌人越多，收益越大。</b></p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d3" aria-hidden="true"></span>冰 · 寒霜</h3>
+          <p>每层移速 <strong>−8%</strong>、开火 <strong>−4%</strong>；满 5 层冻结 0.9 秒，期间受击伤害 <strong>+25%</strong>。<br><b>买时间：对高速高威胁单位收益最大。</b></p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d2" aria-hidden="true"></span>火 · 燃烧</h3>
+          <p>每层每秒造成施加伤害的 <strong>5%</strong>；满 6 层爆燃，向 90 内 2 个敌人各传 3 层。<br><b>越拖越强：对成群小怪最佳。</b></p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d4" aria-hidden="true"></span>毒 · 腐蚀</h3>
+          <p>每层护甲 <strong>−4%</strong>（上限 −32%），每秒 3% 施加伤害；满 8 层崩解，把剩余 DoT 一次性结算 <strong>×1.5</strong>。<br><b>破甲：对盾卫和 Boss 几乎是唯一解。</b></p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d5" aria-hidden="true"></span>虚空 · 虚空印</h3>
+          <p>带印敌人被轻微牵引；击杀带印敌人时原地生成<strong>坍缩</strong>（半径 70，最大生命 20%）并<strong>清除范围内敌弹</strong>。<br><b>把「击杀」同时变成清场手段和防御手段。</b></p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d6" aria-hidden="true"></span>光 · 光印</h3>
+          <p>带印目标暴击率 <strong>+10%/层</strong>；暴击消耗 1 层，并把 0.4× 伤害<strong>折射</strong>给最近的另一个敌人。<br><b>把暴击从数值变成一条看得见的弹道。</b></p>
+        </article>
+      </div>
+
+      <div class="grid loop mt">
+        <article class="card">
+          <h3>元 素 门 的 三 条 硬 规 则</h3>
+          <div class="keyline">
+            <div><span>开启时机</span><b>Lv4 与 Lv9，各一次</b></div>
+            <div><span>数量上限</span><b>最多两种元素</b></div>
+            <div><span>不可重随</span><b>门不开卡池，也重随不了</b></div>
+            <div><span>不可跳过</span><b>到点必选，跳过按钮同步失效</b></div>
+          </div>
+          <p>把元素做成「独立门」的原因很直接：如果它混在五选一里，运气差的人可能 Lv18 才拿到第一个元素，那时候 Build 早就定型了，元素只能贴上去、没法参与规划。独立门保证<strong>每个人在同一时间点都拿得到</strong>。</p>
+        </article>
+        <article class="card">
+          <h3>组 合 的 含 义</h3>
+          <p>第二个元素的价值不在于「多一种状态」，而在于它和第一个元素之间那条<strong>反应</strong>。同样是雷，配冰是控场（超导全场连锁），配火是爆发（等离子爆燃），配虚空是清场（放电击杀连锁坍缩），配光是终结（圣裁让折射多跳一次）。<br>所以元素门要你回答的不是「哪个元素强」，而是<strong>「我这局的 Build 缺哪一类答案」</strong>。</p>
+        </article>
+      </div>
+
+      <div class="tw mt">
+        <table>
+          <caption>十五种元素反应（6 元素两两组合，无遗漏无重复）</caption>
+          <thead>
+            <tr><th scope="col">组合</th><th scope="col">反应</th><th scope="col">效果</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>雷 + 火</td><td>等离子爆燃</td><td>放电附带半径 60 爆炸（伤害 +40%），范围内各挂 2 层燃烧</td></tr>
+            <tr><td>雷 + 冰</td><td>超导</td><td>冻结瞬间：全场被冻结的敌人无视距离同步连锁 0.5×</td></tr>
+            <tr><td>雷 + 毒</td><td>电解</td><td>崩解伤害 +25% 且无视护甲；放电跳跃目标 3 → 5</td></tr>
+            <tr><td>雷 + 虚空</td><td>湮灭回路</td><td>放电击杀立刻触发坍缩，且坍缩可继续连锁（深度上限 3）</td></tr>
+            <tr><td>雷 + 光</td><td>圣裁</td><td>折射光束可再跳 1 次（共 2 跳），每跳伤害 +15%</td></tr>
+            <tr><td>冰 + 火</td><td>热震</td><td>冻结结束瞬间冰壳炸裂：最大生命 8% 碎裂伤害（Boss 2%）</td></tr>
+            <tr><td>冰 + 毒</td><td>腐蚀冻土</td><td>冻结期间护甲削减翻倍（−64%），且冻结不会提前结束</td></tr>
+            <tr><td>冰 + 虚空</td><td>引力冰狱</td><td>被冻目标成为引力源，把半径 140 内敌人拉向它</td></tr>
+            <tr><td>冰 + 光</td><td>霜镜</td><td>冻住的目标成为折射镜：命中它时 40% 概率分裂为 2 枚（各 0.5×）</td></tr>
+            <tr><td>火 + 毒</td><td>焚毒雾</td><td>爆燃改为留下 2.5 秒毒雾（半径 90），雾内每秒 +2 层燃烧</td></tr>
+            <tr><td>火 + 虚空</td><td>内爆</td><td>坍缩每层燃烧 +8% 伤害、半径 +50%</td></tr>
+            <tr><td>火 + 光</td><td>灼阳</td><td>暴击必定挂 2 层燃烧（而非 1 层），燃烧持续 +2 秒</td></tr>
+            <tr><td>毒 + 虚空</td><td>黑洞腐蚀</td><td>崩解原地生成 1.5 秒微型黑洞（半径 80，牵引 + 每秒 4 层毒）</td></tr>
+            <tr><td>毒 + 光</td><td>弱点标记</td><td>被折射命中者立刻 +2 层毒，且你对它暴击率 +15%</td></tr>
+            <tr><td>虚空 + 光</td><td>奇点</td><td>坍缩拉入敌弹并转化为伤害：每吸收 1 枚 +8%（上限 +160%）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="fineprint">
+        两个实现细节值得说明，因为它们直接决定手感和帧率：<br>
+        ① <strong>施加限流</strong>——同一个「源」（弹丸 / 电弧 / 黑洞 / 无人机）对同一个敌人，每 0.25 秒最多挂 1 层，防止回旋刃或黑洞把状态刷爆；<br>
+        ② <strong>结算预算</strong>——状态走统一的 0.12 秒 tick，每 tick 最多详算 24 个敌人，其余顺延到下一 tick；全局反应频率上限 40 次/秒。所以哪怕满屏 60 只怪同时中元素，帧率也不会塌。
+      </p>
     </div>
   </section>
 
   <section id="waves">
     <div class="wrap">
       <div class="sec-h">
-        <h2>十 种 敌 机 与 递 归 Boss</h2>
-        <p>敌人原型是「字母」，阵型是「句子」，波次是「段落」。每波都保证至少两条可执行的应对路线。</p>
+        <h2>十 九 种 敌 机 与 递 归 Boss</h2>
+        <p>敌人原型是「字母」，阵型是「句子」，波次是「段落」。每波都保证至少两条可执行的应对路线。新怪不是「血更多」的同质升级，每一个都负责打开一个<strong>新的决策轴</strong>：横向切位、资源争夺、按命中次数削盾、清场完整性、输出窗口、攻防转换。</p>
       </div>
       <div class="tw">
         <table>
-          <caption>敌机原型：血量与威胁来源（数值为第 1 波基准，之后按 18% 每波递归放大）</caption>
+          <caption>敌机原型：血量与威胁来源（血量按 <code>1 + 0.24 × 波次<sup>1.17</sup></code> 放大：第 5 波 ×2.6、第 10 波 ×4.6、第 20 波 ×9.0）</caption>
           <thead>
             <tr><th scope="col">原型</th><th scope="col">名称</th><th scope="col">行为</th><th scope="col">击杀优先级</th></tr>
           </thead>
@@ -218,7 +317,17 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
             <tr><td>splitter</td><td>母巢</td><td>死亡分裂为三只碎片</td><td>中</td></tr>
             <tr><td>orbiter</td><td>环刃</td><td>围绕锚点公转，轨迹难猜</td><td>中</td></tr>
             <tr><td>turret</td><td>哨塔</td><td>静止于顶部，径向八向弹幕</td><td>极高</td></tr>
-            <tr><td>boss</td><td>裂隙核心</td><td>三阶段弹幕循环</td><td>唯一目标</td></tr>
+            <tr><td>rammer</td><td>冲撞者</td><td>落位后锁定你的 x 并亮 1 秒地面预警箭头，随后以 520 速度直线下冲</td><td>高（预警期就得横移）</td></tr>
+            <tr><td>xpblob</td><td>经验囊</td><td>不还手，缓慢下移；移出底部就<strong>带着经验逃走</strong>，死亡则分三波弹出 26 颗晶体</td><td>看时间预算决定</td></tr>
+            <tr><td>marksman</td><td>狙击手</td><td>顶部落位游移，每 2.8 秒亮 1.1 秒红外预警线，随后射出高速狙击弹</td><td>极高</td></tr>
+            <tr><td>tick</td><td>自爆虫</td><td>直冲你；贴到 76 距离（或死亡）即向 12 方向自爆</td><td>高（必须远程解决）</td></tr>
+            <tr><td>mender</td><td>修复舰</td><td>驻留上方，每 0.8 秒给半径 190 内<strong>血量最低的敌人</strong>回 6% 生命（不治自己）</td><td>极高（先拔奶）</td></tr>
+            <tr><td>bulwark</td><td>盾卫</td><td>正面能量盾：<strong>不按伤害、按命中次数</strong>削层（10 层），盾在时减免 75%，脱离受击 3 秒后再生</td><td>高（高单伤打不动，要射速）</td></tr>
+            <tr><td>sweeper</td><td>横扫者</td><td>从屏幕左右边缘、随机高度<strong>只横向穿越</strong>，命中 16 伤害，最多来回 4 次</td><td>高（威胁从侧面来）</td></tr>
+            <tr><td>leech</td><td>窃能虫</td><td>追踪离它最近的<strong>经验晶体</strong>（不是你），吃到即吸收；吸满 12 个就加速逃跑，死亡吐回 60%</td><td>高（它在抢你的资源）</td></tr>
+            <tr><td>cluster</td><td>晶簇母体</td><td>直线下移；<strong>死亡不等于解决</strong>——裂成 3 根静止晶刺，周期性朝你散射</td><td>中（要算善后成本）</td></tr>
+            <tr><td>phaser</td><td>相位幽灵</td><td>每 3.2 秒循环：实体 1.6 秒 / 相位 1.6 秒。<strong>相位期免疫全部伤害</strong>且移速 ×1.3</td><td>中（DPS 要对着窗口打）</td></tr>
+            <tr><td>boss</td><td>裂隙哨兵 / 核心 …</td><td>三阶段弹幕循环，见下方阶段表</td><td>唯一目标</td></tr>
           </tbody>
         </table>
       </div>
@@ -226,7 +335,7 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
       <div class="grid loop mt">
         <article class="card">
           <h3>第 5 波 · 裂隙哨兵</h3>
-          <p>三个阶段的弹幕检定，每次切阶段前都有 0.8 秒核心变色蓄力——不会出现无预警的瞬发伤害。</p>
+          <p>三个阶段的弹幕检定，每次切阶段前都有 0.8 秒核心变色蓄力——不会出现无预警的瞬发伤害。<br><b>它教的是：预警 → 应对。</b></p>
           <div class="keyline">
             <div><span>P1（100–70%）</span><b>扇形散射，中心留缝</b></div>
             <div><span>P2（70–35%）</span><b>三连瞄准弹 + 侧向散射</b></div>
@@ -236,7 +345,7 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
         </article>
         <article class="card">
           <h3>第 10 波 · 裂隙核心</h3>
-          <p>在哨兵的基础上追加「激光扫射」：先亮 1.2 秒预警线，再横扫 0.9 秒。护卫升级为追猎者与哨塔的组合。</p>
+          <p>在哨兵的基础上追加「激光扫射」：先亮 1.2 秒预警线，再横扫 0.9 秒。护卫升级为追猎者与哨塔的组合。<br><b>它教的是：该放下输出的时候就得放下。</b></p>
           <div class="keyline">
             <div><span>弹幕发数</span><b>+60%</b></div>
             <div><span>开火冷却</span><b>−25%</b></div>
@@ -244,14 +353,57 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
           </div>
         </article>
         <article class="card">
-          <h3>第 15 波起 · 递归</h3>
-          <p>每 5 波一个 Boss，HP 与弹速递归放大，名号按「裂隙核心 · 迭代 N」递进——你的成长曲线会在数字上被“偿还”。</p>
+          <h3>第 15 波 · 炽镰 · 熔核</h3>
+          <p>突进把屏幕<strong>划成两半</strong>的那一瞬——你得在被切割出的窄道里继续走位。<br><b>它教的是：站桩会当场失效。</b></p>
           <div class="keyline">
-            <div><span>每轮 HP</span><b>+55%</b></div>
-            <div><span>每轮弹速</span><b>+8%</b></div>
-            <div><span>阶段阈值</span><b>逐轮提高</b></div>
+            <div><span>P1 熔渣喷流</span><b>3 条弧形地面熔渣带，站在里面每秒 9 伤害</b></div>
+            <div><span>P2 镰刃突进</span><b>预警 0.9s 后以 900 速度斜冲，撞完立刻镜像反冲</b></div>
+            <div><span>P3 熔核过载</span><b>P1+P2 叠加，每 5s 熔渣带全场重排</b></div>
+            <div><span>反制</span><b>冰（减速熔渣扩散）· 虚空（坍缩清弹幕）</b></div>
           </div>
         </article>
+        <article class="card">
+          <h3>第 20 波 · 零域 · 霜牙</h3>
+          <p>P3 进入 3.2 秒无敌「冰封」，全场减速 55%，场地出现 <strong>4 根碎冰柱</strong>。打碎全部 4 根 → 提前解除冰封，并让它进入 <strong>2 秒的 ×2.5 碎冰窗口</strong>；打不完 → 冰封结束时吃一发全屏环形弹幕。<br><b>它教的是：把「输出最大化」和「活下来」拆成两个互斥动作，逼你做一次真正的取舍。</b></p>
+        </article>
+        <article class="card">
+          <h3>第 25 波 · 万钧 · 雷枢</h3>
+          <p>本体初始<strong>不可伤害</strong>，外挂 3 个雷枢环（各为本体血量的 22%）。环 A 落雷（地面预警圈 12 处）· 环 B 电链（拉电弧，命中 11）· 环 C 静电场（以环为中心缓慢扩张，站进去每秒 7 伤害）。三个环同时转起来时，屏幕会被电弧织成一张网。<br><b>它教的是：多目标管理 + 时间预算。</b></p>
+        </article>
+        <article class="card">
+          <h3>第 30 波起 · 迭代缝合体</h3>
+          <p>每 5 波一个 Boss，HP 与护甲继续递归。<strong>第 6 个 Boss 开始是「缝合体」</strong>——从「熔渣分区 / 镰刃突进 / 零域冰封 / 雷枢部件」里抽 2 个机制并存（不重复；「零域 + 雷枢部件」是禁止组合，两者都要求你去处理别的目标，会互相打架）。名号按「裂隙核心 · 迭代 N」递进。</p>
+          <div class="keyline">
+            <div><span>血量公式</span><b>440 × (1 + (N−1) × 0.62) × (1 + 0.13 × 波次^1.15)</b></div>
+            <div><span>每轮护甲</span><b>+7%，上限 30%</b></div>
+            <div><span>缝合机制</span><b>从 4 个签名机制里抽 2 个</b></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="tw mt">
+        <table>
+          <caption>新怪登场节奏：保持「一次只教一个」，并刻意避开 Boss 波</caption>
+          <thead>
+            <tr><th scope="col">波次</th><th scope="col">这一波的主角</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1 – 4</td><td>drone / zig / shooter / mini（教学波，固定编排）</td></tr>
+            <tr><td>5</td><td>BOSS-1 裂隙哨兵</td></tr>
+            <tr><td>6</td><td>chaser + <strong>rammer</strong></td></tr>
+            <tr><td>7 – 8</td><td>splitter / tank</td></tr>
+            <tr><td>9</td><td><strong>xpblob</strong></td></tr>
+            <tr><td>10</td><td>BOSS-2 裂隙核心（<strong>bulwark</strong> 开始伴随出现）</td></tr>
+            <tr><td>11</td><td>turret + <strong>marksman</strong></td></tr>
+            <tr><td>12</td><td><strong>mender</strong> 开始伴随出现</td></tr>
+            <tr><td>13</td><td>orbiter + <strong>tick</strong></td></tr>
+            <tr><td>14</td><td><strong>leech</strong> 开始伴随出现</td></tr>
+            <tr><td>15</td><td>BOSS-3 炽镰 · 熔核 + <strong>sweeper</strong></td></tr>
+            <tr><td>16</td><td><strong>cluster</strong> 开始伴随出现</td></tr>
+            <tr><td>17</td><td><strong>phaser</strong></td></tr>
+            <tr><td>18+</td><td>全池程序化复合，随机组合</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -264,6 +416,8 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
       </div>
       <ul class="promise">
         <li><b>色 彩 分 离</b><span>敌弹一律用高饱和暖色（粉 / 橙 / 黄），玩家弹一律用冷色（青 / 蓝），两套语义不重叠。你的舰体永远带 6px 光晕和引擎尾焰，在最密的弹幕里也能一眼锁定。</span></li>
+        <li><b>元 素 不 抢 色</b><span>元素<strong>只改尾迹色、状态特效和敌人头顶的元素图标，绝不改弹丸核心色</strong>。也就是说拿了六个元素也不会把「冷色=我的 / 暖色=敌人的」这条铁律搅乱——这一条是元素系统的硬约束，不是实现细节。</span></li>
+        <li><b>元 素 有 反 制</b><span>六种元素各自对应明确的解法场景：雷打密集阵、冰买时间、火清小怪、毒破盾甲、虚空清弹幕、光拉弹道。新 Boss 也会在阶段说明里标出推荐反制（如熔核怕冰与虚空）。元素是答案，不是数值。</span></li>
         <li><b>开 火 预 警</b><span>所有会打你的敌人（炮手、哨塔）开火前都有 0.45 秒的炮口充能闪光；Boss 每次切阶段有 0.8 秒核心变色。整个游戏不存在无预警的瞬发伤害。</span></li>
         <li><b>受 击 反 馈</b><span>被击中后有 0.9 秒无敌闪烁 + 屏幕红闪 + 轻微震动，屏幕震动上限锁在 14px，不会干扰你继续读弹幕。</span></li>
         <li><b>拾 取 物 分 类</b><span>青=经验、红=生命、蓝=护盾、黄=核弹。经验晶体带拖尾与吸附加速，永远不会被误认成敌弹。</span></li>

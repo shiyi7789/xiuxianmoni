@@ -29,11 +29,11 @@
 │  └─ manifest.json          ← 模块拼接顺序（加新模块要登记在这里）
 │
 ├─ xiuxian.html              ← ★ 修仙模拟器构建产物（单文件成品，**不要手改**）
-├─ games/thunder-rogue/      ← ★ 星际裂隙 · ROGUE THUNDER 源码（8 个运行文件 + test/ + shots/）
+├─ games/thunder-rogue/      ← ★ 星际裂隙 · ROGUE THUNDER 源码（9 个运行文件 + test/ + shots/）
 ├─ scripts/
 │  ├─ build.mjs              ← 零依赖构建：src/ → xiuxian.html（可 `--check` 做「一字未改」校验）
 │  ├─ release.mjs            ← 一键发版：构建 + 同步两款游戏到 site/ + 生成版本号 + 回填首页
-│  ├─ verify-site.mjs        ← 上线前自检（207 项 HTTP / SEO / a11y / 性能 / 链接 / 版式 / 部署配置）
+│  ├─ verify-site.mjs        ← 上线前自检（214 项 HTTP / SEO / a11y / 性能 / 链接 / 版式 / 部署配置）
 │  ├─ verify-online.mjs      ← 上线后核验（抓线上真身与本地 site/ 逐字节比对，可当 CI 门禁）
 │  └─ connect-github.ps1     ← 一键连远端仓库
 │
@@ -41,7 +41,7 @@
 │  ├─ index.html             ← 游戏大厅（菜单，选游戏 / 站内试玩 / 站点说明）
 │  ├─ xiuxian.html           ← 修仙模拟器本体副本（由发版脚本自动同步）
 │  ├─ xiuxian-info.html      ← 修仙模拟器 · 玩法详情
-│  ├─ rogue/                 ← 星际裂隙本体（8 个文件的静态页）
+│  ├─ rogue/                 ← 星际裂隙本体（9 个文件的静态页）
 │  ├─ rogue-info.html        ← 星际裂隙 · 玩法详情
 │  ├─ notice.html            ← 网站声明（不盈利 / 隐私 / 健康游戏 / 免责…）
 │  ├─ assets/                ← 三页共用样式与脚本（site.css / site.js）

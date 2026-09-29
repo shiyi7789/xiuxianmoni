@@ -318,6 +318,20 @@ const SFX = (() => {
     gameover: { tier: 0, gap: 0,   cost: 3, g: 1.60 },
     bossWarn: { tier: 0, gap: 0,   cost: 3, g: 1.40 },
     bossPhase:{ tier: 0, gap: 0,   cost: 3, g: 1.38 },
+    /* ---- v2 元素状态音（6）：短促、有色彩、彼此可辨；高频命中会走节流，不会刷屏 ---- */
+    eZap:     { tier: 3, gap: 0,   cost: 2, g: 2.60 },
+    eFreeze:  { tier: 3, gap: 0,   cost: 2, g: 2.60 },
+    eBurn:    { tier: 3, gap: 0,   cost: 2, g: 2.60 },
+    eToxin:   { tier: 3, gap: 0,   cost: 2, g: 2.60 },
+    eVoid:    { tier: 2, gap: 0,   cost: 3, g: 2.20 },
+    eLight:   { tier: 3, gap: 0,   cost: 2, g: 2.60 },
+    /* ---- v2 元素反应音（按强度分档：低 / 中 / 高）---- */
+    rxLow:    { tier: 3, gap: 62,  cost: 2, g: 2.20 },
+    rxMid:    { tier: 2, gap: 72,  cost: 3, g: 1.80 },
+    rxBig:    { tier: 1, gap: 92,  cost: 4, g: 1.45 },
+    /* ---- v2 Boss 签名音（区域技 / 部件击破）---- */
+    bossZone: { tier: 0, gap: 180, cost: 3, g: 1.22 },
+    bossParts:{ tier: 0, gap: 220, cost: 2, g: 1.30 },
   };
 
   const lastAt = Object.create(null);
@@ -538,6 +552,78 @@ const SFX = (() => {
     },
     uiHover() {
       tone({ f: 1500, dur: 0.025, type: 'sine', vol: 0.022, bus: 'ui' });
+    },
+
+    /* =====================================================
+       v2 · 元素状态音（6）
+       设计口径：短（≤0.22s）、有色彩、彼此可辨；每命中一次才响一次，
+       且高频武器本身就受 hit/eXxx 的 tier 3 预算压制，不会糊成噪音。
+       ===================================================== */
+    /* 雷：高频电流噼啪 —— 用 square 的抖动摇出「电荷」而不是「爆炸」 */
+    eZap(p, d) {
+      tone({ f: 3100, f2: 1200, dur: 0.035, type: 'square', vol: 0.026, pan: p, dist: d, jitter: 0.14 });
+      hiss({ dur: 0.09, vol: 0.03, f0: 6200, f1: 1800, type: 'bandpass', q: 3, pan: p, dist: d });
+    },
+    /* 冰：结晶上滑 —— 唯一「向上走」的元素音，和火的下压摩擦完全相反 */
+    eFreeze(p, d) {
+      tone({ f: 2400, f2: 3400, dur: 0.07, type: 'sine', vol: 0.03, pan: p, dist: d, jitter: 0.05 });
+      tone({ f: 3600, f2: 2000, dur: 0.1, type: 'triangle', vol: 0.018, pan: p, dist: d, at: 0.03 });
+    },
+    /* 火：低频摩擦上扬（与敌弹音区刻意错开，元素音永远比敌弹「更高更亮」） */
+    eBurn(p, d) {
+      hiss({ dur: 0.11, vol: 0.035, f0: 700, f1: 2600, type: 'bandpass', q: 1.1, pan: p, dist: d });
+      tone({ f: 260, f2: 520, dur: 0.08, type: 'sawtooth', vol: 0.022, pan: p, dist: d, jitter: 0.08 });
+    },
+    /* 毒：粘稠气泡（低通 + 粉噪声，唯一「闷」的元素音） */
+    eToxin(p, d) {
+      tone({ f: 520, f2: 190, dur: 0.11, type: 'triangle', vol: 0.028, pan: p, dist: d, jitter: 0.07 });
+      hiss({ dur: 0.13, vol: 0.024, f0: 900, f1: 300, type: 'lowpass', q: 1.4, pan: p, dist: d, pink: true });
+    },
+    /* 虚空：向内塌陷（下滑 sine + 粉噪声，唯一「往低处收」的元素音） */
+    eVoid(p, d) {
+      tone({ f: 380, f2: 74, dur: 0.22, type: 'sine', vol: 0.04, pan: p, dist: d });
+      hiss({ dur: 0.2, vol: 0.024, f0: 1500, f1: 130, type: 'lowpass', q: 1.8, pan: p, dist: d, pink: true });
+    },
+    /* 光：钟形高音（纯 sine 泛音，唯一不带噪声的元素音 → 一耳朵能认出） */
+    eLight(p, d) {
+      tone({ f: 1760, f2: 2640, dur: 0.09, type: 'sine', vol: 0.028, pan: p, dist: d });
+      tone({ f: 3520, dur: 0.07, type: 'sine', vol: 0.012, pan: p, dist: d, at: 0.02 });
+    },
+
+    /* =====================================================
+       v2 · 元素反应音（按强度分档）
+       低 = 战术补强（只做提示）· 中 = 输出放大（有明确「事件感」）
+       高 = 清场质变（压音乐、抢注意力，因为它是这一局的高光）
+       ===================================================== */
+    rxLow(p, d) {
+      tone({ f: 900, f2: 1500, dur: 0.09, type: 'triangle', vol: 0.05, pan: p, dist: d, bus: 'ui' });
+      hiss({ dur: 0.12, vol: 0.04, f0: 2600, f1: 700, type: 'bandpass', q: 2, pan: p, dist: d });
+    },
+    rxMid(p, d) {
+      tone({ f: 620, f2: 1560, dur: 0.16, type: 'square', vol: 0.055, pan: p, dist: d });
+      tone({ f: 1240, f2: 2480, dur: 0.14, type: 'triangle', vol: 0.04, pan: p, dist: d, at: 0.03 });
+      hiss({ dur: 0.2, vol: 0.055, f0: 3400, f1: 500, type: 'bandpass', q: 1.6, pan: p, dist: d });
+    },
+    rxBig(p, d) {
+      tone({ f: 220, f2: 60, dur: 0.42, type: 'sawtooth', vol: 0.1, pan: p, dist: d });
+      tone({ f: 880, f2: 2200, dur: 0.24, type: 'square', vol: 0.06, pan: p, dist: d, at: 0.02 });
+      hiss({ dur: 0.46, vol: 0.1, f0: 4200, f1: 120, q: 1.1, pan: p, dist: d });
+      duckMusic(0.45, 0.5);
+    },
+
+    /* =====================================================
+       v2 · Boss 签名音
+       ===================================================== */
+    /* 区域技（熔渣带 / 静电场 / 零域冰封）：先把「压力」铺开，不制造瞬态惊吓 */
+    bossZone(p, d) {
+      tone({ f: 110, f2: 62, dur: 0.8, type: 'sawtooth', vol: 0.09, curve: 'hold', pan: p, dist: d });
+      hiss({ dur: 0.7, vol: 0.06, f0: 800, f1: 140, type: 'lowpass', q: 1.2, pan: p, dist: d, pink: true });
+    },
+    /* 部件击破：金属断裂 + 低频闷响（Boss 战里最重要的正向反馈） */
+    bossParts(p, d) {
+      tone({ f: 1400, f2: 280, dur: 0.16, type: 'square', vol: 0.06, pan: p, dist: d, jitter: 0.06 });
+      hiss({ dur: 0.24, vol: 0.07, f0: 3000, f1: 300, type: 'bandpass', q: 1.1, pan: p, dist: d });
+      tone({ f: 180, f2: 70, dur: 0.3, type: 'triangle', vol: 0.05, pan: p, dist: d, at: 0.02 });
     },
   };
 

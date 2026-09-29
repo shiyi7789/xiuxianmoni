@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.29-1709",
-  "build": "20260929-170957",
+  "v": "2026.09.29-2253",
+  "build": "20260929-225317",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 542411,
+  "totalGameBytes": 677241,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 162882,
-      "sha256": "50131a59b76d76ad785362929210aef8d572ad946038ed61227ac2ef19d4b321",
-      "files": 8
+      "bytes": 297712,
+      "sha256": "5439b69a09c987bebda915908f63973001de613a133cfd63b5823ce475755a88",
+      "files": 9
     }
   ],
-  "note": "修 base-uri 静默拦掉 subpathBase 兜底",
-  "time": "2026-09-29T17:09:57.101+08:00"
+  "note": "星际裂隙：元素觉醒（6 元素 / 15 反应 / Lv4·Lv9 元素门）、升级卡扩至 54 张五选一、19 种敌机原型 + 5 Boss 起迭代缝合、光束与激光特效升级、元素图鉴；玩法详情页同步",
+  "time": "2026-09-29T22:53:17.558+08:00"
 }

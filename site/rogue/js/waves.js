@@ -83,15 +83,38 @@ function fmTurrets(G, type, n, y, o = {}) {
   xs.forEach((x, i) => G.enemies.push(makeEnemy(G, type, x, y - i * 10, o)));
 }
 
+/** 纵向车道（3~4 条）：迫使玩家在车道之间做排他选择 */
+function fmLane(G, type, n, y, o = {}) {
+  const lanes = n <= 3 ? 3 : 4;
+  const per = n <= 3 ? 2 : 2;
+  for (let i = 0; i < lanes; i++) {
+    const x = 70 + i * (400 / (lanes - 1));
+    for (let j = 0; j < per; j++) {
+      G.enemies.push(makeEnemy(G, type, x, y - j * 48 - i * 10, o));
+    }
+  }
+}
+
+/** 圆环阵（整体缓慢旋转）：把"处理顺序"变成主要难题 */
+function fmRing(G, type, n, y, o = {}) {
+  const R = 128;
+  for (let i = 0; i < n; i++) {
+    const a = i / n * TAU;
+    const e = makeEnemy(G, type, 270 + Math.sin(a) * R, y + Math.cos(a) * R * 0.5, o);
+    e.cx = 270; e.cy = y; e.a0 = a; e.rad = R; e.orbiting = true;
+    G.enemies.push(e);
+  }
+}
+
 /* ---------------------------------------------------------
    难度参数
    --------------------------------------------------------- */
 function waveTier(n) { return Math.floor((n - 1) / 5); }
 
-/** 玩家可见的波次规模提示 */
+/** 玩家可见的波次规模提示（血量系数 v2：1 + 0.24 × n^1.17） */
 function waveScale(n) {
   return {
-    hp: 1 + 0.18 * Math.pow(n, 1.12),
+    hp: 1 + 0.24 * Math.pow(n, 1.17),
     count: clamp(1 + (n - 6) * 0.10, 1, 2.1),
     spd: clamp(1 + (n - 8) * 0.022, 1, 1.5),
   };
@@ -99,11 +122,17 @@ function waveScale(n) {
 
 /* ---------------------------------------------------------
    新原型登场表（保持"每次只教一个"的间隔）
+   INTRO_WAVE  = 该波的主角新怪
+   INTRO_WAVE2 = 同波的第二只（避开 Boss 波，故 6/11/13 会挤在一起 → 延后 6s、低密度）
+   BOSS_ESCORT = 与 Boss 同波登场的新怪（15 波横扫者，否则会永远见不到）
    --------------------------------------------------------- */
 const INTRO_WAVE = {
   1: 'drone', 2: 'zig', 3: 'shooter', 4: 'mini',
-  6: 'chaser', 7: 'splitter', 8: 'tank', 11: 'turret', 13: 'orbiter',
+  6: 'chaser', 7: 'splitter', 8: 'tank', 9: 'xpblob',
+  11: 'turret', 13: 'orbiter', 17: 'phaser',
 };
+const INTRO_WAVE2 = { 6: 'rammer', 11: 'marksman', 13: 'tick' };
+const BOSS_ESCORT = { 15: 'sweeper' };
 
 const INTRO_HINT = {
   drone: '侦察机 · 直线下落',
@@ -115,7 +144,42 @@ const INTRO_HINT = {
   tank: '重甲舰 · 高血量',
   turret: '哨塔 · 径向弹幕',
   orbiter: '环刃 · 环绕突袭',
+  rammer: '冲撞者 · 预警后直线下冲，必须横移',
+  xpblob: '经验囊 · 不还手但会带着经验逃走',
+  marksman: '狙击手 · 读预警线，一次性横移',
+  tick: '自爆虫 · 别让它贴脸',
+  mender: '修复舰 · 优先拔掉它',
+  bulwark: '盾卫 · 按命中次数削盾，高单伤打不动',
+  sweeper: '横扫者 · 威胁这次来自侧面',
+  leech: '窃能虫 · 它在抢你的经验',
+  cluster: '晶簇母体 · 杀死不等于解决',
+  phaser: '相位幽灵 · 等它的实体窗口',
 };
+
+/* ---------------------------------------------------------
+   修饰件（不占引入波：从解锁波起作为既有阵型的附带项出现）
+   --------------------------------------------------------- */
+const MODIFIERS = [
+  { wave: 10, type: 'bulwark' },
+  { wave: 12, type: 'mender' },
+  { wave: 14, type: 'leech' },
+  { wave: 16, type: 'cluster' },
+];
+
+/** 给一个既有阵型按概率挂上已解锁的修饰件 */
+function attachMods(G, n, at, x, y) {
+  const open = MODIFIERS.filter(m => n >= m.wave);
+  if (!open.length) return 0;
+  if (!chance(0.62)) return 0;
+  const m = pick(open);
+  const cnt = m.type === 'cluster' ? 1 : (chance(0.4) ? 2 : 1);
+  for (let i = 0; i < cnt; i++) {
+    G.enemies.push(makeEnemy(G, m.type, clamp(x + (i - (cnt - 1) / 2) * 58, 40, 500), y - i * 24));
+  }
+  G._modSeen = (G._modSeen || {});
+  if (!G._modSeen[m.type]) { G._modSeen[m.type] = 1; G.introHint(INTRO_HINT[m.type]); }
+  return cnt;
+}
 
 /* ---------------------------------------------------------
    波次构建
@@ -128,6 +192,12 @@ function buildWave(n) {
   const N = (base) => Math.max(1, Math.round(base * S.count));
 
   if (boss) {
+    // Boss 波也带护卫/新怪：否则 W15 的横扫者永远见不到（5 的倍数波没有普通阵型）
+    if (BOSS_ESCORT[n]) {
+      const ty = BOSS_ESCORT[n];
+      add(6.0, () => { G.introHint(INTRO_HINT[ty]); fmLane(G, ty, 3, 150); });
+    }
+    if (n >= 10) add(9.5, () => attachMods(G, n, 9.5, 300, 180));
     return { boss: true, groups, name: 'BOSS' };
   }
 
@@ -161,7 +231,7 @@ function buildWave(n) {
     return { boss, groups, name: '第四波' };
   }
 
-  /* ---------- 5–9：新原型登场 + 首次复合 ---------- */
+  /* ---------- 原型登场波（含第二只与修饰件） ---------- */
   if (INTRO_WAVE[n]) {
     const type = INTRO_WAVE[n];
     add(0.0, () => fmLine(G, 'drone', N(5), -50, { spread: 340 }));
@@ -170,10 +240,22 @@ function buildWave(n) {
       if (type === 'tank') fmLine(G, 'tank', n >= 12 ? 2 : 1, -70, { spread: 150 });
       else if (type === 'turret') fmTurrets(G, 'turret', 2, -70);
       else if (type === 'orbiter') fmSpiral(G, 'orbiter', 4, 210);
+      else if (type === 'xpblob') fmLine(G, 'xpblob', 1, -70, { spread: 120 });
       else fmArc(G, type, N(6), -70, { spread: 360 });
     });
+    if (INTRO_WAVE2[n]) {
+      /* 与主角新怪错开 6 秒、只放少量：把"读预警"这件事讲清楚 */
+      const t2 = INTRO_WAVE2[n];
+      add(7.8, () => {
+        G.introHint(INTRO_HINT[t2]);
+        if (t2 === 'rammer') fmLane(G, 'rammer', 3, -90);
+        else if (t2 === 'marksman') fmLine(G, 'marksman', 2, -70, { spread: 200 });
+        else fmArc(G, 'tick', N(4), -60, { spread: 260 });
+      });
+    }
     add(7.5, () => fmArc(G, 'zig', N(6), -60, { spread: 370 }));
     add(11.5, () => fmSwarm(G, 'drone', N(8), -60));
+    add(12.5, () => attachMods(G, n, 12.5, rand(430, 110), 100));
     if (n >= 8) add(15.0, () => fmV(G, 'chaser', N(4), -60));
     return { boss, groups, name: '第 ' + n + ' 波' };
   }
@@ -189,12 +271,21 @@ function buildWave(n) {
   if (n >= 9) picks.push('pincer');
   if (n >= 12) picks.push('wall');
   if (n >= 14) picks.push('spiral');
+  if (n >= 13) picks.push('lane');       // fmLane：服务 rammer / sweeper
+  if (n >= 17) picks.push('ring');       // fmRing：服务 phaser / 环阵压力
 
+  // 主力怪池（修饰件不进这个池：它们只作为附带项出现）
   const enemyPool = ['drone', 'zig', 'mini', 'chaser'];
+  if (n >= 11) enemyPool.push('xpblob');
   if (n >= 9) enemyPool.push('shooter');
   if (n >= 12) enemyPool.push('splitter');
   if (n >= 14) enemyPool.push('tank');
   if (n >= 16) enemyPool.push('orbiter');
+  if (n >= 13) enemyPool.push('rammer');
+  if (n >= 15) enemyPool.push('marksman');
+  if (n >= 17) enemyPool.push('tick');
+  if (n >= 19) enemyPool.push('sweeper');
+  if (n >= 21) enemyPool.push('phaser');
 
   const chosen = [];
   const groupCount = clamp(3 + Math.floor(n / 7), 3, 5);
@@ -216,9 +307,13 @@ function buildWave(n) {
         case 'v':      fmV(G, c.ty, cnt, -50, o); break;
         case 'swarm':  fmSwarm(G, c.ty, cnt + 2, -60, o); break;
         case 'pincer': fmPincer(G, c.ty, cnt, -50, o); break;
-        case 'wall':   fmWall(G, c.ty, cnt + 3, -55, randInt(1, cnt)); break;
+        case 'wall':   fmWall(G, c.ty, cnt + 3, -55, randInt(1, cnt), o); break;
         case 'spiral': fmSpiral(G, c.ty === 'orbiter' ? 'orbiter' : c.ty, 5, 220, o); break;
+        case 'lane':   fmLane(G, (c.ty === 'rammer' || c.ty === 'sweeper') ? c.ty : 'rammer', 3 + (cnt > 7 ? 1 : 0), -70, o); break;
+        case 'ring':   fmRing(G, c.ty, Math.min(7, cnt), 220, o); break;
       }
+      /* 修饰件：伴随既有阵型出现（自带概率与上限，不会变成主力） */
+      if (chance(0.5)) attachMods(G, n, t, clamp(rand(430, 110)), 90);
     });
   });
 
@@ -229,6 +324,13 @@ function buildWave(n) {
   // 中段补一波追猎者，制造空间挤压
   if (n >= 12 && chance(0.6)) {
     add(groupCount * 2.0 + 4.0, () => fmV(G, 'chaser', N(5), -60, o));
+  }
+  // 收尾：修饰件 + 车道冲撞，制造"最后一波必须立刻处理"的优先级
+  if (n >= 15) {
+    add(groupCount * 2.0 + 5.5, () => {
+      if (chance(0.6)) fmLane(G, chance(0.5) ? 'rammer' : 'sweeper', 3, -80, o);
+      if (chance(0.5)) attachMods(G, n, 0, rand(430, 110), 80);
+    });
   }
 
   return { boss, groups, name: '第 ' + n + ' 波' };

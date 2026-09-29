@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from '
 import { resolve, dirname, join, extname, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = join(root, 'site');
@@ -73,7 +74,7 @@ const files = [
   '/', '/xiuxian.html', '/rogue/', '/rogue', '/xiuxian-info.html', '/rogue-info.html', '/notice.html',
   '/version.json', '/404.html', '/robots.txt', '/sitemap.xml',
   '/assets/site.css', '/assets/site.js',
-  '/rogue/css/style.css', '/rogue/js/utils.js', '/rogue/js/audio.js',
+  '/rogue/css/style.css', '/rogue/js/utils.js', '/rogue/js/audio.js', '/rogue/js/elements.js',
   '/rogue/js/entities.js', '/rogue/js/upgrades.js', '/rogue/js/waves.js', '/rogue/js/game.js'
 ];
 const bodies = {};
@@ -264,11 +265,16 @@ chk('修仙详情页保留九条并行成长线', ['修为与突破', '五品装
 chk('修仙详情页声明区已指向完整声明', /href="notice\.html">《网站声明》</.test(XI), '');
 chk('肉鸽详情页含操作表', /W A S D/.test(RG) && /Space/.test(RG) && /时间畸变/.test(RG), '');
 chk('肉鸽详情页含八条武器线', ['主炮', '贯穿激光', '散射炮', '追踪导弹', '环绕无人机', '电弧链', '回旋飞刃', '引力黑洞'].every(k => RG.indexOf(k) >= 0), '8/8');
-chk('肉鸽详情页含敌机原型表', /<table>/.test(RG) && /裂隙核心/.test(RG) && /哨塔/.test(RG), '10 种原型');
-chk('肉鸽详情页含 Boss 阶段数值', /0\.8 秒/.test(RG) && /1\.2 秒/.test(RG) && /\+55%/.test(RG), '');
+chk('肉鸽详情页含敌机原型表', /<table>/.test(RG) && /裂隙核心/.test(RG) && /哨塔/.test(RG), '19 种原型 + 5 Boss');
+chk('肉鸽详情页含 Boss 阶段数值', /0\.8 秒/.test(RG) && /1\.2 秒/.test(RG) && /0\.62/.test(RG) && /\+7%/.test(RG), '切阶段蓄力 / 激光预警 / 血量系数 0.62 / 每轮护甲 +7%');
 chk('肉鸽详情页讲清「为什么不会莫名死亡」', /0\.45 秒/.test(RG) && /14px/.test(RG) && /0\.9 秒/.test(RG), '预警 / 震动上限 / 受击无敌');
-chk('肉鸽详情页的数量口径与游戏本体一致', /<b>8<\/b> 种武器/.test(RG) && /<b>15<\/b> 项被动/.test(RG) && /<b>3<\/b> 个主动技/.test(RG),
-  '8 武器 / 15 被动 / 3 主动，与 upgrades.js 的卡池一致');
+chk('肉鸽详情页的数量口径与游戏本体一致', /<b>8<\/b> 种武器/.test(RG) && /<b>54<\/b> 张升级卡/.test(RG) && /<b>6<\/b> 元素/.test(RG) && /<b>15<\/b> 反应/.test(RG) && /<b>19<\/b> 种敌机原型/.test(RG),
+  '8 武器 / 54 卡 / 6 元素 15 反应 / 19 敌机，与 upgrades.js + elements.js + entities.js 一致');
+chk('肉鸽详情页元素章节讲清元素门的硬规则', /Lv4/.test(RG) && /Lv9/.test(RG) && /最多两种元素/.test(RG) && /不可重随/.test(RG) && /不可跳过/.test(RG),
+  '开启时机 / 数量上限 / 不可重随 / 不可跳过');
+chk('肉鸽详情页列出全部 15 条元素反应', ['等离子爆燃', '超导', '电解', '湮灭回路', '圣裁', '热震', '腐蚀冻土', '引力冰狱', '霜镜', '焚毒雾', '内爆', '灼阳', '黑洞腐蚀', '弱点标记', '奇点']
+  .every(k => RG.indexOf(k) >= 0), '15/15 条反应名与 elements.js 一致');
+chk('肉鸽详情页写明「元素不改弹丸核心色」', /只改尾迹色/.test(RG) && /绝不改弹丸核心色/.test(RG), '色彩语义铁律有面向玩家的说明');
 chk('肉鸽详情页带返回大厅入口', /class="back" href="\.\/">← 返回游戏大厅/.test(RG), '');
 chk('肉鸽详情页声明区已指向完整声明', /href="notice\.html">《网站声明》</.test(RG), '');
 
@@ -282,13 +288,19 @@ chk('游戏页含站内声明入口', /href="\.\.\/notice\.html"/.test(RGI), '..
 chk('游戏页外链带 rel=noopener', /target="_blank" rel="noopener"/.test(RGI), '');
 chk('游戏页 JSON-LD 为 VideoGame', /"@type":"VideoGame"/.test(RGI), '');
 chk('游戏页有独立 favicon 与 theme-color', /rel="icon"/.test(RGI) && /name="theme-color"/.test(RGI), '');
-chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'entities', 'upgrades', 'waves', 'game']
-  .every(n => RGI.indexOf('js/' + n + '.js') >= 0), 'utils→audio→entities→upgrades→waves→game');
+chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'elements', 'entities', 'upgrades', 'waves', 'game']
+  .every(n => RGI.indexOf('js/' + n + '.js') >= 0), 'utils→audio→elements→entities→upgrades→waves→game');
+chk('elements.js 在 entities.js 之前加载（下游依赖它）',
+  RGI.indexOf('js/elements.js') < RGI.indexOf('js/entities.js'), 'elements < entities');
 chk('样式表为同源相对路径', /<link rel="stylesheet" href="css\/style\.css">/.test(RGI), 'css/style.css');
 chk('游戏页自带子路径资源基准（subpathBase）', /id="subpathBase"/.test(RGI),
   '站点对外是 /rogue（无尾斜杠），没有它相对子资源会 404 成一片纯文字');
 chk('游戏本体无外部子资源请求', !/<script[^>]+src="https?:/.test(RGI) && !/<link[^>]+rel="stylesheet"[^>]*href="https?:/.test(RGI) && !/<img[^>]+src="https?:/.test(RGI), '音频为程序化合成，图片为零');
-chk('游戏体积可控（< 250 KB）', rogueBytes < 250 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
+/* 体积闸门（v2 上调 250 → 320 KB）：本轮内容扩容 = 6 元素 + 15 反应 + 25 张卡 +
+   10 个新小怪 + 5 个新 Boss + 元素 UI/图鉴，源码从 162 KB 增至 290 KB。闸门的本意是
+   「不许塞二进制素材把单文件撑爆」——该守卫在下方单独断言（BIN_ASSET），且 gzip 后仅 ~89 KB，
+   所以这里放宽上限，同时把 gzip 与「两款合计」两条硬线留在原位。 */
+chk('游戏体积可控（< 320 KB）', rogueBytes < 320 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
 chk('脚本按顺序拼接即可运行（无打包器、无 import）', !/^\s*import\s/m.test(roguePairs.map(p => p[1].toString()).join('\n')), '六个文件共享同一全局作用域');
 
 /* ---------- 7.2 体积闸门与「不许内嵌素材」守卫（单文件形态的命门） ---------- */
@@ -483,7 +495,8 @@ out('=== 12. 体积汇总 ===');
 out('  首屏（大厅）      : ' + (HUB.length / 1024).toFixed(1) + ' KB');
 out('  共享样式 / 脚本   : ' + (CSS.length / 1024).toFixed(1) + ' KB / ' + (SJS.length / 1024).toFixed(1) + ' KB');
 out('  修仙模拟器        : ' + (xiuxianBuf.length / 1024).toFixed(1) + ' KB（单文件）');
-out('  星际裂隙          : ' + (rogueBytes / 1024).toFixed(1) + ' KB（' + roguePairs.length + ' 个文件）');
+out('  星际裂隙          : ' + (rogueBytes / 1024).toFixed(1) + ' KB（' + roguePairs.length + ' 个文件，gzip 后 ' +
+  (gzipSync(roguePairs.map(p => p[1]).reduce((a, b) => Buffer.concat([a, b]))).length / 1024).toFixed(1) + ' KB）');
 out('  两款游戏合计      : ' + ((xiuxianBuf.length + rogueBytes) / 1024).toFixed(1) + ' KB');
 
 server.close();
