@@ -28,9 +28,11 @@
   <h1>此 地 无 路</h1>
   <p>你走进了一条并不存在的岔路。前方既无灵气，也无星轨——回头是岸。</p>
   <nav aria-label="可用入口">
-    <a class="main" href="./">返 回 游 戏 大 厅</a>
-    <a href="xiuxian.html">修仙模拟器</a>
-    <a href="rogue/">星际裂隙</a>
+    <!-- 404 页会在「任意深度」的路径上被返回（如 /a/b/c），所以出口链接必须是根绝对路径，
+         写成 ./ 或 xiuxian.html 会被解析到 /a/b/ 下而继续 404。守卫见 scripts/verify-site.mjs -->
+    <a class="main" href="/">返 回 游 戏 大 厅</a>
+    <a href="/xiuxian.html">修仙模拟器</a>
+    <a href="/rogue/">星际裂隙</a>
   </nav>
 </body>
 </html>

@@ -40,12 +40,13 @@ const chk = (n, c, d) => (c ? ok(n, d) : bad(n, d || '未通过'));
 const sha256 = b => createHash('sha256').update(b).digest('hex');
 const read = p => readFileSync(join(SITE, p));
 const bust = u => u + (u.includes('?') ? '&' : '?') + '_=' + Date.now() + Math.random().toString(36).slice(2, 8);
+const UA = 'xiuxianmoni-online-verify/1.0';
 
 /* 一次性抓取：返回状态码 / 响应头 / 原始字节（fetch 会自动解压，故缓冲区即源文件字节） */
 async function get(pathname) {
   const res = await fetch(bust(BASE + pathname), {
     redirect: 'follow',
-    headers: { 'user-agent': 'xiuxianmoni-online-verify/1.0', 'accept-encoding': 'gzip, deflate, br' }
+    headers: { 'user-agent': UA, 'accept-encoding': 'gzip, deflate, br' }
   });
   const buf = Buffer.from(await res.arrayBuffer());
   return { status: res.status, headers: res.headers, buf, text: buf.toString('utf8') };
@@ -161,6 +162,41 @@ async function main() {
     const r = await get(p);
     const ct = r.headers.get('content-type') || '';
     chk('GET ' + p, r.status === 200 && ct.includes(type), 'HTTP ' + r.status + ' · ' + ct.split(';')[0]);
+  }
+
+  /* ---------- 4.5) 页面自资源解析（按「实际返回地址」复算浏览器行为） ----------
+   * 2026-09-29 线上事故：站点卡片链接的是 /rogue/，但 vercel.json 是 trailingSlash:false，
+   * /rogue/ 被 308 到 /rogue（无尾斜杠）并由该地址直接返回页面 → 浏览器把 css/style.css
+   * 解析成 /css/style.css、js/game.js 解析成 /js/game.js → 全 404 → 页面变成
+   * 「一坨没样式的纯文字、升级/暂停弹层全部裸露堆叠」。
+   * 只验 /rogue/ 那一份是查不出来的 —— 必须拿「跟随重定向后的返回地址」再解析一遍。
+   * 页内 subpathBase 会把基准补成「目录 + /」，这里按同一口径复算。 */
+  out('');
+  out('[4.5] 页面自资源解析（按实际返回地址）');
+  const refBase = (finalUrl, html) => {
+    const u = new URL(finalUrl);
+    if (!/id="subpathBase"/.test(html)) return finalUrl;  /* 没有页内基准时，浏览器就用返回地址本身 */
+    let p = u.pathname;
+    if (!/\/$/.test(p)) p = /\.[a-z0-9]+$/i.test(p) ? p.replace(/[^/]*$/, '') : p + '/';
+    return u.origin + p;
+  };
+  for (const page of ['/', '/rogue', '/rogue/', '/notice.html', '/rogue-info.html', '/xiuxian-info.html']) {
+    const res = await fetch(bust(BASE + page), { redirect: 'follow', headers: { 'user-agent': UA } });
+    const html = await res.text();
+    const b = refBase(res.url, html);
+    const miss = []; let n = 0;
+    for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
+      const raw = m[1];
+      if (/^(https?:)?\/\//.test(raw) || /^(data:|mailto:|tel:|#|javascript:)/.test(raw)) continue;
+      const rel = raw.split('#')[0].split('?')[0];
+      if (!rel) continue;
+      n++;
+      const sr = await fetch(new URL(rel, b).href, { redirect: 'follow', headers: { 'user-agent': UA } });
+      if (sr.status !== 200) miss.push(rel + ' → HTTP ' + sr.status);
+    }
+    chk('GET ' + page + ' 的自资源全部可达', res.status === 200 && miss.length === 0,
+      '返回地址 ' + res.url.replace(BASE, '') + ' · ' + n + ' 条引用'
+      + (miss.length ? ' · 断 ' + miss.join('、') : ' 全部命中'));
   }
 
   /* ---------- 5) 错误页 ---------- */

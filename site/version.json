@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.29-1531",
-  "build": "20260929-153152",
+  "v": "2026.09.29-1627",
+  "build": "20260929-162725",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 540722,
+  "totalGameBytes": 541822,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 161193,
-      "sha256": "ea7dd78d7d2552b450c9546ae0bfd33bcca1d53a105c096465c31f049e311b47",
+      "bytes": 162293,
+      "sha256": "c29baa3062f04ae6f3346f9240d36ff1315569032162b16446b1536c9799dfb7",
       "files": 8
     }
   ],
-  "note": "站点升级为双游戏门户：新增游戏大厅菜单页、网站声明页、星际裂隙（ROGUE THUNDER）上线与玩法详情页，抽出共享样式与脚本",
-  "time": "2026-09-29T15:31:52.221+08:00"
+  "note": "修线上事故：/rogue 无尾斜杠时相对子资源被解析到上一层而全 404（页内 subpathBase 补基准）；404 页出口改根绝对路径；自检新增「子路径页面资源基准」守卫",
+  "time": "2026-09-29T16:27:25.040+08:00"
 }

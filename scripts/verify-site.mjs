@@ -42,7 +42,10 @@ const server = createServer((req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');
   let p = decodeURIComponent(url.pathname);
   if (p.endsWith('/')) p += 'index.html';
-  const file = normalize(join(SITE, p));
+  /* 目录地址（如 /rogue、无尾斜杠）也要交付 dir/index.html —— Vercel / Netlify / Cloudflare
+     都是这个行为；少了它，「无尾斜杠」这条路径在本地根本模拟不出来（线上正是它出的事故）。 */
+  let file = normalize(join(SITE, p));
+  if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
   if (!file.startsWith(SITE) || !existsSync(file) || statSync(file).isDirectory()) {
     const nf = join(SITE, '404.html');
     const body = existsSync(nf) ? readFileSync(nf) : Buffer.from('404');
@@ -67,7 +70,7 @@ out('');
 /* ---------- 1. HTTP 层 ---------- */
 out('=== 1. HTTP 与资源 ===');
 const files = [
-  '/', '/xiuxian.html', '/rogue/', '/xiuxian-info.html', '/rogue-info.html', '/notice.html',
+  '/', '/xiuxian.html', '/rogue/', '/rogue', '/xiuxian-info.html', '/rogue-info.html', '/notice.html',
   '/version.json', '/404.html', '/robots.txt', '/sitemap.xml',
   '/assets/site.css', '/assets/site.js',
   '/rogue/css/style.css', '/rogue/js/utils.js', '/rogue/js/audio.js',
@@ -282,6 +285,8 @@ chk('游戏页有独立 favicon 与 theme-color', /rel="icon"/.test(RGI) && /nam
 chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'entities', 'upgrades', 'waves', 'game']
   .every(n => RGI.indexOf('js/' + n + '.js') >= 0), 'utils→audio→entities→upgrades→waves→game');
 chk('样式表为同源相对路径', /<link rel="stylesheet" href="css\/style\.css">/.test(RGI), 'css/style.css');
+chk('游戏页自带子路径资源基准（subpathBase）', /id="subpathBase"/.test(RGI),
+  '站点对外是 /rogue（无尾斜杠），没有它相对子资源会 404 成一片纯文字');
 chk('游戏本体无外部子资源请求', !/<script[^>]+src="https?:/.test(RGI) && !/<link[^>]+rel="stylesheet"[^>]*href="https?:/.test(RGI) && !/<img[^>]+src="https?:/.test(RGI), '音频为程序化合成，图片为零');
 chk('游戏体积可控（< 250 KB）', rogueBytes < 250 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
 chk('脚本按顺序拼接即可运行（无打包器、无 import）', !/^\s*import\s/m.test(roguePairs.map(p => p[1].toString()).join('\n')), '六个文件共享同一全局作用域');
@@ -307,20 +312,31 @@ out('=== 7.5 错误页 ===');
 const E404 = bodies['/404.html'].text;
 chk('404 页 lang 与 viewport 正确', /lang="zh-CN"/.test(E404) && /width=device-width/.test(E404), '');
 chk('404 页标记 noindex（避免被搜索引擎收录）', /name="robots" content="noindex"/.test(E404), '');
-chk('404 页给出五处出口（大厅 + 两款游戏）', /返 回 游 戏 大 厅/.test(E404) && /href="xiuxian\.html"/.test(E404) && /href="rogue\/"/.test(E404), '');
+chk('404 页给出三处出口（大厅 + 两款游戏）', /href="\/"/.test(E404) && /href="\/xiuxian\.html"/.test(E404) && /href="\/rogue\/"/.test(E404), '');
+chk('404 页出口为根绝对路径（它会在任意深度路径上被返回）',
+  E404.match(/(?:href|src)="([^"]+)"/g).every(t => /"((https?:)?\/\/|data:|mailto:|#|\/)/.test(t)),
+  '否则 /a/b/c 这种路径下按钮会再 404 一次');
 chk('404 页自带明暗主题令牌', /prefers-color-scheme:dark/.test(E404) && /--zhu/.test(E404), '不闪白');
 chk('404 页保留 :focus-visible', /:focus-visible/.test(E404), '');
 
 /* ---------- 8. 站内链接巡检 ---------- */
 out('');
 out('=== 8. 站内链接与资源引用巡检 ===');
-const CHECK_PAGES = ['/', '/404.html', '/xiuxian-info.html', '/rogue-info.html', '/notice.html', '/rogue/'];
+const CHECK_PAGES = ['/', '/404.html', '/xiuxian-info.html', '/rogue-info.html', '/notice.html', '/rogue/', '/rogue'];
 let linkTotal = 0;
 const broken = [];
+/* 目录基准：页面若自带 subpathBase 而地址又没有尾斜杠（线上 /rogue 就是这样），
+   浏览器会把基准补成「目录 + /」。这里按同一口径解析 —— 少了这一步就复现不出
+   2026-09-29 那次「css/style.css 被解析到 /css/style.css → 全站一片纯文字」的事故。 */
+const dirOf = (p, html) => {
+  if (p.endsWith('/')) return p;
+  if (/id="subpathBase"/.test(html)) return p + '/';
+  return p.replace(/[^/]*$/, '');
+};
 for (const p of CHECK_PAGES) {
   const B = bodies[p];
   if (!B) continue;
-  const dir = p.endsWith('/') ? p : p.replace(/[^/]*$/, '');
+  const dir = dirOf(p, B.text);
   for (const m of B.text.matchAll(/(?:href|src)="([^"]+)"/g)) {
     const raw = m[1];
     if (/^(https?:)?\/\//.test(raw) || /^(data:|mailto:|tel:|#|javascript:)/.test(raw)) continue;
