@@ -9,6 +9,7 @@ import { codexUnlockMat, codexUnlockPill } from './codex.js';
 import { titleBonus } from './titles.js';
 import { checkAch } from './achievement.js';
 import { fbGainMat, fbGainPill } from '../ui/feedback.js';
+import { audioPlay } from '../audio/events.js';
 import { realmAt, realmNameOf } from './cultivate.js';
 import { addLog, toast } from './log.js';
 import { advance } from './time.js';
@@ -289,6 +290,7 @@ export function craftPill(k, n){
     const back = refundMats(scaleNeed(r.need, bad), 0.4);
     addLog('炸炉 ' + bad + ' 次，丹毁。残渣中收回：' + matPlain(back) + '。', 'warn');
   }
+  audioPlay(bad > 0 ? 'craft.fail' : 'craft.ok');
   if(S.stat) S.stat.pillMake = (S.stat.pillMake || 0) + ok;
   checkAch();
   after();
@@ -334,6 +336,7 @@ export function craftGear(k, n){
     const back = refundMats(scaleNeed(r.need, bad), 0.4);
     addLog('器碎 ' + bad + ' 件。残料收回：' + matPlain(back) + '。', 'warn');
   }
+  audioPlay(bad > 0 ? 'craft.fail' : 'craft.ok');
   if(S.stat) S.stat.gearMake = (S.stat.gearMake || 0) + ok;
   checkAch();
   after();

@@ -37,7 +37,7 @@ jobs:
       - name: 游戏逻辑回归测试
         run: node regression-test.js xiuxian.html 回归测试结果.txt
 
-      - name: 站点自检（74 项）
+      - name: 站点自检（HTTP / SEO / a11y / 性能 / 链接 / 版式 / 部署配置）
         run: node scripts/verify-site.mjs
 
       - name: 失败时保留测试输出

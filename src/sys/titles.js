@@ -3,6 +3,7 @@ import { S } from '../core/state.js';
 import { TITLE_BY_KEY, TITLE_TIER_NAME, TITLES } from '../data/titles.js';
 import { achAgg } from './achievement.js';
 import { addLog, toast } from './log.js';
+import { audioPlay } from '../audio/events.js';
 import { after } from '../ui/render.js';
 
 /* =========================================================
@@ -60,6 +61,10 @@ export function checkTitles(){
     }
     /* 中央浮层：宝品及以上才弹，避免刷屏 */
     const show = got.filter(t => t.t >= 2);
+    if(got.length){
+      audioPlay('meta.title');
+      addLog('　已解锁新称号：' + got.map(t => t.n).join('、') + '。', 'dim');
+    }
     if(show.length && typeof fbCenterQueue === 'function'){
       const t = show[show.length - 1];
       fbCenterQueue({
@@ -67,7 +72,7 @@ export function checkTitles(){
         title:'得 称 号',
         body:'<b>' + t.n + '</b><br><span class="muted-sm">' + t.d + '</span>',
         autoMs:2200,
-        sound: t.t >= 3 ? 'xian' : 'item'
+        sound:'none'
       });
     }
   }

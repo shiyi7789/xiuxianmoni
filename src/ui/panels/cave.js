@@ -3,6 +3,7 @@ import { $, num } from '../../core/utils.js';
 import { CAVE_FACILITIES, caveFullCost } from '../../data/cave.js';
 import { caveEnsure, cvBonus, cvFacLv, cvFacSummary, cvFmtDuration, cvOfflineCapHours, cvTotalLv, cvTotalMax, cvUpgrade, cvUpgradeCost } from '../../sys/cave.js';
 import { toast } from '../../sys/log.js';
+import { audioPlay } from '../../audio/events.js';
 import { closeModal, showModal } from '../modal.js';
 import { uiDots, uiKV, uiSec } from '../kit.js';
 
@@ -118,6 +119,7 @@ export function cvUiUp(k){
 export function cvShowOfflineReport(report){
   if(!report) return;
   const timeTxt = cvFmtDuration(report.elapsedMs);
+  audioPlay('cave.offline');
   let h = '<div class="encintro">'
     + '你自入定中醒来，洞府一切如常。离山 <b>' + timeTxt + '</b>'
     + (report.capped ? '（已达上限）' : '')

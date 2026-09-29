@@ -3,495 +3,381 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>修仙模拟器 · 文字版 — 单文件离线修仙放置游戏</title>
-<meta name="description" content="一款零依赖、纯离线的文字修仙游戏：13 大境界 41 层、五品装备与流光、妖兽秘境、轮回传承、42 项成就、25 段奇遇与 30 部功法。打开即玩，进度自动存在本机，无需注册。">
-<meta name="keywords" content="修仙模拟器,文字游戏,放置游戏,离线游戏,修仙,单文件网页游戏">
-<meta name="author" content="修仙模拟器">
+<title>游戏大厅 · 修仙模拟器 与 星际裂隙 | 免费离线网页游戏</title>
+<meta name="description" content="两款零依赖、纯离线的网页游戏，打开即玩：文字修仙《修仙模拟器》与竖屏弹幕 Roguelite《星际裂隙》。免注册、无广告、无追踪，进度只存在你自己浏览器里。">
+<meta name="keywords" content="网页游戏,离线游戏,免费游戏,文字修仙,修仙模拟器,弹幕射击,Roguelite,星际裂隙,游戏大厅">
+<meta name="author" content="游戏大厅">
 <meta name="theme-color" content="#efe7d8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#101018" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <link rel="canonical" href="https://xiuxianmoni.me/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="修仙模拟器 · 文字版">
-<meta property="og:title" content="修仙模拟器 · 文字版">
-<meta property="og:description" content="零依赖纯离线的文字修仙游戏。13 大境界 41 层，装备流光、秘境妖王、轮回传承、成就气运、25 段奇遇与 30 部功法。打开即玩。">
+<meta property="og:site_name" content="游戏大厅">
+<meta property="og:title" content="游戏大厅 · 两款免费离线网页游戏">
+<meta property="og:description" content="文字修仙《修仙模拟器》+ 竖屏弹幕 Roguelite《星际裂隙》。免注册、无广告、无追踪，进度存在本机。">
 <meta property="og:url" content="https://xiuxianmoni.me/">
 <meta property="og:locale" content="zh_CN">
-<!-- og:image 暂未设置。理由：指向不存在的文件会让分享卡片渲染成空白图，不如不设。
-     补法：放一张 1200×630 的 site/og.png，然后在「部署指引.md → 社交分享图」一节
-     按说明加回 og:image / og:image:width / og:image:height / twitter:image 四行。 -->
+<!-- og:image 暂未设置：指向不存在的文件会让分享卡片渲染成空白图，不如不设。
+     补法：放一张 1200×630 的 assets/og.png，再按「网站声明」页脚的联系方式所述的规范加回
+     og:image / og:image:width / og:image:height / twitter:image 四行。 -->
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="修仙模拟器 · 文字版">
-<meta name="twitter:description" content="零依赖纯离线的文字修仙游戏，打开即玩，进度存在本机。">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%239e2b25'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='%23fdf6ee' font-family='serif'%3E%E4%BB%99%3C/text%3E%3C/svg%3E">
+<meta name="twitter:title" content="游戏大厅 · 两款免费离线网页游戏">
+<meta name="twitter:description" content="文字修仙 + 竖屏弹幕 Roguelite，免注册、无广告、无追踪，打开即玩。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%239e2b25'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fdf6ee' font-family='serif'%3E%E6%88%8F%3C/text%3E%3C/svg%3E">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"修仙模拟器 · 文字版","url":"https://xiuxianmoni.me/","description":"零依赖纯离线的文字修仙放置游戏","genre":["文字游戏","放置游戏","角色扮演"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}
+{"@context":"https://schema.org","@type":"ItemList","name":"游戏大厅","url":"https://xiuxianmoni.me/","description":"两款零依赖纯离线的免费网页游戏","itemListElement":[{"@type":"ListItem","position":1,"item":{"@type":"VideoGame","name":"修仙模拟器 · 文字版","url":"https://xiuxianmoni.me/xiuxian.html","genre":["文字游戏","放置游戏","角色扮演"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}},{"@type":"ListItem","position":2,"item":{"@type":"VideoGame","name":"星际裂隙 · ROGUE THUNDER","url":"https://xiuxianmoni.me/rogue/","genre":["弹幕射击","Roguelite"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}}]}
 </script>
-<style>
-  :root{
-    --bg:#efe7d8; --bg2:#f7f2e7; --bg3:#e6dcc8;
-    --surface:rgba(255,253,247,.78); --surface2:rgba(255,255,255,.55);
-    --ink:#2b2620; --ink2:#4a4238; --ink3:#6f6659; --ink4:#9c9280;
-    --line:rgba(58,50,38,.20); --line2:rgba(58,50,38,.34);
-    --zhu:#9e2b25; --zhu2:#c0453a; --jin:#8f6c20; --qing:#2f6b63;
-    --on-accent:#fdf6ee;
-    --glow:#fbf7ee; --glow2:#e7dcc6;
-    --shadow:0 10px 30px rgba(80,62,38,.10);
-    --shadow-lg:0 22px 60px rgba(60,45,25,.20);
-    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
-    --serif:"Songti SC","Source Han Serif SC","Noto Serif SC","STSong","SimSun",serif;
-    --mono:ui-monospace,SFMono-Regular,Consolas,monospace;
-    --fs-sm:13px; --fs-base:15px;
-    --h1:clamp(28px,7vw,52px); --h2:clamp(20px,4.4vw,30px); --h3:16px;
-    --gap:clamp(16px,3.6vw,28px);
-    --pad:clamp(16px,4.4vw,40px);
-    --r:4px; --r-lg:10px;
-    --maxw:1120px;
-  }
-  html[data-theme="dark"]{
-    --bg:#14120f; --bg2:#221e19; --bg3:#2b2620;
-    --surface:rgba(38,34,28,.72); --surface2:rgba(255,255,255,.05);
-    --ink:#ece4d6; --ink2:#c9c0ae; --ink3:#9a9282; --ink4:#6e6759;
-    --line:rgba(236,228,214,.14); --line2:rgba(236,228,214,.26);
-    --zhu:#d9543f; --zhu2:#e8705a; --jin:#d9a441; --qing:#4fb3a0;
-    --on-accent:#1a1512;
-    --glow:#1e1a15; --glow2:#191612;
-    --shadow:0 10px 30px rgba(0,0,0,.4);
-    --shadow-lg:0 22px 60px rgba(0,0,0,.55);
-  }
-
-  *,*::before,*::after{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
-  @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.01ms!important;transition-duration:.01ms!important} }
-  body{
-    margin:0;min-height:100dvh;color:var(--ink);background:var(--bg);
-    font-family:var(--sans);font-size:var(--fs-base);line-height:1.75;
-    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
-    background-image:
-      radial-gradient(120% 80% at 10% 0%,var(--glow) 0%,transparent 55%),
-      radial-gradient(100% 70% at 100% 100%,var(--glow2) 0%,transparent 60%);
-    background-attachment:fixed;
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-  h1,h2,h3,.serif{font-family:var(--serif);font-weight:600;line-height:1.35;letter-spacing:.02em}
-  p{margin:0 0 1em}
-  a{color:var(--zhu);text-underline-offset:3px}
-  img,svg{max-width:100%;display:block}
-  :focus-visible{outline:2px solid var(--zhu);outline-offset:3px;border-radius:3px}
-  ::selection{background:rgba(158,43,37,.20)}
-
-  .skip{position:absolute;left:-9999px;top:0;z-index:100;padding:12px 20px;
-    background:var(--zhu);color:var(--on-accent);text-decoration:none;border-radius:0 0 var(--r) 0}
-  .skip:focus{left:0}
-  .wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 var(--pad)}
-  .eyebrow{font-size:12px;letter-spacing:.3em;color:var(--jin);margin:0 0 10px}
-  .lead{font-size:clamp(15px,2.6vw,18px);color:var(--ink2);max-width:62ch}
-  .muted{color:var(--ink3)}
-
-  /* ---------- 按钮 ---------- */
-  .btn{
-    display:inline-flex;align-items:center;justify-content:center;gap:8px;
-    min-height:48px;padding:12px 26px;border-radius:var(--r);
-    font-size:15px;font-family:inherit;letter-spacing:.08em;text-decoration:none;
-    border:1px solid var(--line2);background:var(--surface2);color:var(--ink2);
-    cursor:pointer;transition:transform .14s,border-color .14s,background .14s;
-  }
-  .btn:hover{border-color:var(--zhu);color:var(--zhu);background:var(--bg2)}
-  .btn:active{transform:translateY(1px)}
-  .btn.primary{background:var(--zhu);border-color:var(--zhu);color:var(--on-accent)}
-  .btn.primary:hover{background:var(--zhu2);border-color:var(--zhu2);color:var(--on-accent)}
-  .btn.ghost{background:transparent}
-  .btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
-
-  /* ---------- 顶栏 ---------- */
-  .hdr{position:sticky;top:0;z-index:40;border-bottom:1px solid var(--line);
-    background:var(--bg);
-    background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(1.3) blur(10px)}
-  .hdr-in{display:flex;align-items:center;gap:14px;min-height:60px}
-  .logo{display:flex;align-items:baseline;gap:8px;text-decoration:none;color:var(--ink);flex:0 0 auto}
-  .logo b{font-family:var(--serif);font-size:17px;letter-spacing:.24em;font-weight:600}
-  .logo i{font-style:normal;font-size:10px;letter-spacing:.2em;color:var(--ink3)}
-  .nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
-  .nav::-webkit-scrollbar{display:none}
-  .nav a{padding:8px 12px;font-size:14px;color:var(--ink2);text-decoration:none;border-radius:var(--r);white-space:nowrap}
-  .nav a:hover{color:var(--zhu);background:var(--surface2)}
-  .hdr-act{display:flex;gap:8px;align-items:center;flex:0 0 auto}
-  .icon-btn{width:40px;height:40px;display:grid;place-items:center;border-radius:var(--r);
-    border:1px solid var(--line2);background:var(--surface2);color:var(--ink2);cursor:pointer;font-size:16px}
-  .icon-btn:hover{border-color:var(--zhu);color:var(--zhu)}
-  .hdr .btn{min-height:40px;padding:8px 18px;font-size:14px}
-  @media (max-width:760px){ .nav{display:none} }
-
-  /* ---------- Hero ---------- */
-  .hero{padding:clamp(36px,8vw,86px) 0 clamp(28px,6vw,60px)}
-  .hero-grid{display:grid;gap:var(--gap);align-items:center}
-  @media (min-width:920px){ .hero-grid{grid-template-columns:1.15fr .85fr} }
-  .hero h1{margin:0 0 14px;font-size:var(--h1)}
-  .hero h1 em{font-style:normal;color:var(--zhu)}
-  .cta{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0 0}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 0;padding:0;list-style:none}
-  .chips li{font-size:12.5px;padding:5px 12px;border-radius:100px;
-    border:1px solid var(--line);background:var(--surface2);color:var(--ink3)}
-  .chips li b{color:var(--ink2);font-variant-numeric:tabular-nums}
-
-  /* 境界阶梯（纯 CSS，无图片） */
-  .ladder{border:1px solid var(--line2);border-radius:var(--r-lg);
-    background:var(--surface);box-shadow:var(--shadow);padding:20px 22px}
-  .ladder h2{margin:0 0 4px;font-size:var(--h3);letter-spacing:.2em;color:var(--ink2)}
-  .ladder .sub{font-size:12.5px;color:var(--ink3);margin:0 0 14px}
-  .steps-list{margin:0;padding:0;list-style:none;display:grid;gap:6px}
-  .steps-list li{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink2)}
-  .steps-list li span:first-child{flex:0 0 auto;width:52px;text-align:right;color:var(--ink3);font-size:12px;font-variant-numeric:tabular-nums}
-  .bar{flex:1 1 auto;height:7px;border-radius:4px;background:var(--bg3);overflow:hidden}
-  .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--zhu),var(--zhu2))}
-  .ladder .foot{margin:14px 0 0;font-size:12px;color:var(--ink4);border-top:1px dotted var(--line);padding-top:10px}
-
-  /* ---------- 通用区块 ---------- */
-  section{padding:clamp(30px,6vw,64px) 0}
-  .sec-h{max-width:66ch;margin:0 0 clamp(20px,4vw,34px)}
-  .sec-h h2{margin:0 0 8px;font-size:var(--h2)}
-  .sec-h p{margin:0;color:var(--ink2)}
-
-  .grid{display:grid;gap:var(--gap)}
-  .feats{grid-template-columns:repeat(auto-fit,minmax(255px,1fr))}
-  .card{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);
-    padding:20px 20px 18px;box-shadow:var(--shadow);transition:transform .16s,border-color .16s}
-  .card:hover{transform:translateY(-2px);border-color:var(--line2)}
-  .card h3{margin:0 0 6px;font-size:var(--h3);display:flex;align-items:center;gap:9px}
-  .card p{margin:0;font-size:14px;color:var(--ink2);line-height:1.7}
-  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--zhu)}
-  .d2{background:var(--jin)} .d3{background:var(--qing)} .d4{background:var(--zhu2)} .d5{background:var(--ink3)} .d6{background:var(--ink4)} .d7{background:var(--zi)}
-
-  /* ---------- 玩法循环 ---------- */
-  .loop{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));counter-reset:lp}
-  .loop .card{position:relative;padding-top:26px}
-  .loop .card::before{counter-increment:lp;content:counter(lp,decimal-leading-zero);
-    position:absolute;top:12px;right:18px;font-family:var(--mono);font-size:13px;color:var(--ink4);letter-spacing:.1em}
-  .keyline{margin:14px 0 0;display:grid;gap:6px;font-size:13px;color:var(--ink3)}
-  .keyline div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:3px 0}
-  .keyline b{color:var(--ink2);font-variant-numeric:tabular-nums}
-
-  /* ---------- 试玩 ---------- */
-  .player{border:1px solid var(--line2);border-radius:var(--r-lg);overflow:hidden;
-    background:var(--surface);box-shadow:var(--shadow-lg)}
-  .player-bar{display:flex;align-items:center;gap:10px;padding:9px 14px;
-    border-bottom:1px solid var(--line);font-size:13px;color:var(--ink3)}
-  .player-bar .dots{display:flex;gap:5px}
-  .player-bar .dots i{width:9px;height:9px;border-radius:50%;background:var(--line2)}
-  .player-bar .url{font-family:var(--mono);font-size:12px;color:var(--ink4);
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .stage{position:relative;width:100%;aspect-ratio:16/10;background:var(--bg2)}
-  @media (max-width:640px){ .stage{aspect-ratio:4/5} }
-  .stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-  .poster{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;
-    gap:14px;text-align:center;padding:28px;cursor:pointer;border:0;width:100%;
-    background:transparent;color:var(--ink2);font-family:inherit}
-  .poster .ring{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;
-    border:1px solid var(--line2);background:var(--surface2);color:var(--zhu);transition:transform .16s,background .16s}
-  .poster:hover .ring{transform:scale(1.06);background:var(--bg2)}
-  .poster strong{font-family:var(--serif);font-size:18px;letter-spacing:.16em;font-weight:600}
-  .poster span{font-size:12.5px;color:var(--ink3)}
-  .poster[hidden]{display:none}
-
-  /* ---------- 游玩声明 ---------- */
-  .promise{display:grid;gap:9px;margin:0;padding:0;list-style:none}
-  .promise li{
-    display:grid;gap:2px 16px;padding:14px 16px 14px 15px;
-    border:1px solid var(--line);border-left:3px solid var(--zhu);border-radius:0 var(--r) var(--r) 0;
-    background:var(--surface);
-  }
-  @media (min-width:640px){ .promise li{grid-template-columns:104px 1fr;align-items:baseline} }
-  .promise b{font-size:14px;color:var(--zhu);letter-spacing:.1em;font-weight:600}
-  .promise span{font-size:14px;color:var(--ink2);line-height:1.75}
-  .fineprint{
-    margin:16px 0 0;font-size:12.5px;color:var(--ink3);line-height:2;
-    border-top:1px dotted var(--line);padding-top:13px;
-  }
-
-  /* ---------- FAQ ---------- */
-  .faq{display:grid;gap:9px}
-  details{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
-  details[open]{border-color:var(--line2)}
-  summary{padding:14px 42px 14px 16px;cursor:pointer;font-size:14.5px;color:var(--ink);
-    position:relative;list-style:none;min-height:48px;display:flex;align-items:center}
-  summary::-webkit-details-marker{display:none}
-  summary::after{content:"+";position:absolute;right:16px;top:50%;transform:translateY(-50%);
-    font-size:18px;color:var(--ink3);transition:transform .18s}
-  details[open] summary::after{transform:translateY(-50%) rotate(45deg)}
-  summary:hover{background:var(--surface2);color:var(--zhu)}
-  .ans{padding:0 16px 16px;font-size:14px;color:var(--ink2);border-top:1px dotted var(--line);padding-top:12px}
-  .ans p:last-child{margin-bottom:0}
-  code{font-family:var(--mono);font-size:12.5px;padding:1px 6px;border-radius:3px;
-    background:var(--surface2);border:1px solid var(--line);color:var(--ink2)}
-
-  /* ---------- 页脚 ---------- */
-  footer{border-top:1px solid var(--line);padding:28px 0 40px;margin-top:20px;font-size:13px;color:var(--ink3)}
-  .foot-grid{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center}
-  .foot-grid a{color:var(--ink3)}
-  .foot-grid a:hover{color:var(--zhu)}
-
-  /* ---------- 更新提示条 ---------- */
-  .upd{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));
-    transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:14px;
-    max-width:calc(100% - 24px);padding:11px 12px 11px 20px;border-radius:100px;
-    border:1px solid var(--line2);background:var(--surface);box-shadow:var(--shadow-lg);
-    backdrop-filter:blur(10px);font-size:13.5px;color:var(--ink2)}
-  .upd[hidden]{display:none}
-  .upd b{color:var(--zhu)}
-  .upd button{min-height:34px;padding:6px 16px;border-radius:100px;font-size:13px;font-family:inherit;
-    border:1px solid var(--zhu);background:var(--zhu);color:var(--on-accent);cursor:pointer;white-space:nowrap}
-  .upd button:hover{background:var(--zhu2);border-color:var(--zhu2)}
-  @media (max-width:520px){ .upd{left:12px;right:12px;transform:none;max-width:none;justify-content:space-between} }
-</style>
+<link rel="stylesheet" href="assets/site.css">
+<script>
+/* 首帧前定主题，避免浅色页面先闪一下深色 */
+(function(){var d=document.documentElement;
+try{var t=localStorage.getItem('site_theme_v1');
+if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
+d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}})();
+</script>
 </head>
-<body>
+<body data-ver="version.json">
 <a class="skip" href="#main">跳到主要内容</a>
+<canvas id="sky" aria-hidden="true"></canvas>
 
 <header class="hdr">
   <div class="wrap hdr-in">
-    <a class="logo" href="./" aria-label="修仙模拟器 首页">
-      <b>修 仙 模 拟 器</b><i>LITERARY CULTIVATION</i>
+    <a class="logo" href="./" aria-label="游戏大厅 首页">
+      <b>游 戏 大 厅</b><i>GAME HALL</i>
     </a>
     <nav class="nav" aria-label="页面导航">
-      <a href="#features">玩法</a>
-      <a href="#loop">循环</a>
-      <a href="#play">试玩</a>
+      <a href="#games">游戏</a>
+      <a href="#try">试玩</a>
+      <a href="#features">站点特性</a>
       <a href="#notice">声明</a>
       <a href="#faq">常见问题</a>
+      <a href="notice.html">网站声明</a>
     </nav>
     <div class="hdr-act">
       <button class="icon-btn" id="themeBtn" type="button" aria-label="切换明暗主题" title="切换明暗主题">☾</button>
-      <a class="btn primary" id="playTop" href="xiuxian.html">立即试玩</a>
+      <a class="btn primary" href="#games">选择游戏</a>
     </div>
   </div>
 </header>
 
 <main id="main">
+
+  <!-- ==================== 首屏 ==================== -->
   <section class="hero">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow">单 文 件 · 纯 离 线 · 零 依 赖</p>
-        <h1>从炼气一层，<br>走到<em>天道</em>之前。</h1>
+        <p class="eyebrow">单 文 件 · 纯 离 线 · 零 依 赖 · 免 注 册</p>
+        <h1>两款游戏，<br>一个<em>入口</em>。</h1>
         <p class="lead">
-          一款文字修仙游戏。打坐吐纳攒修为，冲击境界求突破，斩妖入秘境换一身法器。
-          没有体力条，没有充值，也不必注册——<strong>打开即玩，进度自动存在你自己的浏览器里</strong>。
+          这里目前放着两款完全免费的网页游戏：想静心可以<strong>文字修仙</strong>，想手速可以<strong>竖屏弹幕</strong>。
+          都不需要注册，没有广告，也没有体力条——<strong>打开就能玩，进度记在你自己的浏览器里</strong>。
         </p>
         <div class="cta">
-          <a class="btn primary" id="playHero" href="xiuxian.html">开 始 修 行</a>
-          <a class="btn ghost" id="playEmbed" href="#play">页 内 试 玩</a>
+          <a class="btn primary" href="#games">选 择 游 戏</a>
+          <a class="btn ghost" href="#try">就 在 本 页 试 玩</a>
         </div>
         <ul class="chips">
-          <li><b>13</b> 大境界 · <b>41</b> 层</li>
-          <li><b>42</b> 项成就</li>
-          <li><b>25</b> 段奇遇</li>
-          <li><b>30</b> 部功法 · 主动技带冷却</li>
-          <li><b>6</b> 种材料 · 炼丹炼器</li>
-          <li><b>洞府</b> · 离线仍在运转</li>
-          <li><b>图鉴 · 称号</b> · 收集沉淀为气运</li>
-          <li><b>5</b> 品装备 · 仙品流光</li>
+          <li><b>2</b> 款游戏</li>
+          <li><b>0</b> 广告</li>
+          <li><b>0</b> 追踪埋点</li>
+          <li>免注册登录</li>
+          <li>进度存本机</li>
           <li>离线可玩</li>
         </ul>
       </div>
 
-      <aside class="ladder" aria-label="境界阶梯与突破成功率示意">
-        <h2>境 界 阶 梯</h2>
-        <p class="sub">十三大境界，修为需求按 1.42 倍指数增长</p>
-        <ol class="steps-list">
-          <li><span>炼气</span><span class="bar"><i style="width:100%"></i></span></li>
-          <li><span>筑基</span><span class="bar"><i style="width:70%"></i></span></li>
-          <li><span>金丹</span><span class="bar"><i style="width:56%"></i></span></li>
-          <li><span>元婴</span><span class="bar"><i style="width:47%"></i></span></li>
-          <li><span>化神</span><span class="bar"><i style="width:40%"></i></span></li>
-          <li><span>炼虚</span><span class="bar"><i style="width:35%"></i></span></li>
-          <li><span>合体</span><span class="bar"><i style="width:31%"></i></span></li>
-          <li><span>大乘</span><span class="bar"><i style="width:28%"></i></span></li>
-          <li><span>渡劫</span><span class="bar"><i style="width:25%"></i></span></li>
-          <li><span>准圣</span><span class="bar"><i style="width:20%"></i></span></li>
-          <li><span>天道</span><span class="bar"><i style="width:16%"></i></span></li>
-        </ol>
-        <p class="foot">柱长示意突破成功率随境界递减（约 74% → 45%）；可用破境丹、修速与传承补足。</p>
+      <aside class="statbox" aria-label="站点速览">
+        <h2>站 点 速 览</h2>
+        <p class="sub">数字都是实话，可以对着浏览器开发者工具核</p>
+        <ul class="stat-list">
+          <li><b>2</b><span>款可玩游戏</span></li>
+          <li><b>0</b><span>个第三方请求</span></li>
+          <li><b>0</b><span>元消费入口</span></li>
+          <li><b>—</b><span>需要注册的账号</span></li>
+          <li><b id="statBytes">528 KB</b><span>游戏总体积</span></li>
+          <li><b>本机</b><span>存档所在位置</span></li>
+        </ul>
+        <p class="foot">两款游戏各自独立：换游戏不会互相覆盖存档，也不会共享任何数据。</p>
       </aside>
     </div>
   </section>
 
-  <section id="features">
+  <!-- ==================== 游戏选择 ==================== -->
+  <section id="games">
     <div class="wrap">
-      <div class="sec-h">
-        <h2>有 什 么 可 玩</h2>
-        <p>七条并行成长线：修为、装备、秘境、轮回、成就、奇遇、功法。它们互不替代，也互不打架。</p>
+      <div class="sec-h rv">
+        <h2>选 一 款 开 始</h2>
+        <p>两款玩法完全不同，想象一下你现在想要什么：慢慢熬一个长线成长，还是马上进入枪林弹雨。</p>
       </div>
-      <div class="grid feats">
-        <article class="card">
-          <h3><span class="dot" aria-hidden="true"></span>修为与突破</h3>
-          <p>打坐、聚灵阵、闭关三种攒法，修为溢出会<strong>结转到下一境</strong>，一次修满即可连续突破。失败只扣当前境界所需的一小部分，不会一次清空你的积累。</p>
+
+      <div class="grid games">
+        <!-- 修仙模拟器 -->
+        <article class="gcard rv">
+          <div class="gcover">
+            <svg viewBox="0 0 320 180" role="img" aria-label="修仙模拟器封面：朱红圆月下的层叠山峦与流云">
+              <defs>
+                <linearGradient id="cvA" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="var(--bg3)"/><stop offset="1" stop-color="var(--bg)"/>
+                </linearGradient>
+                <radialGradient id="cvAmoon" cx="50%" cy="50%" r="50%">
+                  <stop offset="0" stop-color="var(--zhu)" stop-opacity=".92"/>
+                  <stop offset="1" stop-color="var(--zhu)" stop-opacity=".42"/>
+                </radialGradient>
+              </defs>
+              <rect width="320" height="180" fill="url(#cvA)"/>
+              <circle cx="232" cy="66" r="40" fill="url(#cvAmoon)"/>
+              <circle cx="60" cy="34" r="1.4" fill="var(--ink3)" opacity=".55"/>
+              <circle cx="104" cy="22" r="1.1" fill="var(--ink3)" opacity=".45"/>
+              <circle cx="168" cy="42" r="1.2" fill="var(--ink3)" opacity=".4"/>
+              <circle cx="288" cy="30" r="1.3" fill="var(--ink3)" opacity=".5"/>
+              <path d="M22 46 q11 -11 22 -1 q9 -9 19 -1 q11 -7 17 4" fill="none"
+                    stroke="var(--ink3)" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+              <path d="M186 120 q10 -10 20 -1 q8 -8 17 -1" fill="none"
+                    stroke="var(--ink4)" stroke-width="1.3" stroke-linecap="round" opacity=".5"/>
+              <path d="M0 130 L46 94 L78 116 L112 82 L150 118 L186 98 L226 126 L268 102 L320 132 L320 180 L0 180 Z"
+                    fill="var(--ink)" opacity=".16"/>
+              <path d="M0 148 L40 120 L82 142 L124 114 L166 146 L208 122 L252 148 L292 130 L320 152 L320 180 L0 180 Z"
+                    fill="var(--ink)" opacity=".3"/>
+            </svg>
+            <span class="badge" data-last hidden>上次游玩</span>
+            <span class="meta" id="sizeXiuxian">371 KB · 单文件</span>
+          </div>
+          <div class="gbody">
+            <h3>修仙模拟器 · 文字版</h3>
+            <p class="sub-en">LITERARY CULTIVATION</p>
+            <p class="desc">
+              从炼气一层走到天道之前。打坐攒修为、冲击境界、斩妖入秘境换一身法器，一轮又一轮转世把天赋点厚。
+              一行行文字推进，随时停下都不会亏——关掉网页，洞府里的灵田还在替你运转。
+            </p>
+            <ul class="gtags">
+              <li>文字放置</li><li>13 大境界</li><li>42 项成就</li><li>30 部功法</li><li>洞府离线收益</li>
+            </ul>
+            <div class="gfacts">
+              <div><span>玩法</span><b>文字修仙 · 长线放置</b></div>
+              <div><span>操作</span><b>点击即可，单手可玩</b></div>
+              <div><span>通关耗时</span><b>小时级，可挂机</b></div>
+              <div><span>存档</span><b>本机 · 可导出玉简</b></div>
+            </div>
+            <div class="gacts">
+              <a class="btn primary" href="xiuxian.html" data-game="xiuxian">开 始 修 行</a>
+              <a class="btn ghost" href="xiuxian-info.html">玩法详情</a>
+            </div>
+          </div>
         </article>
-        <article class="card">
-          <h3><span class="dot d2" aria-hidden="true"></span>五品装备与流光</h3>
-          <p>凡 · 灵 · 宝 · 仙 · 神五品，武器防具与三件法宝。仙品以上带流光特效，极品刻意稀有——所以每一次掷出都值得看一眼。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d3" aria-hidden="true"></span>妖兽与秘境</h3>
-          <p>五处历练地、四座秘境。层数越深收获越丰，守关妖王镇于终点；也可以随时退出见好就收。战斗面板会先算清「我几回合能杀、能挨几下」。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d4" aria-hidden="true"></span>轮回与传承</h3>
-          <p>修到尽头可以舍弃今生转世重来，按境界与斩妖结算<strong>轮回点</strong>，点化悟性、丹道、财源、气运、体魄五项传承。每一世都从更高处起步。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d5" aria-hidden="true"></span>成就与气运</h3>
-          <p>42 项成就覆盖境界、斩妖、秘境、财富、器物、闭关与轮回，永久留存不随转世消散。高品质成就带来<strong>气运</strong>，同时提升掉落品质、灵石收益与掉落概率。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d6" aria-hidden="true"></span>奇遇与抉择</h3>
-          <p>25 段奇遇按大境界分段，各有专属内容。每次弹出两三条选项，<strong>各有所得、不可兼得</strong>：稳妥的拿小利，冒险的可能翻倍，也可能重伤。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d7" aria-hidden="true"></span>功法 · 悟道录</h3>
-          <p>30 部功法分<strong>被动</strong>（心法）与<strong>主动</strong>（术法）两类。被动只可运转三部、主动只备两式——<strong>习得多寡不等同于强弱，如何取舍才是关键</strong>。
-             主动功法各带<strong>冷却</strong>与不同效果：护体减伤、虚空闪避、冰封、灼烧、吸血、破防、反噬。
-             已习得的功法刻入道基、轮回不灭。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d2" aria-hidden="true"></span>材料 · 炼丹炼器</h3>
-          <p>斩妖剥皮、秘境采撷、岩缝拾矿，共六种材料。坊市页内可<b>炼丹</b>（回春 · 聚灵 · 归元 · 破境）与<b>炼器</b>（兵器 · 护甲 · 法宝）。
-             炼制只耗灵力与天数、失败返四成材料；成丹率看丹道传承与境界，所炼之器品质随机——<strong>坊市刷不出仙品武器，但你可以反复炼</strong>。</p>
-        </article>
-        <article class="card">
-          <h3><span class="dot d4" aria-hidden="true"></span>洞府 · 离线收益</h3>
-          <p>五处设施各管一条线：<b>灵田</b>产灵草、<b>聚灵阵</b>加修速并自动凝灵石、<b>丹房</b>加成丹率、<b>器坊</b>加成器率、<b>静室</b>延长离线可累积时长。
-             升级只耗灵石与天数——<strong>关掉网页，灵田与聚灵阵仍在运转</strong>，下次打开以「闭关归来」一次结算（上限 8 小时 + 静室等级×2）。洞府归本局，轮回重来。</p>
+
+        <!-- 星际裂隙 -->
+        <article class="gcard rv">
+          <div class="gcover">
+            <svg viewBox="0 0 320 180" role="img" aria-label="星际裂隙封面：深空中自动驾驶的战机与交错弹幕">
+              <defs>
+                <linearGradient id="cvB" x1="0" y1="0" x2="0.4" y2="1">
+                  <stop offset="0" stop-color="#0b1030"/><stop offset="1" stop-color="#1b0f2c"/>
+                </linearGradient>
+                <radialGradient id="cvBn" cx="50%" cy="4%" r="82%">
+                  <stop offset="0" stop-color="#5f6bff" stop-opacity=".55"/>
+                  <stop offset="1" stop-color="#5f6bff" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <rect width="320" height="180" fill="url(#cvB)"/>
+              <rect width="320" height="180" fill="url(#cvBn)"/>
+              <circle cx="84" cy="52" r="26" fill="#7c4dff" opacity=".16"/>
+              <circle cx="252" cy="118" r="34" fill="#00e0ff" opacity=".10"/>
+              <circle cx="40" cy="26" r="1" fill="#dff2ff" opacity=".8"/>
+              <circle cx="132" cy="16" r="1.3" fill="#dff2ff" opacity=".7"/>
+              <circle cx="206" cy="34" r="1" fill="#dff2ff" opacity=".65"/>
+              <circle cx="286" cy="22" r="1.2" fill="#dff2ff" opacity=".7"/>
+              <circle cx="176" cy="86" r="1" fill="#dff2ff" opacity=".5"/>
+              <circle cx="300" cy="72" r="1.1" fill="#dff2ff" opacity=".6"/>
+              <circle cx="66" cy="112" r="1" fill="#dff2ff" opacity=".5"/>
+              <!-- 敌弹：暖色（粉 / 橙），与玩家冷色弹道刻意分离 -->
+              <g stroke="#ff7a8a" stroke-width="2" stroke-linecap="round" opacity=".85">
+                <line x1="120" y1="46" x2="120" y2="62"/><line x1="150" y1="38" x2="150" y2="54"/>
+                <line x1="196" y1="52" x2="196" y2="68"/><line x1="168" y1="76" x2="168" y2="90"/>
+              </g>
+              <g stroke="#ffb347" stroke-width="2" stroke-linecap="round" opacity=".8">
+                <line x1="90" y1="70" x2="90" y2="84"/><line x1="228" y1="60" x2="228" y2="74"/>
+              </g>
+              <!-- 玩家弹道：冷色（青 / 蓝） -->
+              <g stroke="#7ef9ff" stroke-width="2.4" stroke-linecap="round" opacity=".95">
+                <line x1="152" y1="120" x2="152" y2="150"/><line x1="168" y1="118" x2="168" y2="146"/>
+              </g>
+              <g stroke="#4ea8ff" stroke-width="1.8" stroke-linecap="round" opacity=".7">
+                <line x1="136" y1="124" x2="136" y2="142"/><line x1="184" y1="124" x2="184" y2="142"/>
+              </g>
+              <!-- 玩家舰体 -->
+              <path d="M160 128 L172 150 L160 145 L148 150 Z" fill="#d9f7ff"/>
+              <circle cx="160" cy="140" r="12" fill="#7ef9ff" opacity=".18"/>
+              <path d="M160 152 L165 166 L160 163 L155 166 Z" fill="#7ef9ff" opacity=".55"/>
+            </svg>
+            <span class="badge" data-last hidden>上次游玩</span>
+            <span class="meta" id="sizeRogue">157 KB · 竖屏 9:16</span>
+          </div>
+          <div class="gbody">
+            <h3>星际裂隙 · ROGUE THUNDER</h3>
+            <p class="sub-en">ROGUE THUNDER</p>
+            <p class="desc">
+              你是最后一架截击机。自动开火，你只负责走位——每一次升级从三张卡里选一张，
+              八条武器线与十五项被动会滚成一整套只属于这局的 Build。每 5 波一个 Boss，想活久一点就得先想清楚要长成什么。
+            </p>
+            <ul class="gtags">
+              <li>竖屏弹幕</li><li>Roguelite</li><li>8 种武器</li><li>3 个主动技</li><li>无限递归 Boss</li>
+            </ul>
+            <div class="gfacts">
+              <div><span>玩法</span><b>弹幕射击 · 局内成长</b></div>
+              <div><span>操作</span><b>键鼠 / 触屏拖拽</b></div>
+              <div><span>单局耗时</span><b>分钟级，随死随重开</b></div>
+              <div><span>存档</span><b>本机 · 仅历史最高分</b></div>
+            </div>
+            <div class="gacts">
+              <a class="btn primary" href="rogue/" data-game="rogue">开 始 战 斗</a>
+              <a class="btn ghost" href="rogue-info.html">玩法详情</a>
+            </div>
+          </div>
         </article>
       </div>
+
+      <p class="muted rv" style="font-size:13px;margin-top:18px">
+        提示：两款游戏都不会互相影响，存档各存各的。想先在当前页面瞄一眼？往下看「页内试玩」。
+      </p>
     </div>
   </section>
 
-  <section id="loop">
+  <!-- ==================== 页内试玩 ==================== -->
+  <section id="try">
     <div class="wrap">
-      <div class="sec-h">
-        <h2>三 步 一 轮</h2>
-        <p>核心循环很短，每次点击都有可见的反馈。</p>
-      </div>
-      <div class="grid loop">
-        <article class="card">
-          <h3>攒 修 为</h3>
-          <p>盘膝打坐最稳；布聚灵阵耗灵石而快；闭关七日所得最丰，但心魔与顿悟都在一线之间。</p>
-          <div class="keyline">
-            <div><span>打坐（1 日）</span><b>0.22 倍</b></div>
-            <div><span>闭关（7 日合计）</span><b>4.2 倍</b></div>
-            <div><span>折算口径</span><b>当前境界所需</b></div>
-          </div>
-        </article>
-        <article class="card">
-          <h3>破 境 界</h3>
-          <p>修为圆满即可冲击下一境。成功率随境界递减，靠破境丹、法器修速与丹道传承补足。</p>
-          <div class="keyline">
-            <div><span>基础成功率</span><b>74% → 45%</b></div>
-            <div><span>破境丹加成</span><b>+14% → +26%</b></div>
-            <div><span>失败代价</span><b>所需修为 × 32%</b></div>
-          </div>
-        </article>
-        <article class="card">
-          <h3>换 一 身</h3>
-          <p>斩妖与秘境才是升级主引擎。掉落器物自动择优祭炼，用不上的按类型与品质整批卖掉换灵石。</p>
-          <div class="keyline">
-            <div><span>上古凶物（单只）</span><b>1.17 倍</b></div>
-            <div><span>妖王（单只）</span><b>3.74 倍</b></div>
-            <div><span>秘境贯通</span><b>约 8.7 倍</b></div>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <section id="play">
-    <div class="wrap">
-      <div class="sec-h">
+      <div class="sec-h rv">
         <h2>页 内 试 玩</h2>
-        <p>下面是真实运行的游戏本体，不是视频。点「立即进入」开始，进度会自动存在本机。</p>
+        <p>下面这两个窗口里跑的是真实游戏本体，不是录屏。点「立即进入」才开始加载，加载完之后就完全离线运行了。</p>
       </div>
-      <div class="player">
-        <div class="player-bar">
+      <div class="try rv">
+        <div class="try-bar">
           <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="url">xiuxian.html</span>
-          <a class="muted" style="margin-left:auto;text-decoration:none" href="xiuxian.html" target="_blank" rel="noopener">全屏打开 ↗</a>
+          <span class="url" id="tryUrl">xiuxian.html</span>
+          <span class="seg" role="group" aria-label="切换要在本页试玩的游戏">
+            <button type="button" data-try="xiuxian" aria-pressed="true">修仙模拟器</button>
+            <button type="button" data-try="rogue" aria-pressed="false">星际裂隙</button>
+          </span>
+          <a class="muted push" id="tryFull" style="text-decoration:none" href="xiuxian.html" target="_blank" rel="noopener">全屏打开 ↗</a>
         </div>
         <div class="stage">
-          <button class="poster" id="poster" type="button" aria-label="在新的内嵌窗口中启动游戏">
+          <button class="poster" id="poster" type="button" aria-label="在本页加载游戏">
             <span class="ring" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z"/></svg>
             </span>
             <strong>立 即 进 入</strong>
-            <span>约 160 KB · 加载后完全离线运行</span>
+            <span>点一下才开始下载 · 之后完全离线</span>
           </button>
         </div>
       </div>
       <p class="muted" style="font-size:13px;margin-top:12px">
-        提示：页内窗口已按容器宽度自适应。手机上建议点右上角「全屏打开」，或用页脚的入口在独立标签页里玩。
+        提示：手机上页内窗口偏窄，建议用右上角「全屏打开」或上面的游戏卡片，在独立标签页里玩。
       </p>
     </div>
   </section>
 
+  <!-- ==================== 站点特性 ==================== -->
+  <section id="features">
+    <div class="wrap">
+      <div class="sec-h rv">
+        <h2>这 个 站 点 的 六 件 事</h2>
+        <p>不是功能清单，是我们做这个东西时守的规矩。</p>
+      </div>
+      <div class="grid feats">
+        <article class="card rv">
+          <h3><span class="dot" aria-hidden="true"></span>完全免费</h3>
+          <p>没有充值、没有内购、没有道具商城，也不接付费推广。两款游戏的所有内容都是打开的，不存在「下一关要付费」。</p>
+        </article>
+        <article class="card rv">
+          <h3><span class="dot d2" aria-hidden="true"></span>没有广告</h3>
+          <p>页面里没有第三方广告位、没有跳转链接、没有弹窗。整个站点不发任何跨域请求，断网也能照玩。</p>
+        </article>
+        <article class="card rv">
+          <h3><span class="dot d3" aria-hidden="true"></span>不采集你的信息</h3>
+          <p>不需要注册登录，不采集、不上传任何个人信息。进度存在浏览器本机的 <code>localStorage</code> 里，你可以随时导出或清掉。</p>
+        </article>
+        <article class="card rv">
+          <h3><span class="dot d4" aria-hidden="true"></span>单文件形态</h3>
+          <p>每个游戏都能用浏览器「另存为」存下来，之后双击即可离线运行。零依赖、零构建，不用装任何东西。</p>
+        </article>
+        <article class="card rv">
+          <h3><span class="dot d5" aria-hidden="true"></span>为手机做过适配</h3>
+          <p>按移动优先排版：适配刘海屏安全区与动态视口高度，按钮不小于 48px，字体不会小到看不清。</p>
+        </article>
+        <article class="card rv">
+          <h3><span class="dot d6" aria-hidden="true"></span>发版不会打断你</h3>
+          <p>正在玩的时候站点更新，页面底部会提示「发现新版本」，刷新即可载入，进度原样保留。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 声明摘要 ==================== -->
   <section id="notice">
     <div class="wrap">
-      <div class="sec-h">
-        <h2>游 玩 声 明</h2>
-        <p>开始游玩前请先阅读。首次进入游戏时也会弹出同一份声明，点「我已知晓」后方可继续。</p>
+      <div class="sec-h rv">
+        <h2>站 点 声 明</h2>
+        <p>开始游玩前请先阅读。要点在下，完整条款见独立的《网站声明》页面。</p>
       </div>
-      <ul class="promise">
+      <ul class="promise rv">
         <li><b>不 盈 利</b><span>无充值、无内购、无任何付费入口，也不以任何形式售卖道具或接受付费推广。</span></li>
         <li><b>无 广 告</b><span>不接入任何第三方广告与推广链接，也不做统计埋点。</span></li>
-        <li><b>不 采 集 信 息</b><span>无需注册或登录，不采集、不上传任何个人信息。游玩进度只保存在你自己的浏览器里，可随时用游戏内的「存 档」导出或清除。</span></li>
-        <li><b>不 传 播 不 良 信 息</b><span>架空修仙题材的虚构文字，其中战斗与历练均为情节描写，不含血腥、色情、赌博、恐怖及其它违反法律法规的有害信息。</span></li>
+        <li><b>不 采 集 信 息</b><span>无需注册或登录，不采集、不上传任何个人信息。游玩进度只保存在你自己的浏览器里，可随时导出或清除。</span></li>
+        <li><b>不 传 播 不 良 信 息</b><span>两款游戏均为架空题材的虚构内容，不含血腥、色情、赌博、恐怖及其它违反法律法规的有害信息。</span></li>
         <li><b>只 供 游 玩</b><span>仅供个人娱乐消遣，不构成任何形式的建议或承诺，请勿用于商业用途。</span></li>
       </ul>
-      <p class="fineprint">
+      <p class="fineprint rv">
         请合理安排游戏时间，注意休息；未成年人请在监护人指导下使用。<br>
-        本作纯属虚构，如与现实中任何人物、事件或组织有所雷同，实属巧合。
+        两款游戏均纯属虚构，如与现实中任何人物、事件或组织有所雷同，实属巧合。<br>
+        完整条款（含知识产权、免责、未成年人保护与联系方式）见 <a href="notice.html">《网站声明》</a>。
       </p>
+      <div class="cta rv">
+        <a class="btn ghost" href="notice.html">阅 读 完 整 网 站 声 明</a>
+      </div>
     </div>
   </section>
 
+  <!-- ==================== FAQ ==================== -->
   <section id="faq">
     <div class="wrap">
-      <div class="sec-h">
+      <div class="sec-h rv">
         <h2>常 见 问 题</h2>
       </div>
-      <div class="faq">
+      <div class="faq rv">
         <details open>
           <summary>需要注册或登录吗？进度存在哪里？</summary>
           <div class="ans">
-            <p>不需要。所有进度存在你浏览器的 <code>localStorage</code>（键名 <code>xiuxian_save_v2</code> 等），不会上传到任何服务器，也意味着这款游戏完全离线可玩。</p>
+            <p>不需要。所有进度存在你浏览器的 <code>localStorage</code> 里，不会上传到任何服务器，这也意味着两款游戏都能完全离线运行。修仙模拟器用 <code>xiuxian_save_v2</code> 等键名，星际裂隙只用 <code>rt_best</code> 记一个历史最高分。</p>
           </div>
         </details>
         <details>
           <summary>清理浏览器数据会丢档吗？换设备能继续吗？</summary>
           <div class="ans">
-            <p>会。清理站点数据、使用无痕模式、或换浏览器都会丢档。游戏顶栏的「存 档」面板提供 <strong>3 枚玉简</strong>（手动存档槽）以及<strong>存档码 / 存档文件</strong>的导出与导入，换设备时导出再导入即可。</p>
+            <p>会丢。清理站点数据、使用无痕模式或换浏览器都会丢档。修仙模拟器顶栏的「存 档」面板提供 3 枚玉简与存档码／存档文件的导出导入，换设备时导出再导入即可；星际裂隙是局内成长玩法，只留一个最高分，重开不影响体验。</p>
             <p>建议每玩到一个大境界就顺手导出一次存档文件。</p>
           </div>
         </details>
         <details>
-          <summary>正在玩的时候网站更新了，会丢进度吗？</summary>
+          <summary>两款游戏会互相影响吗？</summary>
           <div class="ans">
-            <p>不会丢。游戏每次操作都会自动写一次存档，刷新相当于「关掉再打开」。本站会在检测到新版本时于底部弹出提示条，点「刷新」即可载入最新版本，进度原样保留。</p>
+            <p>不会。它们是两个独立的单文件程序，各自用自己的存储键，也各自有自己的更新节奏。在大厅里换着玩不会覆盖任何一边的数据。</p>
           </div>
         </details>
         <details>
           <summary>手机上能玩吗？</summary>
           <div class="ans">
-            <p>能，而且是按移动优先做的：窄屏下五个玩法页签会变成底部导航栏，道体与背包收进上滑抽屉，弹层改为底部弹出，并适配了刘海屏安全区与动态视口高度。</p>
+            <p>能。修仙模拟器窄屏下会把页签变成底部导航栏、弹层改为底部弹出，并适配了刘海屏安全区；星际裂隙本身是 9:16 竖屏弹幕游戏，支持触屏拖拽操控，手机是它的主场。</p>
           </div>
         </details>
         <details>
           <summary>可以离线玩或者自己收藏一份吗？</summary>
           <div class="ans">
-            <p>可以。游戏本体是一个约 160 KB 的单文件 HTML，零外部依赖——用浏览器「另存为」保存 <code>xiuxian.html</code>，之后双击即可离线运行。存档是跟着浏览器走的，同源打开才会延续。</p>
+            <p>可以。修仙模拟器是一个零依赖的单文件 HTML，用浏览器「另存为」保存后双击即可运行；星际裂隙是标准的静态页面，把整个 <code>rogue</code> 目录存到本地、用浏览器打开其中的 <code>index.html</code> 也能玩。两者的体积见上方卡片，都不超过半兆。存档跟着浏览器走，同源打开才会延续。</p>
           </div>
         </details>
         <details>
           <summary>有充值、广告或体力限制吗？</summary>
           <div class="ans">
-            <p>没有。没有充值入口、没有广告、没有体力条，也不做任何埋点统计。页面本身不发任何第三方请求。完整条款见上方的<a href="#notice">游玩声明</a>。</p>
+            <p>都没有。没有充值入口、没有广告、没有体力条，也不做任何埋点统计。页面本身不发任何第三方请求。完整条款见<a href="notice.html">《网站声明》</a>。</p>
           </div>
         </details>
       </div>
@@ -501,14 +387,19 @@
 
 <footer>
   <div class="wrap foot-grid">
-    <span>修仙模拟器 · 文字版</span>
-    <a href="xiuxian.html">进入游戏</a>
-    <a href="#play">页内试玩</a>
-    <a href="#notice">游玩声明</a>
+    <span>游戏大厅 · GAME HALL</span>
+    <a href="xiuxian.html">修仙模拟器</a>
+    <a href="rogue/">星际裂隙</a>
+    <a href="#notice">站点声明</a>
+    <a href="notice.html">网站声明</a>
     <a href="#faq">常见问题</a>
-    <span style="margin-left:auto" class="muted">
-      不盈利 · 无广告 · 免费游玩　|　版本 <span id="verText">2026.09.16-2118</span>
+    <a href="https://github.com/shiyi7789/xiuxianmoni" target="_blank" rel="noopener">源码仓库 ↗</a>
+    <span class="push muted">
+      不盈利 · 无广告 · 免费游玩　|　版本 <span id="verText">2026.09.29-1531</span>
     </span>
+    <div class="foot-note muted">
+      <p>本站为个人兴趣作品，非商业运营。游戏内容均为虚构，请合理安排游戏时间；未成年人请在监护人指导下使用。</p>
+    </div>
   </div>
 </footer>
 
@@ -517,93 +408,6 @@
   <button type="button" id="updBtn">刷 新</button>
 </div>
 
-<script>
-(function(){
-  'use strict';
-
-  /* ---------- 主题：跟随系统，可手动覆盖 ---------- */
-  var TKEY = 'xiuxian_theme_v1';
-  function saved(){ try{ var t = localStorage.getItem(TKEY); return (t==='light'||t==='dark') ? t : null; }catch(e){ return null; } }
-  function apply(){
-    var t = saved() || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', t);
-    var b = document.getElementById('themeBtn');
-    if(b){ b.textContent = t === 'dark' ? '☀' : '☾'; }
-  }
-  apply();
-  var tb = document.getElementById('themeBtn');
-  if(tb) tb.addEventListener('click', function(){
-    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    try{ localStorage.setItem(TKEY, next); }catch(e){}
-    apply();
-  });
-  try{
-    if(window.matchMedia){
-      var mq = matchMedia('(prefers-color-scheme: dark)');
-      var on = function(){ if(!saved()) apply(); };
-      if(mq.addEventListener) mq.addEventListener('change', on);
-      else if(mq.addListener) mq.addListener(on);
-    }
-  }catch(e){}
-
-  /* ---------- 试玩：点击才加载 iframe（省流量、省首屏） ---------- */
-  var CUR = null, POLL = 60000, timer = null, pending = null, verText = document.getElementById('verText');
-  var stage = document.querySelector('.stage');
-  var poster = document.getElementById('poster');
-  function boot(){
-    if(!stage || stage.querySelector('iframe')) return;
-    var f = document.createElement('iframe');
-    f.src = 'xiuxian.html?v=' + encodeURIComponent(CUR || '0');
-    f.title = '修仙模拟器 · 文字版（内嵌试玩）';
-    f.loading = 'lazy';
-    f.setAttribute('allow', 'fullscreen');
-    stage.appendChild(f);
-    if(poster) poster.hidden = true;
-  }
-  if(poster) poster.addEventListener('click', boot);
-  var pe = document.getElementById('playEmbed');
-  if(pe) pe.addEventListener('click', function(){ setTimeout(boot, 260); });
-
-  /* ---------- 版本探测：更新游戏文件后自动提示 ---------- */
-  function setVer(v){
-    CUR = v;
-    if(verText) verText.textContent = v;
-  }
-  function showBar(v){
-    var bar = document.getElementById('updBar');
-    var vv = document.getElementById('updVer');
-    if(!bar) return;
-    if(vv) vv.textContent = v;
-    bar.hidden = false;
-  }
-  function check(){
-    fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
-      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
-      .then(function(j){
-        if(!j || !j.v) return;
-        if(CUR === null){ setVer(j.v); return; }
-        if(j.v !== CUR){ pending = j.v; showBar(j.v); }
-      })
-      .catch(function(){});
-  }
-  function refresh(){
-    if(!pending) return;
-    try{ sessionStorage.setItem('xiuxian_seen_ver', pending); }catch(e){}
-    var f = stage && stage.querySelector('iframe');
-    if(f){ f.src = 'xiuxian.html?v=' + encodeURIComponent(pending); }
-    setVer(pending);
-    pending = null;
-    var bar = document.getElementById('updBar');
-    if(bar) bar.hidden = true;
-  }
-  var ub = document.getElementById('updBtn');
-  if(ub) ub.addEventListener('click', refresh);
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ check(); } });
-  window.addEventListener('online', check);
-  check();
-  timer = setInterval(check, POLL);
-  window.addEventListener('pagehide', function(){ if(timer) clearInterval(timer); });
-})();
-</script>
+<script src="assets/site.js"></script>
 </body>
 </html>

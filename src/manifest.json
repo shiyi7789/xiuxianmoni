@@ -46,6 +46,10 @@
     "ui/sheet.js",
     "ui/modal.js",
     "ui/kit.js",
+    "audio/core.js",
+    "audio/synth.js",
+    "audio/events.js",
+    "audio/music.js",
     "ui/feedback.js",
     "core/save.js",
     "ui/panels/notice.js",
@@ -56,6 +60,7 @@
     "ui/panels/cave.js",
     "ui/panels/codex.js",
     "ui/panels/titles.js",
+    "ui/panels/audio.js",
     "main.js"
   ],
   "template": {

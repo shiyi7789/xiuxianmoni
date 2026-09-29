@@ -62,7 +62,53 @@ const doc = {
   addEventListener() {},
   removeEventListener() {}
 };
-const win = { addEventListener() {} };
+/* ---- Web Audio 桩：只记录「节点与连接」，不产生真实声音 ----
+   有了它，音频层就能在无头环境里被完整验证：总线图、声部抢占、参数钳制、音乐调度 */
+let AC_INST = null;
+class FakeParam {
+  constructor(v) { this.value = v; this.events = []; }
+  setValueAtTime(v, t) { this.value = v; this.events.push(['set', v, t]); return this; }
+  linearRampToValueAtTime(v, t) { this.value = v; this.events.push(['lin', v, t]); return this; }
+  exponentialRampToValueAtTime(v, t) { this.value = v; this.events.push(['exp', v, t]); return this; }
+  cancelScheduledValues() { return this; }
+}
+class FakeNode {
+  constructor(ctx, kind) {
+    this.ctx = ctx; this.kind = kind; this.connections = [];
+    this.gain = new FakeParam(1); this.frequency = new FakeParam(440); this.Q = new FakeParam(1);
+    this.delayTime = new FakeParam(0); this.threshold = new FakeParam(0); this.knee = new FakeParam(0);
+    this.ratio = new FakeParam(0); this.attack = new FakeParam(0); this.release = new FakeParam(0);
+    this.buffer = null; this.started = null; this.stopped = null; this.type = '';
+    this.curve = null; this.oversample = 'none';   /* WaveShaper 用 */
+    if (ctx) ctx.nodes.push(this);
+  }
+  connect(d) { this.connections.push(d); return d; }
+  disconnect() {}
+  start(t) { this.started = (t === undefined ? 0 : t); }
+  stop(t) { this.stopped = (t === undefined ? 0 : t); }
+}
+class FakeAudioContext {
+  constructor() {
+    this.state = 'running'; this.sampleRate = 44100; this.currentTime = 0;
+    this.nodes = []; this.resumed = 0;
+    this.destination = new FakeNode(this, 'destination');
+    AC_INST = this;
+  }
+  createGain() { return new FakeNode(this, 'gain'); }
+  createOscillator() { return new FakeNode(this, 'osc'); }
+  createBiquadFilter() { return new FakeNode(this, 'filter'); }
+  createDelay() { return new FakeNode(this, 'delay'); }
+  createDynamicsCompressor() { return new FakeNode(this, 'comp'); }
+  createConvolver() { return new FakeNode(this, 'conv'); }
+  createBufferSource() { return new FakeNode(this, 'src'); }
+  /* ⚠ 别漏了它：src/audio/ 的饱和 / 软削波支路要用 WaveShaper，
+     桩里少这一个方法会让 audioGraphBuild 抛错 → 引擎静默 FAILED →
+     「桩 AudioContext 未生效」连带 7 条音频断言全红（2026-09-29 实际踩到） */
+  createWaveShaper() { return new FakeNode(this, 'shaper'); }
+  createBuffer(ch, len) { return { numberOfChannels: ch, length: len, getChannelData: () => new Float32Array(len) }; }
+  resume() { this.resumed++; this.state = 'running'; return Promise.resolve(); }
+}
+const win = { addEventListener() {}, AudioContext: FakeAudioContext };
 const nav = {};
 const fakeURL = { createObjectURL: () => 'blob:test', revokeObjectURL() {} };
 class FakeBlob { constructor(a) { this.parts = a; } }
@@ -407,7 +453,41 @@ const boot = new Function(
   ttUiEquip: ttUiEquip,
   ttUiUnequip: ttUiUnequip,
   renderCodexTag: renderCodexTag,
-  renderTitleTag: renderTitleTag
+  renderTitleTag: renderTitleTag,
+  /* --- 音频（其余走 __eval 直接在主作用域里调） --- */
+  openAudioPanel: openAudioPanel,
+  auUiSet: auUiSet,
+  auUiMute: auUiMute,
+  audioPreview: audioPreview,
+  audioAudit: audioAudit,
+  audioEventNames: audioEventNames,
+  audioPlay: audioPlay,
+  audioDebug: audioDebug,
+  audioMix: audioMix,
+  audioOn: audioOn,
+  audioParam: audioParam,
+  audioParams: audioParams,
+  audioBoot: audioBoot,
+  audioDuck: audioDuck,
+  audioZone: audioZone,
+  audioCtx: audioCtx,
+  audioBus: audioBus,
+  audioClaim: audioClaim,
+  audioRelease: audioRelease,
+  audioVoiceCount: audioVoiceCount,
+  audioDropped: audioDropped,
+  audioResetVoices: audioResetVoices,
+  audioGapOk: audioGapOk,
+  audioSeed: audioSeed,
+  audioRand: audioRand,
+  audioHud: audioHud,
+  musicStart: musicStart,
+  musicStop: musicStop,
+  musicSet: musicSet,
+  musicState: musicState,
+  musicBpm: musicBpm,
+  musicTick: musicTick,
+  musicSyncState: musicSyncState
 };`
 );
 
@@ -3138,6 +3218,196 @@ step('骨架结构：顶栏三分区、右栏三段、页签仍是 5 个', () =>
   const tn = (el('tabs').innerHTML.match(/class="tab/g) || []).length;
   if (tn !== 5) throw new Error('页签数应为 5，实际 ' + tn);
   return '顶栏三分区 · 右栏三段 · 页签 5 个';
+});
+
+log('=== Y. 音频系统（总线 / 声部预算 / 参数 / 自适应音乐） ===');
+
+step('引擎启动与总线图（四条总线 + 限制器 + 混响支路）', () => {
+  const g = JSON.parse(G.__eval('(audioBoot(), JSON.stringify(audioDebug()))'));
+  if (!g.ready) throw new Error('引擎未启动（桩 AudioContext 未生效）');
+  if (g.state !== 'running') throw new Error('上下文状态异常 ' + g.state);
+  const kinds = AC_INST.nodes.map(n => n.kind);
+  const cnt = k => kinds.filter(x => x === k).length;
+  if (cnt('comp') !== 1) throw new Error('限制器缺失或重复：' + cnt('comp'));
+  if (cnt('conv') !== 1) throw new Error('混响卷积器缺失：' + cnt('conv'));
+  if (cnt('gain') < 6) throw new Error('增益节点过少（总线未建齐）：' + cnt('gain'));
+  /* 四条总线都要接到 duck（而非直连 destination） */
+  for (const b of ['ui', 'sfx', 'amb', 'music']) {
+    const bus = G.__eval(`audioBus('${b}')`);
+    if (!bus) throw new Error('缺总线 ' + b);
+    if (!bus.connections.length) throw new Error(b + ' 总线未接线');
+  }
+  if (AC_INST.destination.connections.length) throw new Error('不应有节点直连 destination');
+  return kinds.length + ' 个节点 · 4 总线 · 限制器 + 卷积混响';
+});
+
+step('事件注册表完整：每条都声明总线 / 优先级 / 间隔 / 时长 / 配方', () => {
+  const bad = G.__eval('JSON.stringify(audioAudit())');
+  const list = JSON.parse(bad);
+  if (list.length) throw new Error(list.slice(0, 4).join(' | '));
+  const names = G.__eval('JSON.stringify(audioEventNames())');
+  const arr = JSON.parse(names);
+  if (arr.length < 40) throw new Error('事件过少：' + arr.length);
+  for (const need of ['ui.click', 'ui.error', 'cult.meditate', 'cult.break.ok', 'cult.break.fail',
+    'cult.ascend', 'combat.hit', 'combat.hurt', 'combat.skill.fire', 'combat.win', 'combat.lose',
+    'loot.item0', 'loot.item4', 'loot.mat4', 'loot.gongfa', 'dg.enter', 'dg.boss', 'cave.up',
+    'craft.ok', 'craft.fail', 'meta.ach', 'meta.rebirth']) {
+    if (arr.indexOf(need) < 0) throw new Error('缺事件 ' + need);
+  }
+  return arr.length + ' 条事件注册齐全，无缺省字段';
+});
+
+step('声部预算：事件级上限生效，超限被丢弃而非堆积', () => {
+  G.__eval('audioResetVoices()');
+  let ok = 0;
+  for (let i = 0; i < 60; i++) if (G.__eval("audioPlay('combat.hit')")) ok++;
+  const v = JSON.parse(G.__eval('JSON.stringify(audioDebug().voices)'));
+  if (v.sfx > 6) throw new Error('事件级上限失效：sfx ' + v.sfx);
+  if (ok > 6) throw new Error('超过事件上限仍播放：' + ok);
+  if (ok === 0) throw new Error('一次都没播出来（预算过紧）');
+  return '连点 60 次只落下 ' + ok + ' 声（限 6）· 当前 sfx 声部 ' + v.sfx;
+});
+
+step('优先级抢占：同总线超限时抢最旧，无可抢占者则丢弃', () => {
+  G.__eval('audioResetVoices()');
+  /* amb 总线只有 2 个位置；桩上下文时钟不走，需要手动推进才能越过 600ms 的频率限制 */
+  const r = [1, 2, 3].map(() => { AC_INST.currentTime += 0.7; return G.__eval("audioPlay('dg.enter')"); });
+  if (r[0] !== true) throw new Error('amb 首次触发被拒');
+  const amb = G.__eval("audioVoiceCount('amb')");
+  if (amb > 2) throw new Error('amb 上限失效：' + amb);
+  /* 全局混音预算：ui(6) + sfx(12) 正好吃满 18 —— 超额触发只会「抢占」，
+     所以断言要看**最终声部数**而不是成功次数 */
+  G.__eval('(function(){for(var i=0;i<8;i++)audioClaim("ui",0,99);return 1;})()');
+  G.__eval('(function(){for(var i=0;i<14;i++)audioClaim("sfx",1,99);return 1;})()');
+  const uiN = G.__eval("audioVoiceCount('ui')");
+  const sfxN = G.__eval("audioVoiceCount('sfx')");
+  if (uiN !== 6 || sfxN !== 12) throw new Error('总线上限失效：ui ' + uiN + ' / sfx ' + sfxN);
+  const before = G.__eval('audioVoiceCount()');
+  if (before !== 18) throw new Error('全局预算应为 18，实际 ' + before);
+  const dropped0 = G.__eval('audioDropped()');
+  const got = G.__eval('audioClaim("music", 3, 1)');
+  if (got !== false) throw new Error('全局已满且无可抢占者，不应成功');
+  if (G.__eval('audioDropped()') <= dropped0) throw new Error('丢弃未计数');
+  /* 反过来：高优先级的 ui 声部在同样局面下必须能抢到位置 */
+  const hi = G.__eval('audioClaim("ui", 0, 1)');
+  if (hi !== true) throw new Error('UI 声部应能抢占');
+  return 'amb 抢占正常（' + amb + '/2）· 全局 ' + before + ' 声部时音乐被丢弃 · UI 仍可抢占';
+});
+
+step('频率限制：同事件在最小间隔内不重复触发', () => {
+  G.__eval('audioResetVoices()');
+  const a = G.__eval("audioPlay('ui.click')");
+  const b = G.__eval("audioPlay('ui.click')");
+  if (!a) throw new Error('首次点击未发声');
+  if (b) throw new Error('间隔内重复触发未被拦');
+  AC_INST.currentTime += 0.5;
+  const c = G.__eval("audioPlay('ui.click')");
+  if (!c) throw new Error('越过间隔后仍被拦');
+  return 'ui.click 最小间隔 60ms 生效，越过后恢复';
+});
+
+step('参数钳制与取值', () => {
+  const hi = G.__eval("audioParam('tension', 5)");
+  const lo = G.__eval("audioParam('tension', -3)");
+  if (hi !== 1 || lo !== 0) throw new Error('钳制失效：' + hi + '/' + lo);
+  if (G.__eval("audioParam('nope', 1)") !== undefined) throw new Error('未知参数应返回 undefined');
+  const p = JSON.parse(G.__eval('JSON.stringify(audioParams())'));
+  for (const k of ['tension', 'depth', 'clarity', 'vitality', 'fortune']) {
+    if (typeof p[k] !== 'number' || p[k] < 0 || p[k] > 1) throw new Error(k + ' 越界 ' + p[k]);
+  }
+  G.__eval("audioParam('tension', 0)");
+  return '5 个参数均在 0~1 内，越界被钳制';
+});
+
+step('混音持久化与静音：总线增益真的归零', () => {
+  G.__eval("audioSetMix('music', 0.2)");
+  const mix = JSON.parse(G.__eval('JSON.stringify(audioMix())'));
+  if (Math.abs(mix.music - 0.2) > 1e-6) throw new Error('混音未写入 ' + mix.music);
+  if (META().prefs.audioMix.music !== 0.2) throw new Error('未持久化到 META');
+  G.__eval("audioSetMix('mute')");
+  if (G.__eval('audioOn()') !== false) throw new Error('静音未生效');
+  if (G.__eval("audioBus('music').gain.value") !== 0) throw new Error('静音后音乐总线未归零');
+  if (G.__eval("audioBus('sfx').gain.value") !== 0) throw new Error('静音后音效总线未归零');
+  /* 播放被静音挡住 */
+  if (G.__eval("audioPlay('ui.tab')") !== false) throw new Error('静音后仍发声');
+  G.__eval("audioSetMix('mute')");           /* 恢复 */
+  G.__eval("audioSetMix('music', 0.5)");
+  if (G.__eval('audioOn()') !== true) throw new Error('恢复失败');
+  return '写入 / 持久化 / 静音归零 / 恢复 均正常';
+});
+
+step('自适应音乐：状态机 + 拍点量化调度 + tension 调速', () => {
+  G.__eval('audioResetVoices()');
+  if (G.__eval('musicStart()') !== true) throw new Error('音乐未启动');
+  if (G.__eval("musicSet('combat')") !== 'combat') throw new Error('状态切换失败');
+  if (G.__eval('musicState()') !== 'combat') throw new Error('状态未生效');
+  const bpm0 = G.__eval('musicBpm()');
+  G.__eval("audioParam('tension', 1)");
+  const bpm1 = G.__eval('musicBpm()');
+  if (!(bpm1 > bpm0)) throw new Error('tension 未推高 BPM：' + bpm0 + ' → ' + bpm1);
+  G.__eval("audioParam('tension', 0)");
+  /* 采样连续排程：把桩时钟按 30ms 步进推着走，模拟 25ms 心跳。
+     先跳到 5s 让此前心跳留下的 catch-up 全部出清，再清空节点记录。
+     固定随机种子 → 这一段的旋律走向可复现。
+     注意：古琴拨弦用的是噪声源（BufferSource）而非振荡器，两类都要收；
+     低吟是长音（本次会被 DRONE_END 挡住），所以样本主要来自拨弦 */
+  G.__eval('audioSeed(20260916)');
+  AC_INST.currentTime = 5;
+  G.__eval('musicTick()');
+  AC_INST.nodes.length = 0;
+  for (let i = 0; i < 120; i++) { AC_INST.currentTime += 0.03; G.__eval('musicTick()'); }
+  const grid = 60 / G.__eval('musicBpm()') / 2;
+  const times = AC_INST.nodes.filter(n => (n.kind === 'osc' || n.kind === 'src') && n.started !== null)
+    .map(n => n.started).sort((a, b) => a - b);
+  if (times.length < 2) throw new Error('音乐没有排出足够的音符（' + times.length + '）');
+  for (let i = 1; i < times.length; i++) {
+    const d = times[i] - times[i - 1];
+    if (d < -1e-6) throw new Error('音符时间倒退');
+  }
+  const uniq = [...new Set(times.map(t => t.toFixed(4)))];
+  for (let i = 1; i < uniq.length; i++) {
+    const d = Number(uniq[i]) - Number(uniq[i - 1]);
+    const ratio = d / grid;
+    if (Math.abs(ratio - Math.round(ratio)) > 0.02) throw new Error('音符未落在网格上：Δ' + d.toFixed(4) + ' / grid ' + grid.toFixed(4));
+  }
+  G.__eval('musicStop()');
+  G.__eval("audioParam('tension', 0)");
+  return 'BPM ' + bpm0 + '→' + bpm1 + ' · 网格 ' + grid.toFixed(4) + 's · ' + uniq.length + ' 个量化拍点';
+});
+
+step('健壮性：未知事件 / 抛异常的上下文都不崩', () => {
+  if (G.__eval("audioPlay('__no_such_event__')") !== false) throw new Error('未知事件应返回 false');
+  const r = G.__eval("(function(){var A=audioCtx();var old=A.createGain;A.createGain=function(){throw new Error('boom')};"
+    + "var out=audioPlay('ui.tab',{delay:9});A.createGain=old;return out;})()");
+  if (r !== false) throw new Error('上下文抛异常时应静默返回 false');
+  G.__eval("uiSegPick('__none__','x'); uiJump('__none__')");
+  return '未知事件 / 节点构造失败 / 空目标 三类异常均已吞掉';
+});
+
+step('音频面板：四条混音滑条 + 试听 + 诊断', () => {
+  G.newGame();
+  G.openAudioPanel();
+  const h = el('modalRoot').innerHTML || '';
+  for (const k of ['master', 'music', 'sfx', 'amb']) {
+    if (h.indexOf('auVal-' + k) < 0) throw new Error('缺滑条 ' + k);
+    if (h.indexOf("auUiSet('" + k + "'") < 0) throw new Error(k + ' 滑条未接线');
+  }
+  if (h.indexOf('oninput') < 0) throw new Error('滑条应走 oninput（避免被处理器回放误触）');
+  if (h.indexOf('auUiPreview') < 0) throw new Error('缺试听按钮');
+  if (h.indexOf('audioHud') < 0) throw new Error('缺开发者浮层开关');
+  G.closeModal();
+  return '4 滑条 + 4 试听 + 诊断读数 齐备';
+});
+
+step('不变量：音频层零素材、零外部请求', () => {
+  const js = src.slice(src.indexOf('<script>'));
+  if (/new\s+Audio\s*\(/.test(js)) throw new Error('不得用 new Audio 加载资源');
+  if (/\.(mp3|ogg|wav|m4a|aac|flac)\b/i.test(js)) throw new Error('不得引用音频文件');
+  if (/data:audio\//i.test(js)) throw new Error('不得内嵌 base64 音频');
+  if (!/AudioContext|webkitAudioContext/.test(js)) throw new Error('应走 Web Audio 现场合成');
+  if (!/createOscillator|createBufferSource/.test(js)) throw new Error('合成器未使用振荡器/噪声源');
+  if (js.indexOf('createConvolver') < 0) throw new Error('场景混响未实现');
+  return '全程程序化合成 · 无素材文件 · 无内嵌音频';
 });
 
 log('');

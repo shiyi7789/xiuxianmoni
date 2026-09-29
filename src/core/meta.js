@@ -31,10 +31,21 @@ export function blankMeta(){
     gongfa:{ learned:[], best:{} },     /* 已习得功法：轮回不灭 */
     codex:{ unlocked:[], milestones:0 },/* 图鉴：永久收集进度，每 10 项 +1 气运 */
     titles:{ owned:[], active:null },   /* 称号：永久解锁，同时只佩戴一个 */
-    prefs:{ audio:true }                /* 偏好：音效开关 */
+    prefs:{ audio:true }                /* 偏好：音效总开关 + 混音（audioMix 见下） */
   };
 }
 export let META = blankMeta();
+
+/* 混音默认值：总 / 音乐 / 音效 / 环境（见 音频设计.md §10） */
+export const MIX_DEFAULT = { master:0.75, music:0.5, sfx:0.8, amb:0.4 };
+export function mixSanitize(m){
+  const out = {};
+  for(const k in MIX_DEFAULT){
+    const v = (m && typeof m[k] === 'number' && isFinite(m[k])) ? m[k] : MIX_DEFAULT[k];
+    out[k] = Math.max(0, Math.min(1, v));
+  }
+  return out;
+}
 
 export function loadMeta(){
   try{
@@ -60,7 +71,7 @@ export function loadMeta(){
     META.gongfa = gfSanitizeMeta(d.gongfa);
     META.codex = codexSanitizeMeta(d.codex);
     META.titles = titleSanitizeMeta(d.titles);
-    META.prefs = { audio: !(d.prefs && d.prefs.audio === false) };
+    META.prefs = { audio: !(d.prefs && d.prefs.audio === false), audioMix: mixSanitize(d.prefs && d.prefs.audioMix) };
   }catch(e){}
 }
 export function saveMeta(){ try{ localStorage.setItem(META_KEY, JSON.stringify(META)); }catch(e){} }
@@ -86,7 +97,7 @@ export function applyMeta(m){
   META.gongfa = gfSanitizeMeta(m.gongfa);
   META.codex = codexSanitizeMeta(m.codex);
   META.titles = titleSanitizeMeta(m.titles);
-  META.prefs = { audio: !(m.prefs && m.prefs.audio === false) };
+  META.prefs = { audio: !(m.prefs && m.prefs.audio === false), audioMix: mixSanitize(m.prefs && m.prefs.audioMix) };
   saveMeta();
 }
 /* 成就列表的安全读取：任何情况下都必须是数组 */

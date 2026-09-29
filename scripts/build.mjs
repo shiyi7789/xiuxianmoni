@@ -93,6 +93,15 @@ if (missing.length) throw new Error('清单里的模块不存在：' + missing.j
 }
 
 /* ---------- 3. 拼装 ---------- */
+/* CSS 在成品里压缩：只去注释与行首缩进/换行，**不碰任何声明内部**。
+   为什么只压 CSS：`--check` 逐行比对的是脚本段，压 JS 会让「一字未改」校验失效；
+   CSS 是纯样式，压缩后语义完全不变，却能省下约 1 万字符的分发体积。 */
+const rawCss = cssPart;
+const cssOut = cssPart
+  .replace(/\/\*[\s\S]*?\*\//g, '')      /* 去注释 */
+  .replace(/[ \t]*\r?\n[ \t]*/g, '')     /* 去换行与行首缩进 */
+  .trim();
+
 let js = openPart.replace(/\s+$/, '');
 for (const { mod, body } of chunks) js += '\n\n' + SEP(mod) + '\n\n' + body;
 js += '\n';
@@ -107,11 +116,12 @@ if (leftover.length) {
     + leftover.slice(0, 6).map(x => '  第 ' + (x.i + 1) + ' 行：' + x.l.trim().slice(0, 90)).join('\n'));
 }
 
-const output = headPart + cssPart + midPart + js + tailPart;
+const output = headPart + cssOut + midPart + js + tailPart;
 fs.writeFileSync(OUT, output, 'utf8');
 
 lines.push('模块数: ' + chunks.length);
-lines.push('成品: xiuxian.html  ' + Buffer.byteLength(output, 'utf8') + ' 字节');
+lines.push('CSS 压缩: ' + rawCss.length + ' → ' + cssOut.length + ' 字符（省 ' + (rawCss.length - cssOut.length) + '）');
+lines.push('成品: xiuxian.html  ' + Buffer.byteLength(output, 'utf8') + ' 字节 / ' + output.length + ' 字符');
 
 /* ---------- 4. 可选：与参考文件做「一字未改」校验 ---------- */
 const args = process.argv.slice(2);

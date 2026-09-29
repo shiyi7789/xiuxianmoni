@@ -4,6 +4,7 @@ import { CAVE_BY_KEY, CAVE_FACILITIES, CAVE_OFFLINE_BASE, CAVE_OFFLINE_MIN_MS } 
 import { addLog, toast } from './log.js';
 import { advance } from './time.js';
 import { addMaterial } from './craft.js';
+import { audioPlay } from '../audio/events.js';
 import { after } from '../ui/render.js';
 
 /* =========================================================
@@ -67,6 +68,7 @@ export function cvUpgrade(k){
   advance(cost.days);
   caveEnsure().facs[k] = lv + 1;
   addLog('你整修「'+f.n+'」，已至 '+(lv+1)+' 级——'+cvFacSummary(f, lv+1)+'。','act');
+  audioPlay('cave.up');
   after();
   return true;
 }

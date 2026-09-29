@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>星际裂隙 · ROGUE THUNDER</title>
+<meta name="description" content="竖屏弹幕 Roguelite：自动开火，你只负责走位。8 种武器、15 项被动、3 个主动技滚成一套只属于这局的 Build，每 5 波一个 Boss。免费无广告，免注册，进度只存在本机。">
+<meta name="theme-color" content="#05070e">
+<meta name="color-scheme" content="dark">
+<link rel="canonical" href="https://xiuxianmoni.me/rogue/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="游戏大厅">
+<meta property="og:title" content="星际裂隙 · ROGUE THUNDER">
+<meta property="og:description" content="竖屏弹幕 Roguelite：自动开火，你只负责走位。免费、无广告、免注册。">
+<meta property="og:url" content="https://xiuxianmoni.me/rogue/">
+<meta property="og:locale" content="zh_CN">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23070b18'/%3E%3Cpath d='M16 7 L23 25 L16 21 L9 25 Z' fill='%237ef9ff'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoGame","name":"星际裂隙 · ROGUE THUNDER","url":"https://xiuxianmoni.me/rogue/","description":"竖屏弹幕 Roguelite，自动开火 + 走位闪避 + 升级三选一","genre":["弹幕射击","Roguelite","街机"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}
+</script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+   <div id="frame">
+    <canvas id="cv"></canvas>
+
+    <!-- ======================== HUD ======================== -->
+    <div id="hud" class="hidden">
+      <div class="hud-top">
+        <div class="hud-col-left">
+          <div class="lv-row">
+            <span class="lv-badge">Lv <b id="hudLevel">1</b></span>
+            <span class="combo" id="hudCombo"></span>
+          </div>
+          <div class="bar hpbar">
+            <i id="hudHp"></i>
+            <span class="shbar" id="hudShield"></span>
+            <em id="hudHpTxt">100 / 100</em>
+          </div>
+          <div class="bar xpbar"><i id="hudXp"></i></div>
+        </div>
+        <div class="hud-col-right">
+          <div class="wave-tag">WAVE <b id="hudWave">1</b></div>
+          <div class="score" id="hudScore">0</div>
+          <div class="sub" id="hudKills">击杀 0</div>
+        </div>
+      </div>
+
+      <div class="hud-bottom">
+        <div class="loadout" id="hudLoadout"></div>
+        <div class="abilities" id="hudAbilities"></div>
+      </div>
+    </div>
+
+    <!-- ======================== 横幅 ======================== -->
+    <div id="banner" class="banner"></div>
+    <div id="toast" class="toast"></div>
+    <div id="bossbar" class="bossbar hidden">
+      <div class="bb-name" id="bbName">裂隙核心</div>
+      <div class="bb-track"><i id="bbFill"></i><u id="bbPhase"></u></div>
+    </div>
+
+    <!-- ======================== 主菜单 ======================== -->
+    <div id="menu" class="overlay">
+      <div class="panel">
+        <div class="logo">
+          <h1>星际裂隙</h1>
+          <p class="sub-en">R O G U E &nbsp; T H U N D E R</p>
+        </div>
+        <p class="tagline">你是最后一架截击机。<br>每一次击杀都在重塑你的武器。</p>
+
+        <div class="keys">
+          <div class="key-item"><kbd>W A S D</kbd><span>／</span><kbd>↑ ← ↓ →</kbd><span>移动</span></div>
+          <div class="key-item"><kbd>鼠标 / 触屏拖拽</kbd><span>跟随操控</span></div>
+          <div class="key-item"><kbd>Space</kbd><span>相位冲刺</span><kbd>Q</kbd><span>核弹</span><kbd>E</kbd><span>时缓</span></div>
+          <div class="key-item"><kbd>P</kbd><span>暂停</span><kbd>M</kbd><span>静音</span><kbd>1 2 3</kbd><span>选择升级</span></div>
+        </div>
+
+        <button id="btnStart" class="btn primary">开始战斗</button>
+        <div class="best">历史最高分 <b id="menuBest">0</b></div>
+        <p class="hint">击杀敌人获得经验 → 升级时从三张卡中<br>选择新武器、被动或主动技能 → 用 Build 撕裂弹幕</p>
+        <p class="site-note">
+          <a href="../notice.html" target="_blank" rel="noopener">本站免费 · 无广告 · 不采集信息 · 阅读《网站声明》↗</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ======================== 升级三选一 ======================== -->
+    <div id="levelup" class="overlay hidden">
+      <div class="panel lvup-panel">
+        <div class="lvup-head">
+          <h2>等级提升 <b id="lvupLevel">2</b></h2>
+          <p>选择一项强化</p>
+        </div>
+        <div class="cards" id="cards"></div>
+        <div class="lvup-foot">
+          <button id="btnReroll" class="btn ghost">重随 <b id="rerollCount">1</b> 次</button>
+          <button id="btnBan" class="btn ghost">跳过 +回血</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== 暂停 ======================== -->
+    <div id="pause" class="overlay hidden">
+      <div class="panel narrow">
+        <h2>已暂停</h2>
+        <p class="tagline">按 <kbd>P</kbd> 或点击继续</p>
+        <button id="btnResume" class="btn primary">继续</button>
+        <button id="btnQuit" class="btn ghost">放弃本次战斗</button>
+      </div>
+    </div>
+
+    <!-- ======================== 结算 ======================== -->
+    <div id="over" class="overlay hidden">
+      <div class="panel">
+        <h2 id="overTitle">舰体损毁</h2>
+        <p class="tagline" id="overRank"></p>
+        <div class="stats" id="overStats"></div>
+        <div class="build-list" id="overBuild"></div>
+        <button id="btnRetry" class="btn primary">再次出击</button>
+        <button id="btnMenu" class="btn ghost">返回主菜单</button>
+      </div>
+    </div>
+   </div>
+  </div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/upgrades.js"></script>
+<script src="js/waves.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

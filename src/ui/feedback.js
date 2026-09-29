@@ -1,6 +1,8 @@
 import { META, saveMeta } from '../core/meta.js';
 import { num } from '../core/utils.js';
 import { MATERIALS } from '../data/materials.js';
+import { audioBoot, audioOn, audioSetMix } from '../audio/core.js';
+import { audioPlay } from '../audio/events.js';
 import { achTierText } from '../sys/achievement.js';
 import { godCls, isMount, itemLabel, mountLabel, qName } from '../sys/character.js';
 import { gfEffectText, gfGrade } from '../sys/gongfa.js';
@@ -26,8 +28,6 @@ import { closeModal, showModal } from './modal.js';
    ========================================================= */
 
 /* ---------- 状态 ---------- */
-let FB_INITED = false;
-let FB_ACTX = null;
 let FB_TOASTS = [];            /* 当前在屏的 L1 元素 */
 let FB_CENTER_QUEUE = [];      /* 待展示的 L2/L3 配置 */
 let FB_CENTER_SHOWING = false;
@@ -52,53 +52,32 @@ export function fbLevelOfPill(name){
 }
 export function fbLevelOfBreak(isGroupStart){ return isGroupStart ? 3 : 2; }
 
-/* ---------- 偏好 ---------- */
-export function fbAudioOn(){
-  if(!META || !META.prefs) return true;
-  return META.prefs.audio !== false;
-}
-export function fbToggleAudio(){
-  if(!META.prefs) META.prefs = { audio:true };
-  META.prefs.audio = !fbAudioOn();
-  saveMeta();
-  return META.prefs.audio;
-}
+/* ---------- 偏好（实现在音频引擎，这里保留旧名以免既有调用点漂移） ---------- */
+export function fbAudioOn(){ return audioOn(); }
+export function fbToggleAudio(){ return audioSetMix('mute'); }
+export function fbInitAudio(){ return audioBoot(); }
 
-/* ---------- 音效（Web Audio 现场合成） ---------- */
-export function fbInitAudio(){
-  if(FB_INITED) return;
-  FB_INITED = true;
-  try{
-    const AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
-    if(!AC) return;
-    FB_ACTX = new AC();
-  }catch(e){ FB_ACTX = null; }
-}
-function fbBeep(freq, dur, type, vol){
-  if(!fbAudioOn() || !FB_ACTX) return;
-  try{
-    if(FB_ACTX.state === 'suspended') FB_ACTX.resume();
-    const osc = FB_ACTX.createOscillator();
-    const gain = FB_ACTX.createGain();
-    osc.type = type || 'sine';
-    osc.frequency.value = freq;
-    const t0 = FB_ACTX.currentTime;
-    gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.exponentialRampToValueAtTime(vol || 0.06, t0 + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(gain); gain.connect(FB_ACTX.destination);
-    osc.start(); osc.stop(t0 + dur + 0.02);
-  }catch(e){}
-}
-const FB_SOUND = {
-  coin:    () => fbBeep(880, 0.06, 'sine', 0.04),
-  item:    () => fbBeep(660, 0.10, 'triangle', 0.05),
-  xian:    () => { fbBeep(990, 0.18, 'triangle', 0.07); setTimeout(() => fbBeep(1320, 0.22, 'sine', 0.05), 100); },
-  shen:    () => { fbBeep(440, 0.30, 'sawtooth', 0.05); setTimeout(() => fbBeep(660, 0.40, 'sine', 0.07), 150); setTimeout(() => fbBeep(880, 0.50, 'sine', 0.06), 350); },
-  breakth: () => { fbBeep(220, 0.40, 'sawtooth', 0.05); setTimeout(() => fbBeep(330, 0.50, 'triangle', 0.06), 220); },
-  asc:     () => { fbBeep(196, 0.60, 'sine', 0.05); setTimeout(() => fbBeep(392, 0.80, 'triangle', 0.07), 300); setTimeout(() => fbBeep(784, 1.00, 'sine', 0.06), 700); },
-  ach:     () => { fbBeep(523, 0.12, 'triangle', 0.05); setTimeout(() => fbBeep(784, 0.18, 'triangle', 0.05), 100); setTimeout(() => fbBeep(1046, 0.25, 'sine', 0.04), 240); }
+/* ---------- 音效：全部交给音频引擎的命名事件（见 音频设计.md §7） ----------
+   旧版是 7 个直连 destination 的 beep；现在由 src/audio/ 统一管理总线、
+   声部预算与优先级。这里只做「语义 → 事件名」的映射。 */
+export const FB_SOUND = {
+  item:  () => audioPlay('loot.item1'),
+  xian:  () => audioPlay('loot.item3'),
+  shen:  () => audioPlay('loot.item4'),
+  breakth:() => audioPlay('cult.break.ok'),
+  asc:   () => audioPlay('cult.ascend'),
+  ach:   () => audioPlay('meta.ach'),
+  coin:  () => audioPlay('loot.mat0')
 };
+/* 品质 → 获得动机（凡1音灵2音宝3音仙4音+磬神5音+磬） */
+function fbLootSound(q){
+  audioPlay('loot.item' + Math.max(0, Math.min(4, q | 0)));
+}
+/* 材料品阶 → 三档（凡灵 / 宝仙 / 神） */
+function fbMatSound(t){
+  audioPlay(t >= 4 ? 'loot.mat4' : (t >= 2 ? 'loot.mat2' : 'loot.mat0'));
+  return t >= 4 ? 'q4' : (t >= 2 ? 'q' + t : '');
+}
 
 /* ---------- DOM 小工具（沙箱无 DOM 时不崩） ---------- */
 function fbDoc(){ return (typeof document !== 'undefined') ? document : null; }
@@ -206,7 +185,7 @@ function fbCenterNext(){
     mask.appendChild(box);
     d.body.appendChild(mask);
 
-    if(cfg.tier >= 3 && cfg.sound === 'shen') FB_SOUND.shen();
+    if(cfg.sound === 'none'){ /* 调用方已经自己发过音，避免重复 */ }
     else if(cfg.sound && FB_SOUND[cfg.sound]) FB_SOUND[cfg.sound]();
     else if(cfg.tier >= 3) FB_SOUND.shen();
     else FB_SOUND.item();
@@ -244,19 +223,19 @@ export function fbGain(it){
   const lv = fbLevelOfItem(it);
   const im = isMount(it);
   const label = im ? mountLabel(it) : itemLabel(it);
+  fbLootSound(it.q);                     /* 品质 → 音数/亮度（凡1灵2宝3仙4神5） */
 
   if(lv >= 3){
-    fbCenterQueue({ tier:3, quality:it.q, sound:'shen',
+    fbCenterQueue({ tier:3, quality:it.q, sound:'none',
       title:(im ? '得 神 兽' : '得 神 器'),
       body: label + '<br><span class="muted-sm">威能远超同阶，宜即刻祭炼。</span>',
       hint:'这是难得的造化。' });
   }else if(lv >= 2){
-    fbCenterQueue({ tier:2, quality:it.q,
+    fbCenterQueue({ tier:2, quality:it.q, sound:'none',
       title:(im ? '获 得 坐 骑' : '获 得 器 物'),
       body: label, autoMs:2000 });
   }else{
     fbToastQueue('<span class="fb-ico">◈</span> ' + label, it.q >= 2 ? 'q' + it.q : '');
-    FB_SOUND.item();
   }
 }
 export function fbGainMat(k, n){
@@ -264,60 +243,66 @@ export function fbGainMat(k, n){
   const m = MATERIALS[k];
   if(!m) return;
   const txt = qName(m.n, m.t) + '<span class="muted-sm"> ×' + num(n) + '</span>';
-  fbToastQueue('<span class="fb-ico">◆</span> 拾得 ' + txt, m.t >= 2 ? 'q' + m.t : '');
+  const cls = fbMatSound(m.t);           /* 品阶 → 三档音色 */
+  fbToastQueue('<span class="fb-ico">◆</span> 拾得 ' + txt, cls);
 }
 export function fbGainPill(name, n){
   n = n || 1;
   const txt = '<b>' + name + '</b><span class="muted-sm"> ×' + n + '</span>';
+  audioPlay('loot.pill');
   if(fbLevelOfPill(name) >= 2){
-    fbCenterQueue({ tier:2, title:'得 丹', body:txt, autoMs:1800 });
+    fbCenterQueue({ tier:2, title:'得 丹', body:txt, autoMs:1800, sound:'none' });
   }else{
     fbToastQueue('<span class="fb-ico">◎</span> ' + txt);
   }
 }
 export function fbGrantGongfa(gf){
   if(!gf) return;
-  fbCenterQueue({ tier:2, quality:gf.t,
+  audioPlay('loot.gongfa');
+  fbCenterQueue({ tier:2, quality:gf.t, sound:'none',
     title:'悟 得 功 法',
     body: qName(gf.n, gf.t) + ' ' + gfGrade(gf)
       + '<br><span class="muted-sm">' + gfEffectText(gf, 1) + '（每重）</span>'
       + '<br><span class="muted-sm">刻入道基，<b>轮回不灭</b>。</span>',
-    autoMs:2600, sound: gf.t >= 3 ? 'xian' : 'item' });
+    autoMs:2600 });
 }
 export function fbBreak(isGroupStart, realmName){
-  fbCenterQueue({ tier: fbLevelOfBreak(isGroupStart),
+  audioPlay('cult.break.ok');
+  fbCenterQueue({ tier: fbLevelOfBreak(isGroupStart), sound:'none',
     title: isGroupStart ? '境 界 跃 迁' : '境 界 精 进',
     body: '气机贯通，你已踏入 <b>' + realmName + '</b>。'
       + (isGroupStart ? '<br><span class="muted-sm">天地在你眼中骤然不同。</span>' : ''),
-    autoMs:2000, sound:'breakth' });
+    autoMs:2000 });
 }
 /* 飞升刻意**不**弹中央浮层：`breakthrough.js` 的 `ascend()` 已有专属全屏弹层，
    再叠一层「需手动关闭」的遮罩会互相打架。这里只放一声长音作为情绪落点。 */
-export function fbAscend(){ FB_SOUND.asc(); }
+export function fbAscend(){ audioPlay('cult.ascend'); }
 export function fbAchievement(d){
   if(!d) return;
+  audioPlay(d.t >= 4 ? 'meta.ach.shen' : 'meta.ach');
   if(d.t >= 4){
-    fbCenterQueue({ tier:3, quality:4, sound:'shen', title:'神 品 成 就',
+    fbCenterQueue({ tier:3, quality:4, sound:'none', title:'神 品 成 就',
       body: d.n + '<br><span class="muted-sm">' + d.d + '</span>',
       hint: achTierText(d.t), btnLabel:'收 下' });
-  }else{
-    FB_SOUND.ach();
   }
 }
 export function fbDungeon(def){
   if(!def) return;
+  audioPlay('loot.item3');
   fbCenterQueue({ tier:2, title:'秘 境 贯 通',
-    body:'「' + def.name + '」已尽归你手。', autoMs:2200, sound:'xian' });
+    body:'「' + def.name + '」已尽归你手。', autoMs:2200, sound:'none' });
 }
 export function fbRebirth(n){
-  fbCenterQueue({ tier:3, title:'轮 回 转 世',
+  audioPlay('meta.rebirth');
+  fbCenterQueue({ tier:3, sound:'none', title:'轮 回 转 世',
     body:'一世修行尽付东流。<br>你自凡俗中，再一次睁开眼——',
     hint:'第 ' + n + ' 世', btnLabel:'睁 开 眼' });
 }
 export function fbCodexMilestone(n){
-  fbCenterQueue({ tier:3, title:'图 鉴 · 里 程 碑',
+  audioPlay('ui.milestone');
+  fbCenterQueue({ tier:3, sound:'none', title:'图 鉴 · 里 程 碑',
     body:'已点亮 <b>' + n + '</b> 项图鉴。', hint:'气运随之增长。',
-    btnLabel:'收 下', sound:'xian' });
+    btnLabel:'收 下' });
 }
 
 /* ---------- 清空（导入存档 / 轮回时用） ---------- */

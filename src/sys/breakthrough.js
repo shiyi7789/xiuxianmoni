@@ -10,6 +10,7 @@ import { titleBonus } from './titles.js';
 import { addLog, addSep, toast } from './log.js';
 import { doRebirth, rebirthGain } from './rebirth.js';
 import { fbBreak } from '../ui/feedback.js';
+import { audioPlay } from '../audio/events.js';
 import { closeModal, showModal } from '../ui/modal.js';
 import { after } from '../ui/render.js';
 
@@ -98,6 +99,7 @@ export function breakthroughOnce(quiet){
   S.stat.breakFail++;
   S.hp = Math.max(1, Math.round(S.hp * 0.42));
   addLog('突破失败！气机反冲，你闷哼一声，嘴角溢出一线暗红。','warn');
+  audioPlay('cult.break.fail');
   addLog('修为倒退 '+num(lose)+'，气血大损。或许该多备几枚破境丹，或先淬炼几件法器。','dim');
   return 'fail';
 }

@@ -27,6 +27,8 @@ import { travelDays } from '../sys/time.js';
 import { codexCount, codexTotal } from '../sys/codex.js';
 import { titleActiveKey, titleOwnedList } from '../sys/titles.js';
 import { TITLES } from '../data/titles.js';
+import { audioSyncState } from '../audio/core.js';
+import { musicSyncState } from '../audio/music.js';
 import { closeSheet } from './sheet.js';
 import { toggleTheme } from './theme.js';
 import { openGongfa } from './panels/gongfa.js';
@@ -34,6 +36,7 @@ import { showHelp } from './panels/notice.js';
 import { openSavePanel } from './panels/save.js';
 import { openCodex } from './panels/codex.js';
 import { openTitles } from './panels/titles.js';
+import { openAudioPanel } from './panels/audio.js';
 import { openAchievements } from '../sys/achievement.js';
 import { renderMaterials, renderGearSection, renderMatShopSection, renderPillSection } from './panels/craft.js';
 import { renderCave } from './panels/cave.js';
@@ -52,6 +55,9 @@ import { uiSec, uiEmpty, uiKV, uiDots } from './kit.js';
 export function renderAll(){
   if(!S) return;
   clampVitals();
+  /* 音频参数与音乐段跟随游戏状态（各系统不必自己发参数，见 音频设计.md §4） */
+  audioSyncState();
+  musicSyncState();
   renderTop();
   renderChar();
   renderEquip();
@@ -665,6 +671,7 @@ export function renderUtil(){
     ['轮 回', 'openRebirth()'],
     ['图 鉴', 'openCodex()'],
     ['称 号', 'openTitles()'],
+    ['音 声', 'openAudioPanel()'],
     ['明 暗', 'toggleTheme()'],
     ['收 起', 'closeSheet()']
   ];

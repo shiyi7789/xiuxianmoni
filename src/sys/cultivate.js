@@ -7,6 +7,7 @@ import { stats } from './character.js';
 import { tryEncounter } from './encounter.js';
 import { addLog, toast } from './log.js';
 import { advance } from './time.js';
+import { audioPlay } from '../audio/events.js';
 import { after } from '../ui/render.js';
 import { fbExpDelta } from '../ui/feedback.js';
 
@@ -39,6 +40,7 @@ export function medGain(){
 
 export function actMeditate(){
   if(S.combat || S.dungeon) return;
+  audioPlay('cult.meditate');
   const before = S.exp;
   const g = medGain();
   advance(1);
@@ -60,6 +62,7 @@ export function actStoneCultivate(){
   if(S.combat || S.dungeon) return;
   const cost = 25 + S.level*6;
   if(S.stones < cost){ toast('灵石不足（需 '+cost+'）'); return; }
+  audioPlay('cult.stone');
   const before = S.exp;
   S.stones -= cost;
   const st = stats();
@@ -80,6 +83,7 @@ export function actSeclusion(){
   const st = stats();
   if(S.mp < st.mpMax*0.9){ toast('灵力不足九成，无法闭关'); return; }
   if(S.hp < st.hpMax*0.9){ toast('气血不足九成，无法闭关'); return; }
+  audioPlay('cult.seclusion');
   const before = S.exp;
   S.hp = Math.round(st.hpMax*0.5);
   S.mp = Math.round(st.mpMax*0.2);

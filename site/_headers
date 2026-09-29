@@ -1,7 +1,11 @@
 # 缓存与安全响应头（Cloudflare Pages 与 Netlify 通用格式）
 #
-# 核心策略：HTML 一律不缓存，交给浏览器每次回源校验；
-# 因为游戏是单文件，HTML 就是"首屏+全部逻辑"，缓存住它等于发版不生效。
+# ⚠ 线上跑的是 Vercel，而 Vercel 只读仓库根的 vercel.json，不读本文件。
+#   本文件保持与 vercel.json 的 headers 规则一一对应，供将来换托管商时直接沿用；
+#   改任何一条缓存策略时，两个文件都要改（scripts/verify-site.mjs 会核对二者是否对齐）。
+#
+# 核心策略：HTML 与自研资源一律不缓存，交给浏览器每次回源校验；
+# 因为游戏是单文件、站点没有文件名哈希，缓存住它就等于发版不生效。
 
 /*
   X-Content-Type-Options: nosniff
@@ -16,7 +20,15 @@
   Cache-Control: no-store, no-cache, must-revalidate
   Access-Control-Allow-Origin: same-origin
 
-# 入口页与游戏本体：允许缓存但必须回源校验（拿 304 就是最快的情况）
+# 共享资源（大厅 / 详情 / 声明三页共用的样式与脚本）
+/assets/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 星际裂隙游戏本体（多文件静态页）
+/rogue/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 入口页与各游戏页：允许缓存但必须回源校验（拿 304 就是最快的情况）
 /
   Cache-Control: public, max-age=0, must-revalidate
 
@@ -24,6 +36,15 @@
   Cache-Control: public, max-age=0, must-revalidate
 
 /xiuxian.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/xiuxian-info.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/rogue-info.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/notice.html
   Cache-Control: public, max-age=0, must-revalidate
 
 # 纯静态元信息可以短缓存

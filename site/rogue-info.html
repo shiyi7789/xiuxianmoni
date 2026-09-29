@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>星际裂隙 · 玩法详情 — 竖屏弹幕 Roguelite 游戏</title>
+<meta name="description" content="《星际裂隙 · ROGUE THUNDER》玩法详情：自动开火 + 走位闪避，8 种武器、15 项被动、3 个主动技组成 Build，10 种敌机原型、每 5 波一个递归 Boss。附操作键位、Boss 阶段表与公平性说明。">
+<meta name="keywords" content="星际裂隙,ROGUE THUNDER,弹幕射击,Roguelite,竖屏游戏,离线网页游戏,玩法详情">
+<meta name="theme-color" content="#efe7d8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101018" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="canonical" href="https://xiuxianmoni.me/rogue-info.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="游戏大厅">
+<meta property="og:title" content="星际裂隙 · 玩法详情">
+<meta property="og:description" content="自动开火，你只负责走位。8 种武器、15 项被动、3 个主动技；每 5 波一个递归 Boss。">
+<meta property="og:url" content="https://xiuxianmoni.me/rogue-info.html">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="星际裂隙 · 玩法详情">
+<meta name="twitter:description" content="竖屏弹幕 Roguelite：自动开火，你只负责走位。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%239e2b25'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23fdf6ee' font-family='serif'%3E%E6%88%8F%3C/text%3E%3C/svg%3E">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoGame","name":"星际裂隙 · ROGUE THUNDER","url":"https://xiuxianmoni.me/rogue/","description":"竖屏弹幕 Roguelite，自动开火 + 走位闪避 + 升级三选一","genre":["弹幕射击","Roguelite","街机"],"gamePlatform":["Web","Mobile Web"],"applicationCategory":"Game","operatingSystem":"任意支持现代浏览器的系统","inLanguage":"zh-CN","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"numberOfPlayers":{"@type":"QuantitativeValue","value":1}}
+</script>
+<link rel="stylesheet" href="assets/site.css">
+<script>
+/* 首帧前定主题，避免浅色页面先闪一下深色 */
+(function(){var d=document.documentElement;
+try{var t=localStorage.getItem('site_theme_v1');
+if(t!=='light'&&t!=='dark'){t=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';}
+d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}})();
+</script>
+</head>
+<body data-ver="version.json">
+<a class="skip" href="#main">跳到主要内容</a>
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<header class="hdr">
+  <div class="wrap hdr-in">
+    <a class="logo" href="./" aria-label="游戏大厅 首页">
+      <b>游 戏 大 厅</b><i>GAME HALL</i>
+    </a>
+    <nav class="nav" aria-label="页面导航">
+      <a href="index.html#games">游戏</a>
+      <a href="#howto">操作</a>
+      <a href="#build">Build</a>
+      <a href="#waves">敌机与 Boss</a>
+      <a href="#fair">公平性</a>
+      <a href="notice.html">网站声明</a>
+    </nav>
+    <div class="hdr-act">
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="切换明暗主题" title="切换明暗主题">☾</button>
+      <a class="btn primary" href="rogue/">开始战斗</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap">
+      <a class="back" href="./">← 返回游戏大厅</a>
+    </div>
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">竖 屏 弹 幕 · 局 内 成 长 · 单 局 重 开</p>
+        <h1>你是最后一架<br><em>截击机</em>。</h1>
+        <p class="lead">
+          你的炮口永远是开着的——所以这款游戏里<strong>唯一需要你做的操作，是活下来</strong>。
+          移动、闪避、在弹幕缝里找那条路；每一次升级从三张卡里挑一张，二十多件强化会滚成一整套只属于这局的 Build。
+          死一次不代表输，只是下一局会更清楚该长成什么样。
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="rogue/">开 始 战 斗</a>
+          <a class="btn ghost" href="index.html#try">回 大 厅 页 内 试 玩</a>
+        </div>
+        <ul class="chips">
+          <li><b>9:16</b> 竖屏</li>
+          <li><b>8</b> 种武器</li>
+          <li><b>15</b> 项被动</li>
+          <li><b>3</b> 个主动技</li>
+          <li><b>10</b> 种敌机原型</li>
+          <li>每 <b>5</b> 波一个 Boss</li>
+          <li>触屏可玩</li>
+        </ul>
+      </div>
+
+      <aside class="ladder" aria-label="单局节奏：张力随波次上升">
+        <h2>单 局 节 奏</h2>
+        <p class="sub">单波约 22–35 秒，波间留 1.6 秒喘息</p>
+        <ol class="steps-list">
+          <li><span>第 1 波</span><span class="bar"><i style="width:22%"></i></span></li>
+          <li><span>第 3 波</span><span class="bar"><i style="width:40%"></i></span></li>
+          <li><span>第 5 波</span><span class="bar"><i style="width:78%"></i></span></li>
+          <li><span>第 7 波</span><span class="bar"><i style="width:46%"></i></span></li>
+          <li><span>第 10 波</span><span class="bar"><i style="width:88%"></i></span></li>
+          <li><span>第 14 波</span><span class="bar"><i style="width:72%"></i></span></li>
+          <li><span>第 15 波</span><span class="bar"><i style="width:100%"></i></span></li>
+        </ol>
+        <p class="foot">柱长示意张力：逢 <b>5</b> 的倍数波是 Boss，其余波次按「简单阵 ×2 → 复合阵 → 定向压力 → 呼吸波」循环。</p>
+      </aside>
+    </div>
+  </section>
+
+  <section id="howto">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>操 作 与 键 位</h2>
+        <p>键鼠和触屏走的是同一套逻辑：你在哪里，飞机就去哪里。开火是自动的，不需要按任何键。</p>
+      </div>
+      <div class="grid feats">
+        <article class="card">
+          <h3><span class="dot" aria-hidden="true"></span>移动</h3>
+          <p>键盘用 <kbd>W A S D</kbd> 或方向键；想更省力就用<strong>鼠标／手指拖拽</strong>，飞机跟随指针平滑移动。<kbd>P</kbd> 暂停，<kbd>M</kbd> 静音。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d3" aria-hidden="true"></span>相位冲刺</h3>
+          <p><kbd>Space</kbd>：0.35 秒无敌位移，用来穿过弹幕或者从包围里钻出去。冷却 6 秒，点满后降到 4.4 秒。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d4" aria-hidden="true"></span>湮灭核弹</h3>
+          <p><kbd>Q</kbd>：清空全场敌弹并对全域造成巨额伤害。次数制——捡不到补给就用不了，所以要留到真正要命的那一刻。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d5" aria-hidden="true"></span>时间畸变</h3>
+          <p><kbd>E</kbd>：3 秒内敌方时间流速降到 35%，你自己不受影响。密集弹幕下的救命窗口。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d2" aria-hidden="true"></span>升级三选一</h3>
+          <p>升级时弹出三张卡，用鼠标点击或按 <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 选择。另有<strong>重随一次</strong>和<strong>跳过换回血</strong>两个兜底选项。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d6" aria-hidden="true"></span>存档</h3>
+          <p>只在本机记住一个<strong>历史最高分</strong>。没有账号、没有云端同步、不采集任何信息——换设备就从头开始，这很符合 Roguelite 的脾气。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="build">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>八 条 武 器 线，二 十 多 件 强 化</h2>
+        <p>每局能拿到的强化是随机的，所以「这一局长成什么」是你现场决定的。武器之间刻意保留了协同——黑洞聚怪会放大散射与电弧的收益，无人机则替黑洞近身兜底。</p>
+      </div>
+      <div class="grid feats">
+        <article class="card">
+          <h3><span class="dot" aria-hidden="true"></span>主炮</h3>
+          <p>通用直射，一切 Build 的底座。强化方向是弹丸数与伤害——最朴素，也最不会坑你。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d3" aria-hidden="true"></span>贯穿激光</h3>
+          <p>细长高速、沿直线穿透。用来「扫线」清理一列敌人最痛快，缺点是打不中侧面。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d2" aria-hidden="true"></span>散射炮</h3>
+          <p>近距离爆发，扇面越宽越像一把扫帚。清 swarm 型散兵的首选，代价是远程输出衰减。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d4" aria-hidden="true"></span>追踪导弹</h3>
+          <p>自动索敌、齐射投送。手感上像「替你的手速兜底」，转向速率点满之后基本不会落空。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d5" aria-hidden="true"></span>环绕无人机</h3>
+          <p>贴身公转，接触伤害加自动开火。数目堆起来是一圈会自己开火的护栏，配合黑洞特别好用。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d3" aria-hidden="true"></span>电弧链</h3>
+          <p>命中后弹射连锁，专治密集阵。链数越多、伤害衰减越低，越能一刀清一大片。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d6" aria-hidden="true"></span>回旋飞刃</h3>
+          <p>去而复返，同一片区域吃到两次伤害。折返距离拉长后可以覆盖很大一块空间。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d7" aria-hidden="true"></span>引力黑洞</h3>
+          <p>把敌人往一个点拽，并持续造成伤害。它是 AOE 体系的发动机，也是全场最好的「聚怪开关」。</p>
+        </article>
+      </div>
+
+      <div class="grid feats mt">
+        <article class="card">
+          <h3><span class="dot d2" aria-hidden="true"></span>15 项被动</h3>
+          <p>攻击力 · 射速 · 移速 · 最大生命 · 弹速 · 穿透 · 暴击率 · 暴击伤害 · 拾取范围 · 幸运 · 经验获取 · 生命回复 · 能量护盾 · 抗撞击装甲 · 多重射击。</p>
+          <div class="keyline">
+            <div><span>拾取范围（磁力场）</span><b>降低走位压力</b></div>
+            <div><span>幸运（幸运星）</span><b>提高高品质卡出现率</b></div>
+            <div><span>护盾 / 抗撞</span><b>把容错换成本钱</b></div>
+          </div>
+        </article>
+        <article class="card">
+          <h3><span class="dot d5" aria-hidden="true"></span>稀有度与兜底</h3>
+          <p>卡池权重为<strong>普通 100 / 稀有 45 / 史诗 18 / 传说 4</strong>，受「幸运」加成。当可选项不足三张（全满级）时，自动注入<strong>应急修复</strong>（回血 35%）与<strong>过载校准</strong>（全属性 +6%，可无限叠加），保证三选一永不卡死。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="waves">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>十 种 敌 机 与 递 归 Boss</h2>
+        <p>敌人原型是「字母」，阵型是「句子」，波次是「段落」。每波都保证至少两条可执行的应对路线。</p>
+      </div>
+      <div class="tw">
+        <table>
+          <caption>敌机原型：血量与威胁来源（数值为第 1 波基准，之后按 18% 每波递归放大）</caption>
+          <thead>
+            <tr><th scope="col">原型</th><th scope="col">名称</th><th scope="col">行为</th><th scope="col">击杀优先级</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>drone</td><td>侦察机</td><td>直线下落，不还手</td><td>低</td></tr>
+            <tr><td>zig</td><td>游走机</td><td>正弦横摆，弹道不可预测</td><td>低</td></tr>
+            <tr><td>mini</td><td>碎片</td><td>随机抖动、贴脸碰撞</td><td>极低（靠数量）</td></tr>
+            <tr><td>chaser</td><td>追猎者</td><td>持续加速追踪，挤压你的空间</td><td>高</td></tr>
+            <tr><td>shooter</td><td>炮手</td><td>落位后三连点射，瞄准你</td><td>极高</td></tr>
+            <tr><td>tank</td><td>重甲舰</td><td>直线推进，受击减伤 25%</td><td>中</td></tr>
+            <tr><td>splitter</td><td>母巢</td><td>死亡分裂为三只碎片</td><td>中</td></tr>
+            <tr><td>orbiter</td><td>环刃</td><td>围绕锚点公转，轨迹难猜</td><td>中</td></tr>
+            <tr><td>turret</td><td>哨塔</td><td>静止于顶部，径向八向弹幕</td><td>极高</td></tr>
+            <tr><td>boss</td><td>裂隙核心</td><td>三阶段弹幕循环</td><td>唯一目标</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid loop mt">
+        <article class="card">
+          <h3>第 5 波 · 裂隙哨兵</h3>
+          <p>三个阶段的弹幕检定，每次切阶段前都有 0.8 秒核心变色蓄力——不会出现无预警的瞬发伤害。</p>
+          <div class="keyline">
+            <div><span>P1（100–70%）</span><b>扇形散射，中心留缝</b></div>
+            <div><span>P2（70–35%）</span><b>三连瞄准弹 + 侧向散射</b></div>
+            <div><span>P3（35–0%）</span><b>双螺旋旋转弹幕</b></div>
+            <div><span>附加</span><b>每 8 秒召唤 3 只护卫</b></div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>第 10 波 · 裂隙核心</h3>
+          <p>在哨兵的基础上追加「激光扫射」：先亮 1.2 秒预警线，再横扫 0.9 秒。护卫升级为追猎者与哨塔的组合。</p>
+          <div class="keyline">
+            <div><span>弹幕发数</span><b>+60%</b></div>
+            <div><span>开火冷却</span><b>−25%</b></div>
+            <div><span>预警时间</span><b>1.2 秒（固定）</b></div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>第 15 波起 · 递归</h3>
+          <p>每 5 波一个 Boss，HP 与弹速递归放大，名号按「裂隙核心 · 迭代 N」递进——你的成长曲线会在数字上被“偿还”。</p>
+          <div class="keyline">
+            <div><span>每轮 HP</span><b>+55%</b></div>
+            <div><span>每轮弹速</span><b>+8%</b></div>
+            <div><span>阶段阈值</span><b>逐轮提高</b></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="fair">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>为 什 么 不 会 「 莫 名 死 亡 」</h2>
+        <p>弹幕游戏的挫败感几乎全部来自「看不清」和「没反应过来」。这几条是在设计阶段就写进需求的硬约束。</p>
+      </div>
+      <ul class="promise">
+        <li><b>色 彩 分 离</b><span>敌弹一律用高饱和暖色（粉 / 橙 / 黄），玩家弹一律用冷色（青 / 蓝），两套语义不重叠。你的舰体永远带 6px 光晕和引擎尾焰，在最密的弹幕里也能一眼锁定。</span></li>
+        <li><b>开 火 预 警</b><span>所有会打你的敌人（炮手、哨塔）开火前都有 0.45 秒的炮口充能闪光；Boss 每次切阶段有 0.8 秒核心变色。整个游戏不存在无预警的瞬发伤害。</span></li>
+        <li><b>受 击 反 馈</b><span>被击中后有 0.9 秒无敌闪烁 + 屏幕红闪 + 轻微震动，屏幕震动上限锁在 14px，不会干扰你继续读弹幕。</span></li>
+        <li><b>拾 取 物 分 类</b><span>青=经验、红=生命、蓝=护盾、黄=核弹。经验晶体带拖尾与吸附加速，永远不会被误认成敌弹。</span></li>
+        <li><b>呼 吸 窗</b><span>每波结束有 1.6 秒喘息：所有经验自动吸附、轻微回血（每 3 波 +8%），并播放清波横幅。紧绷之后总有一个能松口气的地方。</span></li>
+      </ul>
+      <p class="fineprint">
+        这款游戏是纯离线的单局竞技玩法，不含排行榜、不含社交、不采集任何数据，本机只记一个历史最高分。<br>
+        完整条款（含知识产权、免责、未成年人保护与联系方式）见 <a href="notice.html">《网站声明》</a>。
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="rogue/">现 在 就 开 一 局</a>
+        <a class="btn ghost" href="./">返 回 游 戏 大 厅</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot-grid">
+    <span>游戏大厅 · GAME HALL</span>
+    <a href="rogue/">开始战斗</a>
+    <a href="xiuxian.html">修仙模拟器</a>
+    <a href="index.html#notice">站点声明</a>
+    <a href="notice.html">网站声明</a>
+    <a href="index.html#faq">常见问题</a>
+    <a href="https://github.com/shiyi7789/xiuxianmoni" target="_blank" rel="noopener">源码仓库 ↗</a>
+    <span class="push muted">不盈利 · 无广告 · 免费游玩　|　版本 <span id="verText">2026.09.16-2118</span></span>
+    <div class="foot-note muted">
+      <p>本作为个人兴趣作品，非商业运营。游戏内容均为虚构，请合理安排游戏时间；未成年人请在监护人指导下使用。</p>
+    </div>
+  </div>
+</footer>
+
+<div class="upd" id="updBar" hidden role="status" aria-live="polite">
+  <span>发现新版本 <b id="updVer"></b>，刷新即可载入</span>
+  <button type="button" id="updBtn">刷 新</button>
+</div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

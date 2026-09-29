@@ -15,6 +15,8 @@ import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
 import { usePill } from './pills.js';
 import { advance } from './time.js';
+import { audioZone } from '../audio/core.js';
+import { audioPlay } from '../audio/events.js';
 import { after, renderAll } from '../ui/render.js';
 
 
@@ -54,6 +56,9 @@ export function startFight(m, ctx){
     debuff: { freeze:0, burn:0, burnPct:0 }
   };
   S.fightPillN = 0;
+  /* 战斗即进入洞窟混响区（场景混响见 音频设计.md §5） */
+  audioZone('cave');
+  audioPlay(m.boss ? 'dg.boss' : 'combat.hit.heavy');
   addSep();
   addLog('【'+m.name+'】出现在你面前——'+TIER_NAME[m.tier]+'，气血 '+num(m.hpMax)+'。','dmg');
   codexUnlockMon(m.name);          /* 图鉴：遭遇即收录 */
@@ -126,6 +131,7 @@ export function fightAction(kind, skIdx){
     const rec = Math.round(st.mpMax*0.14);
     S.mp = Math.min(st.mpMax, S.mp + rec);
     addLog('你掐诀布下护体灵光，静待其势。（灵力 +'+rec+'）','sys');
+    audioPlay('combat.defend');
     monsterTurn();
     after(); return;
   }
@@ -133,6 +139,7 @@ export function fightAction(kind, skIdx){
   if(kind === 'flee'){
     if(m.boss){ toast('妖王当前，无从遁走'); return; }
     const fc = Math.min(94, 58 + st.speed*0.8);
+    audioPlay('combat.flee');
     if(chance(fc)){
       addLog('你脚下一错，踏罡步斗，身形暴退数十丈——脱身了。'
         + (st.speed ? '（坐骑遁速 +'+st.speed+'%）' : ''),'sys');
@@ -157,6 +164,7 @@ export function fightAction(kind, skIdx){
   m.hp -= d;
   addLog('你'+(kind==='skill' ? '催动灵力，一道灵光斩落' : '挥动法器直取')+'——'
     + (r.crit?'<b>暴击！</b>':'') + '造成 '+num(d)+' 点伤害。', r.crit?'epic':'dmg');
+  audioPlay((r.crit || kind === 'skill') ? 'combat.hit.heavy' : 'combat.hit');
 
   if(m.hp <= 0){ winFight(); after(); return; }
   monsterTurn();
@@ -183,6 +191,8 @@ export function castSkill(arg){
 
   const m = c.m;
   const fx = sk.fx || {};
+  /* 元素映射：灼烧→火、冰封→冰、破防→雷、吸血→血、其余（虚空/反噬/护体）→虚空 */
+  audioPlay('combat.skill.' + (fx.burn ? 'fire' : fx.freeze ? 'ice' : fx.pierce ? 'thunder' : fx.life ? 'blood' : 'void'));
   const defUse = m.def * (1 - (fx.pierce || 0));
   const critUse = st.crit + (fx.crit || 0);
 
@@ -257,6 +267,7 @@ export function monsterTurn(){
   /* 虚空：完全闪避 */
   if(c.buff.dodge > 0){
     addLog('你的身形在虚空与现世之间闪烁，'+m.name+'扑了个空。','gain');
+    audioPlay('combat.skill.void');
     c.buff.dodgeDur--;
     if(c.buff.dodgeDur <= 0) c.buff.dodge = 0;
     c.turn++;
@@ -268,6 +279,7 @@ export function monsterTurn(){
     const raw = dmgRoll(m.atk, st.def, m.crit, 1);
     dmg = Math.max(1, Math.round(raw.d*0.32));
     addLog(m.name+'猛扑而来，被护体灵光卸去大半力道，你仍受 '+num(dmg)+' 点伤害。','sys');
+    audioPlay('combat.hurt', { gain:0.7 });
     c.defend = false;
   }else{
     const r = dmgRoll(m.atk, st.def, m.crit, 1);
@@ -287,6 +299,7 @@ export function monsterTurn(){
     }
     S.hp -= dmg;
     addLog(m.name+(r.crit?'狞笑一声，一击命中要害':'扑上来撕咬')+'——你受 '+num(dmg)+' 点伤害'+tail+'。','dmg');
+    audioPlay('combat.hurt');
     if(S.hp <= 0){ loseFight(); return; }
     c.turn++;
     return;
@@ -296,6 +309,7 @@ export function monsterTurn(){
   if(c.debuff.freeze > 0) dmg = Math.max(1, Math.round(dmg * 0.5));
   if(c.buff.shield > 0) dmg = Math.max(1, dmg - Math.round(dmg * c.buff.shield));
   S.hp -= dmg;
+  audioPlay('combat.hurt', { gain:0.7 });
   if(S.hp <= 0){ loseFight(); return; }
   c.turn++;
 }
@@ -308,6 +322,8 @@ export function winFight(){
   const c = S.combat;
   const m = c.m;
   S.kills++;
+  audioPlay('combat.win');
+  audioZone('open');
   if(m.boss) S.stat.boss++;
   addLog('【'+m.name+'】发出一声哀鸣，轰然倒地。','epic');
   gainExp(m.exp);
@@ -362,6 +378,8 @@ export function endFight(outcome){
 export function playerDefeated(){
   S.combat = null;
   S.deaths++;
+  audioPlay('combat.lose');
+  audioZone('open');
   const lose = Math.floor(S.exp * 0.25);
   S.exp = Math.max(0, S.exp - lose);
   advance(3);

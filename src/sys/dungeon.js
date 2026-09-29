@@ -12,6 +12,8 @@ import { gfGrant, gfRollDrop } from './gongfa.js';
 import { addLog, addSep, toast } from './log.js';
 import { rollMount } from './mount.js';
 import { advance, travelDays } from './time.js';
+import { audioParam, audioZone } from '../audio/core.js';
+import { audioPlay } from '../audio/events.js';
 import { after, renderAll } from '../ui/render.js';
 import { fbDungeon } from '../ui/feedback.js';
 
@@ -25,6 +27,9 @@ export function enterSecret(si){
   if(S.level < d.min){ toast('境界不足，需 '+realmAt(d.min).name); return; }
   if(S.mp < d.mp){ toast('灵力不足，需 '+num(d.mp)); return; }
   S.mp -= d.mp;
+  audioZone('cave');                       /* 进入洞窟混响区 */
+  audioParam('depth', 0);
+  audioPlay('dg.enter');
   advance(travelDays(d.days));
   S.dungeon = { idx:si, floor:1, total:d.floors, searched:false, gained:0, items:0 };
   addSep();
@@ -52,7 +57,7 @@ export function dungeonSearch(){
   d.searched = true;
   const def = SECRETS[d.idx];
   const r = Math.random()*100;
-
+  audioPlay(r < 76 ? 'dg.search.ok' : 'dg.search.bad');
   if(r < 34){
     const s = fortStone(Math.round((30 + def.tier*70) * (1 + S.level*0.35) * rf(0.8,1.3)));
     S.stones += s; d.gained += s; S.stat.stones += s;
@@ -91,6 +96,8 @@ export function dungeonForward(){
   gainExp(e);
   d.floor++;
   d.searched = false;
+  audioParam('depth', d.floor / Math.max(1, d.total));
+  audioPlay('dg.floor');
   advance(1);
   /* 每层保底：走一趟总有点收获（与既有分支并行，不改动它们） */
   const got = rollSearchMats(def.tier);
@@ -116,6 +123,8 @@ export function dungeonBoss(){
 export function completeDungeon(){
   const d = S.dungeon;
   const def = SECRETS[d.idx];
+  audioZone('open');                 /* 离开洞窟：混响回到开阔 */
+  audioParam('depth', 0);
   addSep();
   addLog('═══ 「'+def.name+'」 已 被 贯 通 ═══','epic');
   const e = Math.floor(expNeed(S.level) * (0.9 + def.tier*0.35));
@@ -165,5 +174,7 @@ export function dungeonLeave(){
   if(!d) return;
   addLog('你见好就收，循原路退出「'+SECRETS[d.idx].name+'」。','sys');
   S.dungeon = null;
+  audioZone('open');
+  audioParam('depth', 0);
   after();
 }
