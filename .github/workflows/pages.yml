@@ -1,6 +1,11 @@
 name: Deploy site to GitHub Pages
 
 # 触发：main 分支上 site/ 或本工作流有改动时
+#
+# ⚠ Pages 是「备选发布通道」，生产走 Vercel（见根目录 vercel.json）。
+#   若仓库没在 Settings → Pages 里把 Source 设成 GitHub Actions，preflight 会判定
+#   「未启用」并整体跳过（成功态），不再每次推送都报红。
+#   真要切到 Pages：改完 Source 后重跑本工作流即可，无需改文件。
 on:
   push:
     branches: [main]
@@ -20,8 +25,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  preflight:
+    name: 检查 Pages 是否已启用
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.probe.outputs.enabled }}
+    steps:
+      - name: 探测 Pages 配置
+        id: probe
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/pages")
+          if [ "$code" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Pages 已启用，继续发布"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=已跳过 Pages 发布::仓库未启用 GitHub Pages（API 返回 $code）。站点由 Vercel 发布；若确实要用 Pages，请到 Settings → Pages 把 Source 设为 GitHub Actions 后重跑本工作流。"
+          fi
+
   build:
     name: 打包 site/
+    needs: preflight
+    if: needs.preflight.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
