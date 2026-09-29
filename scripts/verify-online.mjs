@@ -139,6 +139,11 @@ async function main() {
   chk('version.json 缓存头 = no-store', /no-store/.test(vCC), vCC);
   const csp = xi.headers.get('content-security-policy') || '';
   chk('CSP 存在且限制 default-src', /default-src/.test(csp), csp ? csp.slice(0, 42) + '…' : '缺失');
+  /* 线上必须确认这一条：rogue 页的 subpathBase 兜底靠注入 <base> 实现，而 base-uri 'none'
+     会让浏览器把 <base> 静默丢弃（只在 console 留一条 violation）→ 兜底变摆设。
+     本地站自检只能证明仓库里写对了，证明不了平台真把它发出去了，所以必须在线断言。 */
+  chk("CSP 允许同源 <base>（base-uri 'self'，rogue 兜底依赖）", /base-uri 'self'/.test(csp),
+    csp ? "base-uri=" + (csp.match(/base-uri ([^;]+)/) || [, '缺失'])[1] : 'CSP 缺失');
   chk('X-Content-Type-Options: nosniff', xi.headers.get('x-content-type-options') === 'nosniff', String(xi.headers.get('x-content-type-options')));
   chk('X-Frame-Options 已设置', !!xi.headers.get('x-frame-options'), String(xi.headers.get('x-frame-options')));
   const cssH = (await get('/assets/site.css')).headers;
