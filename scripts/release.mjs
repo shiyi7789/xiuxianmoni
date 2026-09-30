@@ -62,13 +62,26 @@ function walk(dir, base = dir, out = []) {
 }
 
 /* 目录镜像：全量覆盖 + 删除目标端多余文件 + 清理空目录（保证站点与源码严格一致） */
+/* ---------------------------------------------------------
+   统一按 LF 写盘
+   ---------------------------------------------------------
+   Windows 工作树里是 CRLF，而 git blob / CI 检出 / Vercel 部署用的都是 LF。
+   直接用 copyFileSync 会把 CRLF 一起镜像过去，导致 version.json 里记的体积与指纹
+   **只在 Windows 上成立** —— CI 的 verify-site 会报「rogue 目录指纹与磁盘一致」失败
+   （实测差 5291 B，正好等于行数）。归一化后：本地磁盘 == git blob == 线上字节。 */
+function writeLF(from, to) {
+  const buf = readFileSync(from);
+  if (buf.includes(0)) { writeFileSync(to, buf); return; }   // 二进制原样
+  writeFileSync(to, buf.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
+}
+
 function mirror(src, dst, skip) {
   const files = walk(src).filter(f => !skip.has(f.split('/')[0]));
   const added = [], removed = [];
   for (const rel of files) {
     const from = join(src, rel), to = join(dst, rel);
     mkdirSync(dirname(to), { recursive: true });
-    copyFileSync(from, to);
+    writeLF(from, to);
     added.push(rel);
   }
   if (existsSync(dst)) {
@@ -115,7 +128,7 @@ say('0) 已构建 ' + (buildOut.trim().split('\n')[0] || 'xiuxian.html'));
 if (!existsSync(SRC)) { say('✗ 找不到游戏源文件：' + SRC); process.exit(1); }
 
 /* ---------- 1) 同步修仙模拟器 ---------- */
-copyFileSync(SRC, GAME);
+writeLF(SRC, GAME);
 const xiuxianBuf = readFileSync(GAME);
 const xiuxianSize = xiuxianBuf.length;
 const xiuxianSha = sha256(xiuxianBuf);

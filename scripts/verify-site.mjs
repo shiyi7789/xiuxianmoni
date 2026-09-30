@@ -100,8 +100,19 @@ chk('version.json 可解析且含 v/build/note', !!(ver && ver.v && ver.build), 
 chk('version.json 声明站点入口为 index.html', !!(ver && ver.site === 'index.html'), ver ? String(ver.site) : '');
 chk('version.json 声明两款游戏', !!(ver && Array.isArray(ver.games) && ver.games.length === 2), ver && ver.games ? ver.games.map(g => g.id).join(' + ') : '缺失');
 chk('version.json 保留向后兼容字段 game/gameBytes/gameSha256', !!(ver && ver.game && ver.gameBytes && ver.gameSha256), ver ? String(ver.game) : '');
+/* ---------------------------------------------------------
+   文本按 LF 归一化后再计量
+   ---------------------------------------------------------
+   Windows 工作树里是 CRLF，而 git blob / CI 检出 / Vercel 部署用的都是 LF。
+   release.mjs 现在也按 LF 写盘，所以这里必须同样归一化 ——
+   否则「本地磁盘 == git blob == 线上字节」这条不变量在 Windows 上永远假失败。
+   --------------------------------------------------------- */
+const lfBuf = (b) => (b.includes(0) ? b : Buffer.from(b.toString('utf8').replace(/\r\n/g, '\n'), 'utf8'));
+const pairsSha = (pairs) => sha256(Buffer.from(pairs.map(p => p[0] + ':' + sha256(lfBuf(p[1]))).sort().join('\n'), 'utf8'));
+const pairsBytes = (pairs) => pairs.reduce((n, p) => n + lfBuf(p[1]).length, 0);
+
 const xiuxianBuf = readFileSync(sf('xiuxian.html'));
-const xiuxianSha = sha256(xiuxianBuf);
+const xiuxianSha = sha256(lfBuf(xiuxianBuf));
 chk('xiuxian 字节数与磁盘一致', ver && ver.gameBytes === xiuxianBuf.length, (ver ? ver.gameBytes : '?') + ' B vs ' + xiuxianBuf.length + ' B');
 chk('xiuxian sha256 与磁盘一致', ver && ver.gameSha256 === xiuxianSha, (ver ? ver.gameSha256 : '?').slice(0, 12) + ' vs ' + xiuxianSha.slice(0, 12));
 
@@ -115,18 +126,18 @@ function walk(dir, base = dir, acc = []) {
   return acc;
 }
 const roguePairs = walk(sf('rogue'));
-const rogueSha = sha256(Buffer.from(roguePairs.map(p => p[0] + ':' + sha256(p[1])).sort().join('\n'), 'utf8'));
-const rogueBytes = roguePairs.reduce((n, p) => n + p[1].length, 0);
+const rogueSha = pairsSha(roguePairs);
+const rogueBytes = pairsBytes(roguePairs);
 const gRogue = ver && Array.isArray(ver.games) ? ver.games.find(g => g.id === 'rogue') : null;
 chk('rogue 目录指纹与磁盘一致', !!gRogue && gRogue.sha256 === rogueSha, gRogue ? gRogue.sha256.slice(0, 12) + ' vs ' + rogueSha.slice(0, 12) : '缺失');
 chk('rogue 字节数与磁盘一致', !!gRogue && gRogue.bytes === rogueBytes, (gRogue ? gRogue.bytes : '?') + ' B vs ' + rogueBytes + ' B');
-chk('游戏总体积已记录（两位相加）', !!ver && ver.totalGameBytes === xiuxianBuf.length + rogueBytes, ver ? ver.totalGameBytes + ' B' : '');
+chk('游戏总体积已记录（两位相加）', !!ver && ver.totalGameBytes === lfBuf(xiuxianBuf).length + rogueBytes, ver ? ver.totalGameBytes + ' B' : '');
 /* 站点副本必须等于源码：这是最容易断的一环（改了 xiuxian.html / games/ 却没有跑 release.mjs） */
-const srcSha = sha256(readFileSync(join(root, 'xiuxian.html')));
+const srcSha = sha256(lfBuf(readFileSync(join(root, 'xiuxian.html'))));
 chk('site/xiuxian.html 与构建产物一致（release.mjs 已执行）', srcSha === xiuxianSha,
   srcSha === xiuxianSha ? 'sha 一致' : '不一致：请先运行 node scripts/release.mjs "说明"');
 const rogueSrc = walk(join(root, 'games', 'thunder-rogue')).filter(p => !/^(test|shots)\//.test(p[0]) && p[0] !== '关卡设计文档.md');
-const rogueSrcSha = sha256(Buffer.from(rogueSrc.map(p => p[0] + ':' + sha256(p[1])).sort().join('\n'), 'utf8'));
+const rogueSrcSha = pairsSha(rogueSrc);
 chk('site/rogue/ 与 games/thunder-rogue/ 一致（release.mjs 已执行）', rogueSrcSha === rogueSha,
   rogueSrcSha === rogueSha ? '指纹一致' : '不一致：请先运行 node scripts/release.mjs "说明"');
 chk('大厅已内联当前版本号', bodies['/'].text.indexOf(ver ? ver.v : '@@') >= 0, ver ? ver.v : '');

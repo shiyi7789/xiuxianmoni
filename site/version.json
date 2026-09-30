@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.30-1837",
-  "build": "20260930-183703",
+  "v": "2026.09.30-1843",
+  "build": "20260930-184358",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 699078,
+  "totalGameBytes": 693787,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 319549,
-      "sha256": "7fb99fe11098336d73281a387505ca8ee00bc163364b20d383cf75e10926fc46",
+      "bytes": 314258,
+      "sha256": "08597ecf34c40d2261dbb100b2671594ad55b410f404d2d364a7f277504396f3",
       "files": 9
     }
   ],
-  "note": "rogue v3：无尽五阶阶梯 + 品质曲线标定 + 6 张新史诗卡 + 刷新改版",
-  "time": "2026-09-30T18:37:03.914+08:00"
+  "note": "修 release 的 CRLF/LF 计量：version.json 体积与指纹改为平台无关（修 CI 长期红）",
+  "time": "2026-09-30T18:43:58.573+08:00"
 }
