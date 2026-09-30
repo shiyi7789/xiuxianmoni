@@ -307,9 +307,13 @@ const driver = `
   }
 
   const failed = results.filter(r => !r.pass);
-  console.log(JSON.stringify({ ok: failed.length === 0, total: results.length, failed: failed.length, results }, null, 1));
+  const __RES = { ok: failed.length === 0, total: results.length, failed: failed.length, results };
+  console.log(JSON.stringify(__RES, null, 1));
+  return __RES;
 })();
 `;
 
 const script = new vm.Script(src + '\n' + driver, { filename: 'elements-test.js' });
-script.runInContext(sandbox, { timeout: 120000 });
+const __out = script.runInContext(sandbox, { timeout: 120000 });
+/* 失败必须以非零码退出 */
+if (!__out || !__out.ok) process.exitCode = 1;

@@ -42,6 +42,25 @@ jobs:
       - name: 站点自检（HTTP / SEO / a11y / 性能 / 链接 / 版式 / 部署配置）
         run: node scripts/verify-site.mjs
 
+      # ---- 星际裂隙（games/thunder-rogue/）自带的无头自检 ----
+      # test/ 已被 release.mjs 的 ROGUE_SKIP 排除，不会进 site/，只用于守源码
+      - name: 星际裂隙 · 无头冒烟（30k 帧）
+        run: node test/smoke.js
+        working-directory: games/thunder-rogue
+
+      - name: 星际裂隙 · 元素系统测试
+        run: node test/elements.js
+        working-directory: games/thunder-rogue
+
+      - name: 星际裂隙 · 音频层测试
+        run: node test/audio.js
+        working-directory: games/thunder-rogue
+
+      # 渲染回归：常规自检管"能不能跑、数值对不对"，这条管"跑得顺不顺"
+      - name: 星际裂隙 · 渲染性能回归（overdraw 闸门）
+        run: node test/perf.js --assert
+        working-directory: games/thunder-rogue
+
       - name: 失败时保留测试输出
         if: failure()
         uses: actions/upload-artifact@v4

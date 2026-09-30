@@ -76,6 +76,7 @@ class AudioContextStub {
 
 /* ---------------- 沙箱 ---------------- */
 const sandbox = {
+  __PROC: process,
   console, Math, Date, JSON, Number, String, Array, Object, Set, Map, Error,
   isFinite, isNaN, parseInt, parseFloat, Boolean, Proxy, Reflect, Promise, Symbol,
   setTimeout, clearTimeout, setInterval, clearInterval, setImmediate,
@@ -164,6 +165,8 @@ function finish() {
       nodes: __ST,
       final: SFX.debug(),
     }, null, 1));
+    /* 失败必须以非零码退出；异步回调里只能用宿主 process */
+    if (R.errors.length) __PROC.exitCode = 1;
   }, 60);
 }
 

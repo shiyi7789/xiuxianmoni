@@ -309,10 +309,14 @@ const driver = `
   REPORT.rxMissing = REACTIONS.filter(r => !REPORT.rxCount[r.name]).map(r => r.name);
   // 用埋点累加（G.rxTotal 会被重开一局清零，跨局不可比）
   REPORT.rxTotal = Object.keys(REPORT.rxCount).reduce((a, k) => a + REPORT.rxCount[k], 0);
-  console.log(JSON.stringify({ ok: REPORT.errors.length === 0, ...REPORT }, null, 1));
+  const __RES = { ok: REPORT.errors.length === 0, ...REPORT };
+  console.log(JSON.stringify(__RES, null, 1));
+  return __RES;
 })();
 `;
 
 const src = FILES.map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n');
 const script = new vm.Script(src + '\n' + driver, { filename: 'bundle.js' });
-script.runInContext(sandbox, { timeout: 240000 });
+const __out = script.runInContext(sandbox, { timeout: 240000 });
+/* 失败必须以非零码退出，否则接进 CI 也只是个永远绿的摆设 */
+if (!__out || !__out.ok) process.exitCode = 1;
