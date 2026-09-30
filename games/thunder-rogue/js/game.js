@@ -76,7 +76,12 @@ window.addEventListener('resize', resize);
 /* ---------------------------------------------------------
    背景（星空 + 星云）
    --------------------------------------------------------- */
+const BG_BASE    = '#04060d';   // 全屏底色（在 render() 里一次画满，兼作清屏）
+const STAR_C_LO  = '#9fd8ff';   // 近/中景星点颜色
+const STAR_C_HI  = '#bff4ff';   // 远景星点颜色
 const stars = [];
+const starsLo = [];             // z < 2：与 stars 共享对象引用，不复制
+const starsHi = [];             // z == 2
 function initStars() {
   stars.length = 0;
   for (let i = 0; i < 190; i++) {
@@ -90,54 +95,70 @@ function initStars() {
       tw: rand(TAU),
     });
   }
+  /* 按图层分组：绘制时 fillStyle 每层只设一次，闪烁用 globalAlpha 数字表达，
+     避免每颗星每帧拼一次 rgba() 字符串（原先 190 次/帧） */
+  starsLo.length = 0; starsHi.length = 0;
+  for (const s of stars) (s.z === 2 ? starsHi : starsLo).push(s);
 }
 let nebula = null;
-function buildNebula() {
-  nebula = document.createElement('canvas');
-  nebula.width = W; nebula.height = H;
-  const g = nebula.getContext('2d');
-  const colors = ['#1b3a6b', '#3a1b5e', '#0d3a44', '#4a1a3a', '#1a2f5e'];
-  for (let i = 0; i < 16; i++) {
-    const x = rand(W), y = rand(H), r = rand(320, 120);
-    const grd = g.createRadialGradient(x, y, 0, x, y, r);
-    const c = pick(colors);
-    grd.addColorStop(0, rgba(c, 0.5));
-    grd.addColorStop(1, rgba(c, 0));
+/* 把星云内容画到 (0, yOff) 起的一屏高度内 */
+function paintNebula(g, yOff, blobs) {
+  for (const b of blobs) {
+    const grd = g.createRadialGradient(b.x, b.y + yOff, 0, b.x, b.y + yOff, b.r);
+    grd.addColorStop(0, rgba(b.c, 0.5));
+    grd.addColorStop(1, rgba(b.c, 0));
     g.fillStyle = grd;
-    g.fillRect(x - r, y - r, r * 2, r * 2);
+    g.fillRect(b.x - b.r, b.y + yOff - b.r, b.r * 2, b.r * 2);
   }
   // 网格地平线，增加"空间站"工业感
   g.strokeStyle = 'rgba(126,249,255,.05)';
   g.lineWidth = 1;
-  for (let x = 0; x <= W; x += 45) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
-  for (let y = 0; y <= H; y += 45) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  for (let x = 0; x <= W; x += 45) { g.beginPath(); g.moveTo(x, yOff); g.lineTo(x, yOff + H); g.stroke(); }
+  for (let y = 0; y <= H; y += 45) { g.beginPath(); g.moveTo(0, y + yOff); g.lineTo(W, y + yOff); g.stroke(); }
+}
+function buildNebula() {
+  const colors = ['#1b3a6b', '#3a1b5e', '#0d3a44', '#4a1a3a', '#1a2f5e'];
+  // 先抽参数，再画两遍 —— 保证随机数消耗顺序与原实现完全一致（可复现）
+  const blobs = [];
+  for (let i = 0; i < 16; i++) {
+    const x = rand(W), y = rand(H), r = rand(320, 120), c = pick(colors);
+    blobs.push({ x, y, r, c });
+  }
+  /* 做成 2 倍高、垂直平铺两份的纹理：滚动时每帧只需 1 次 drawImage 按可见带取样，
+     而原先是两张 540x960 各贴一次（每张一半在屏外被裁掉，纯浪费一次全屏贴图调用） */
+  nebula = document.createElement('canvas');
+  nebula.width = W; nebula.height = H * 2;
+  const g = nebula.getContext('2d');
+  paintNebula(g, 0, blobs);
+  paintNebula(g, H, blobs);
 }
 
 let bgScroll = 0;
 function drawBackground(dt) {
-  ctx.fillStyle = '#04060d';
-  ctx.fillRect(0, 0, W, H);
-
   bgScroll = (bgScroll + dt * 26) % H;
+  /* 滚动星云：2 倍高纹理按可见带取样，1 次 drawImage 覆盖整屏
+     （原先是两张 540x960 各贴 1 次，每张一半在屏外被裁掉 → 白付一次全屏贴图调用） */
   ctx.globalAlpha = 0.85;
-  ctx.drawImage(nebula, 0, bgScroll - H);
-  ctx.drawImage(nebula, 0, bgScroll);
+  ctx.drawImage(nebula, 0, bgScroll, W, H, 0, 0, W, H);
   ctx.globalAlpha = 1;
 
-  // 星点
+  // 星点：先推进运动（保持与原实现相同的 rand 消耗顺序），再按图层分组绘制
   for (const s of stars) {
     s.y += s.spd * dt * (G.timeScale || 1);
     s.tw += dt * 3;
     if (s.y > H + 4) { s.y = -4; s.x = rand(W); }
-    const a = s.a * (0.75 + Math.sin(s.tw) * 0.25);
-    if (s.z === 2) {
-      ctx.fillStyle = rgba('#bff4ff', a);
-      ctx.fillRect(s.x, s.y, s.r, s.r * 2.6);
-    } else {
-      ctx.fillStyle = rgba('#9fd8ff', a);
-      ctx.fillRect(s.x, s.y, s.r, s.r);
-    }
   }
+  ctx.fillStyle = STAR_C_LO;
+  for (const s of starsLo) {
+    ctx.globalAlpha = s.a * (0.75 + Math.sin(s.tw) * 0.25);
+    ctx.fillRect(s.x, s.y, s.r, s.r);
+  }
+  ctx.fillStyle = STAR_C_HI;
+  for (const s of starsHi) {
+    ctx.globalAlpha = s.a * (0.75 + Math.sin(s.tw) * 0.25);
+    ctx.fillRect(s.x, s.y, s.r, s.r * 2.6);
+  }
+  ctx.globalAlpha = 1;
 
   // 顶部危险渐隐
   const g2 = ctx.createLinearGradient(0, 0, 0, 150);
@@ -598,16 +619,12 @@ function updateWorld(dt) {
     if (e.isBoss) updateBoss(G, e, wdt);
     else updateEnemy(G, e, wdt);
   }
-  G.enemies = G.enemies.filter(e => {
-    if (e.dead) return false;
+  G.enemies = compact(G.enemies, e =>
+    e.dead ||
     // 数值守卫：任何因极端组合导致状态异常的敌人直接回收，避免出现无法击杀的幽灵单位
-    if (!isFinite(e.x) || !isFinite(e.y) || !isFinite(e.hp)) return false;
-    if (!e.isBoss && (e.y > H + 90 || e.x < -160 || e.x > W + 160)) {
-      // 逃出屏幕的敌人：不惩罚，直接回收（保持波次推进）
-      return false;
-    }
-    return true;
-  });
+    !isFinite(e.x) || !isFinite(e.y) || !isFinite(e.hp) ||
+    // 逃出屏幕的敌人：不惩罚，直接回收（保持波次推进）
+    (!e.isBoss && (e.y > H + 90 || e.x < -160 || e.x > W + 160)));
 
   /* ---- v2：元素状态统一 tick（0.12s 分批 24；含冻结倒计时与满层触发） ---- */
   elemTick(G, wdt);
@@ -635,11 +652,11 @@ function updateWorld(dt) {
           size: 4.6, color: '#A6E84D', kind: 'smoke' });
       }
     }
-    G.fogs = G.fogs.filter(f => f.life > 0);
+    G.fogs = compact(G.fogs, f => !(f.life > 0));
   }
   /* ---- v2：折射光束 / 贯穿残痕的淡出 ---- */
-  if (G.refracts.length) G.refracts = G.refracts.filter(w => (w.life -= wdt) > 0);
-  if (G.wakes.length) G.wakes = G.wakes.filter(w => (w.life -= wdt) > 0);
+  if (G.refracts.length) G.refracts = compact(G.refracts, w => !((w.life -= wdt) > 0));
+  if (G.wakes.length) G.wakes = compact(G.wakes, w => !((w.life -= wdt) > 0));
 
   // 玩家子弹
   for (const b of G.pBullets) {
@@ -713,7 +730,7 @@ function updateWorld(dt) {
         life: 0.45, max: 0.45, size: 3.4, color: '#8f9bff', kind: 'spark' });
     }
   }
-  G.holes = G.holes.filter(h => h.life > 0);
+  G.holes = compact(G.holes, h => !(h.life > 0));
 
   // 敌弹
   for (const b of G.eBullets) {
@@ -851,9 +868,9 @@ function updateWorld(dt) {
   }
 
   // 清理
-  G.pBullets = G.pBullets.filter(b => b.life > 0 && !offscreen(b, 120));
-  G.eBullets = G.eBullets.filter(b => !b.dead && b.life > 0 && !offscreen(b, 80));
-  G.zaps = G.zaps.filter(z => (z.life -= wdt) > 0);
+  G.pBullets = compact(G.pBullets, b => !(b.life > 0 && !offscreen(b, 120)));
+  G.eBullets = compact(G.eBullets, b => !(!b.dead && b.life > 0 && !offscreen(b, 80)));
+  G.zaps = compact(G.zaps, z => !((z.life -= wdt) > 0));
 
   // 经验晶体
   for (const o of G.orbs) {
@@ -886,7 +903,7 @@ function updateWorld(dt) {
       }
     }
   }
-  G.orbs = G.orbs.filter(o => !o.dead && o.life > 0);
+  G.orbs = compact(G.orbs, o => !(!o.dead && o.life > 0));
 
   // 掉落物
   for (const k of G.pickups) {
@@ -917,7 +934,7 @@ function updateWorld(dt) {
       }
     }
   }
-  G.pickups = G.pickups.filter(k => !k.dead && k.y < H + 40);
+  G.pickups = compact(G.pickups, k => !(!k.dead && k.y < H + 40));
 
   // 粒子 / 文本
   updateFX(dt);
@@ -938,11 +955,11 @@ function updateFX(dt) {
     if (q.kind === 'spark') { q.vx *= Math.pow(0.12, dt); q.vy *= Math.pow(0.12, dt); }
     if (q.kind === 'smoke') { q.vx *= Math.pow(0.3, dt); q.vy *= Math.pow(0.3, dt); }
   }
-  G.particles = G.particles.filter(q => q.life > 0);
+  G.particles = compact(G.particles, q => !(q.life > 0));
   if (G.particles.length > 720) G.particles.splice(0, G.particles.length - 720);
 
   for (const tx of G.texts) { tx.life -= dt; tx.y += tx.vy * dt; tx.vy *= Math.pow(0.2, dt); }
-  G.texts = G.texts.filter(t => t.life > 0);
+  G.texts = compact(G.texts, t => !(t.life > 0));
 }
 
 /* ---------------------------------------------------------
@@ -1514,33 +1531,70 @@ function drawWorld() {
   ctx.restore();
 }
 
-function drawVignette() {
-  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.72);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(1, 'rgba(0,0,0,.58)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
+/* ---------------------------------------------------------
+   后处理合成层
+   所有"全场叠加"效果（暗角 / 低血红晕 / 时缓色偏 / 共鸣色偏）统一合成到
+   一张 1/4 分辨率的离屏画布，最后一次性放大贴回主画布。
+   目的：让后处理成本与后处理层数解耦 —— 加第 2/3/4 层的边际成本只有 1/16 屏。
+   --------------------------------------------------------- */
+const FX_SC = 0.25;
+const FX_W = Math.round(W * FX_SC), FX_H = Math.round(H * FX_SC);
+let fxCanvas = null, fxCtx = null, vigTex = null, vigRedTex = null;
 
-  if (G.player && G.player.hp / G.player.maxHp < 0.35 && G.state === 'playing') {
-    const pulse = 0.10 + Math.sin(G.t * 6) * 0.05;
-    const g2 = ctx.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.62);
-    g2.addColorStop(0, 'rgba(255,0,40,0)');
-    g2.addColorStop(1, 'rgba(255,0,40,' + pulse + ')');
-    ctx.fillStyle = g2;
-    ctx.fillRect(0, 0, W, H);
+function buildFX() {
+  fxCanvas = document.createElement('canvas');
+  fxCanvas.width = FX_W; fxCanvas.height = FX_H;
+  fxCtx = fxCanvas.getContext('2d');
+
+  vigTex = document.createElement('canvas');
+  vigTex.width = FX_W; vigTex.height = FX_H;
+  const g1 = vigTex.getContext('2d');
+  const r1 = g1.createRadialGradient(FX_W / 2, FX_H / 2, FX_H * 0.32, FX_W / 2, FX_H / 2, FX_H * 0.72);
+  r1.addColorStop(0, 'rgba(0,0,0,0)');
+  r1.addColorStop(1, 'rgba(0,0,0,.58)');
+  g1.fillStyle = r1; g1.fillRect(0, 0, FX_W, FX_H);
+
+  /* 低血红晕：烘焙成"边缘全不透明"的纹理，运行时只调 globalAlpha 表达脉动 */
+  vigRedTex = document.createElement('canvas');
+  vigRedTex.width = FX_W; vigRedTex.height = FX_H;
+  const g2 = vigRedTex.getContext('2d');
+  const r2 = g2.createRadialGradient(FX_W / 2, FX_H / 2, FX_H * 0.2, FX_W / 2, FX_H / 2, FX_H * 0.62);
+  r2.addColorStop(0, 'rgba(255,0,40,0)');
+  r2.addColorStop(1, 'rgba(255,0,40,1)');
+  g2.fillStyle = r2; g2.fillRect(0, 0, FX_W, FX_H);
+}
+
+function drawVignette() {
+  if (!vigTex) buildFX();
+  const p = G.player;
+  const lowHp = !!(p && p.hp / p.maxHp < 0.35 && G.state === 'playing');
+  const slowTint = !!(p && p.slowT > 0);
+  const elemTint = !!(G.zeroSlow || G.resonateT > 0);
+  const extra = (lowHp ? 1 : 0) + (slowTint ? 1 : 0) + (elemTint ? 1 : 0);
+
+  /* 只有暗角（最常见）：直接贴缓存的 1/4 纹理放大铺满。
+     低频渐变拉伸放大视觉无损，省掉的是每帧新建一个径向渐变对象。 */
+  if (extra === 0) {
+    ctx.drawImage(vigTex, 0, 0, W, H);
+    return;
   }
-  if (G.player && G.player.slowT > 0) {
-    ctx.fillStyle = 'rgba(78,168,255,.07)';
-    ctx.fillRect(0, 0, W, H);
+
+  /* 有额外层：全部在 1/4 分辨率画布上合成（每层只花 1/16 屏），最后 1 次放大贴回。
+     Porter-Duff 的 over 满足结合律：逐层叠在这张图上再整体压上屏 == 逐层直接叠上屏。 */
+  fxCtx.globalCompositeOperation = 'source-over';
+  fxCtx.globalAlpha = 1;
+  fxCtx.clearRect(0, 0, FX_W, FX_H);
+  fxCtx.drawImage(vigTex, 0, 0);
+  if (lowHp) {
+    fxCtx.globalAlpha = 0.10 + Math.sin(G.t * 6) * 0.05;
+    fxCtx.drawImage(vigRedTex, 0, 0);
+    fxCtx.globalAlpha = 1;
   }
+  if (slowTint) { fxCtx.fillStyle = 'rgba(78,168,255,.07)'; fxCtx.fillRect(0, 0, FX_W, FX_H); }
   /* 全场敌方时缓的两次来源各给一层可读的全屏色偏（零域冰封 / 拾取共鸣） */
-  if (G.zeroSlow) {
-    ctx.fillStyle = 'rgba(127,200,255,.10)';
-    ctx.fillRect(0, 0, W, H);
-  } else if (G.resonateT > 0) {
-    ctx.fillStyle = 'rgba(217,194,255,.08)';
-    ctx.fillRect(0, 0, W, H);
-  }
+  if (G.zeroSlow) { fxCtx.fillStyle = 'rgba(127,200,255,.10)'; fxCtx.fillRect(0, 0, FX_W, FX_H); }
+  else if (G.resonateT > 0) { fxCtx.fillStyle = 'rgba(217,194,255,.08)'; fxCtx.fillRect(0, 0, FX_W, FX_H); }
+  ctx.drawImage(fxCanvas, 0, 0, W, H);
 }
 
 /* ---------------------------------------------------------
@@ -1548,7 +1602,10 @@ function drawVignette() {
    --------------------------------------------------------- */
 function render(dt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, W, H);
+  /* 一次不透明全屏填充同时完成"清屏 + 铺底"：原先是 clearRect + drawBackground 内的底色
+     各画一次全屏（纯浪费 1 个屏幕的填充量）。必须在震动平移之前画，否则边缘会露残影。 */
+  ctx.fillStyle = BG_BASE;
+  ctx.fillRect(0, 0, W, H);
 
   const s = G.shake;
   ctx.save();
@@ -2031,6 +2088,7 @@ function loop(now) {
 function boot() {
   initStars();
   buildNebula();
+  buildFX();
   resize();
   document.getElementById('menuBest').textContent = fmt(Number(localStorage.getItem('rt_best') || 0));
   requestAnimationFrame(loop);

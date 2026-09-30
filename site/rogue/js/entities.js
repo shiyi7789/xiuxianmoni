@@ -383,7 +383,7 @@ function updateShards(G, dt) {
       SFX.playAt('eshoot', s.x, s.y);
     }
   }
-  G.shards = G.shards.filter(s => s.life > 0 && s.hp > 0);
+  G.shards = compact(G.shards, s => !(s.life > 0 && s.hp > 0));
 }
 
 function drawShards(ctx) {
@@ -453,7 +453,7 @@ function updateHazards(G, dt) {
       if (h.t < dt * 1.3 && dist(h, p) < h.r + p.r) hurtPlayer(h.dmg);
     }
   }
-  G.hazards = G.hazards.filter(h => h.life > 0);
+  G.hazards = compact(G.hazards, h => !(h.life > 0));
 }
 
 function drawHazards(ctx) {

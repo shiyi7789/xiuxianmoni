@@ -90,6 +90,20 @@ function sweep(arr, fn) {
   for (let i = arr.length - 1; i >= 0; i--) if (fn(arr[i], i)) arr.splice(i, 1);
 }
 
+/* ---------- 原地紧凑删除（零分配 · O(n) · 保持顺序） ----------
+   drop(item) 返回 true 表示移除。
+   用于替代每帧热路径上的 `X = X.filter(...)`：filter 的成本不在遍历，而在「每帧新建一个数组」。
+   与 filter 语义一致：drop 对每个元素恰好求值一次（含带副作用的谓词）。 */
+function compact(arr, drop) {
+  let k = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const v = arr[i];
+    if (!drop(v)) { if (k !== i) arr[k] = v; k++; }
+  }
+  arr.length = k;
+  return arr;
+}
+
 /* ---------- 加权随机 ---------- */
 function weightedPick(items, weightFn) {
   let total = 0;
