@@ -181,6 +181,10 @@ function newPlayer() {
     hp: 100, maxHp: 100, invuln: 0, hurtFlash: 0, deadT: 0,
     level: 1, xp: 0, xpNext: xpFor(1), xpMul: 1,
     rerolls: 1, taken: {}, buildLog: [], wlv: { main: 1 },
+    /* v3：刷新 / 保底 / 新卡运行时状态 */
+    epicDry: 0, metaExtraReroll: 0, rerollSeen: null,
+    pactHp: 0, growthStack: 0, growthT: 0, adaptLv: 0, adaptStacks: 0,
+    phaseLv: 0, phaseCd: 0,
     cd: { main: 0, laser: 0, spread: 0, missile: 0, drone: 0, arc: 0, boomer: 0, black: 0 },
     drones: [], droneAngle: 0,
     stats: {
@@ -255,6 +259,16 @@ function waveCleared() {
     G.banner('波次清除', false);
     SFX.play('waveover');
   }
+  /* v3 阶跃预告（设计提案 §2.6）：把"突然被打死"转换成"我知道要来什么"。
+     设计文档明确写了这一条是必需品而不是锦上添花 —— 成本只是一次 banner + 一个数据表。 */
+  {
+    const nx = G.wave + 1;
+    if (nx > 10 && nx % 10 === 1) {
+      const t = tierOf(nx);
+      G.banner('进入 第' + TIER_CN[t.t] + '阶 · ' + t.name, true);
+      G.toast('敌人密度 ×' + t.dens.toFixed(2) + '　' + t.hint);
+    }
+  }
   // 呼吸窗：吸附全部经验 + 每 3 波回血
   for (const o of G.orbs) o.mag = true;
   if (G.wave % 3 === 0) {
@@ -282,6 +296,8 @@ function hurtPlayer(amount) {
   // 弹幕伤害随波次极缓成长，保证后期压迫感（上限 1.6x）
   const waveMul = clamp(1 + (G.wave - 1) * 0.012, 1, 1.6);
   let dmg = amount * waveMul * p.stats.contactRes;
+  /* v3 适应装甲（p_adapt）：已有层数提供减伤（本次不再增层，减的是"后续"伤害） */
+  if (p.adaptLv > 0 && p.adaptStacks > 0) dmg *= (1 - 0.08 * Math.min(p.adaptStacks, p.adaptLv));
   // 护盾优先吸收
   if (p.shield > 0) {
     const absorbed = Math.min(p.shield, dmg);
@@ -293,6 +309,7 @@ function hurtPlayer(amount) {
     if (dmg <= 0) { p.invuln = 0.5; p.shieldTimer = 0; return; }
   }
   p.hp -= dmg;
+  if (p.adaptLv > 0) p.adaptStacks = Math.min(p.adaptLv, (p.adaptStacks || 0) + 1);
   p.invuln = 1.15;
   p.hurtFlash = 1;
   p.shieldTimer = 0;
@@ -409,6 +426,49 @@ function doDash() {
   }
 }
 
+/** v3 相位门（a_phase）：按 F —— 0.5 秒无敌 + 沿移动方向瞬时位移，冷却 9s（每级 −1.5s、+60 距离） */
+function doPhase() {
+  const p = G.player;
+  if (!p || G.state !== 'playing') return;
+  if (!p.phaseLv) { G.toast('需要「相位门」才能使用（F）'); return; }
+  if (p.phaseCd > 0) return;
+  let dx = 0, dy = 0;
+  if (keys['a'] || keys['arrowleft']) dx -= 1;
+  if (keys['d'] || keys['arrowright']) dx += 1;
+  if (keys['w'] || keys['arrowup']) dy -= 1;
+  if (keys['s'] || keys['arrowdown']) dy += 1;
+  if (dx === 0 && dy === 0) { dx = ptr.active ? (ptr.dx || 0) : 0; dy = ptr.active ? (ptr.dy || -1) : -1; }
+  if (dx === 0 && dy === 0) dy = -1;
+  const m = Math.hypot(dx, dy) || 1;
+  const dist = 260 + (p.phaseLv - 1) * 60;
+  const ox = p.x, oy = p.y;
+  p.x = clamp(p.x + dx / m * dist, 24, W - 24);
+  p.y = clamp(p.y + dy / m * dist, 60, H - 40);
+  p.invuln = Math.max(p.invuln, 0.5);
+  p.phaseCd = Math.max(4.5, 9 - (p.phaseLv - 1) * 1.5);
+  SFX.playAt('dash', p.x, p.y);
+  for (let i = 0; i < 10; i++) {
+    const t = i / 10;
+    G.particles.push({ x: ox + (p.x - ox) * t, y: oy + (p.y - oy) * t, vx: 0, vy: 0,
+      life: 0.28, max: 0.28, size: 16, color: '#b06bff', kind: 'ring' });
+  }
+  G.shake = Math.min(16, G.shake + 3);
+}
+
+/** v3 新卡的时间维度钩子：弹道生长（t_growth）与相位门冷却 */
+function tickMetaPerks(dt) {
+  const p = G.player;
+  if (!p) return;
+  if (p.growthStack > 0) {
+    p.growthT = (p.growthT || 0) + dt;
+    while (p.growthT >= 30) {
+      p.growthT -= 30;
+      p.stats.dmg *= (1 + 0.04 * p.growthStack);
+    }
+  }
+  if (p.phaseCd > 0) p.phaseCd = Math.max(0, p.phaseCd - dt);
+}
+
 function doBomb() {
   const p = G.player;
   if (p.bombCount <= 0 || G.state !== 'playing') return;
@@ -484,6 +544,7 @@ window.addEventListener('keydown', (e) => {
   if (k === ' ') { doDash(); }
   if (k === 'q') doBomb();
   if (k === 'e') doSlow();
+  if (k === 'f') doPhase();
   if (k === 'p') { if (G.state === 'playing') pauseGame(); else if (G.state === 'paused') resumeGame(); }
   if (k === 'm') { const on = SFX.toggleMute(); G.toast(on ? '音效开启' : '音效关闭'); }
   {
@@ -1012,6 +1073,7 @@ function update(dt) {
     G.elapsed += dt;
     if (G.hitStop > 0) { G.hitStop -= dt; dt *= 0.14; }
     updatePlayer(dt);
+    tickMetaPerks(dt);
     updateWorld(dt);
     updateWaveFlow(dt);
     // Boss 血条
@@ -1835,10 +1897,14 @@ function openLevelUp() {
   G.state = 'levelup';
   const p = G.player;
   const lv = G.lvQueue.length ? G.lvQueue[0] : p.level;
-  if (isElementGate(lv)) { openElementPick(lv); return; }
+  /* lv <= 0 表示「额外升级」（风险契约发放），不走元素门 */
+  if (lv > 0 && isElementGate(lv)) { openElementPick(lv); return; }
   G.gateOn = false;
+  /* v3 需求三：刷新改为「每次升级固定 1 次」——重置而非累加，未用完作废（防囤积） */
+  p.rerolls = 1 + (p.metaExtraReroll || 0);
+  p.rerollSeen = null;
   elElemPick.classList.add('hidden');
-  document.getElementById('lvupLevel').textContent = String(lv);
+  document.getElementById('lvupLevel').textContent = String(lv > 0 ? lv : p.level);
   refreshCards();
   elLevelUp.classList.remove('hidden');
   SFX.play('levelup');
@@ -1846,7 +1912,7 @@ function openLevelUp() {
 
 function refreshCards() {
   const p = G.player;
-  curCards = drawCards(G, p);
+  curCards = drawCards(G, p, undefined, p.rerollSeen);
   elCards.innerHTML = curCards.map((u, i) => {
     const lv = upLv(p, u);
     const rar = RARITY[u.rarity];
@@ -1896,6 +1962,7 @@ function startGame() {
   G.refracts.length = 0; G.wakes.length = 0;
   G.waveGroups = []; G.waveTimer = 0; G.shake = 0; G.flash = 0; G.hitStop = 0;
   G.waveHpMul = 1; G.nextHpMul = 1; G.zeroSlow = 0; G.resonateT = 0;
+  G.pactHpMul = 1;   // v3：风险契约（b_pact）的本局敌人血量乘子
   G.lvQueue.length = 0; G.bonusPicks = 0; G.gateOn = false; G.rxTotal = 0; G._elemI = 0;
   elemResetRuntime(G);
   G.player = newPlayer();
@@ -2005,6 +2072,9 @@ document.getElementById('btnReroll').addEventListener('click', () => {
   if (p.rerolls <= 0) return;
   p.rerolls--;
   SFX.play('uiClick');
+  /* 累积排除：一次升级内最多看到 (1+metaExtraReroll) × size 张互不重复的卡 */
+  if (!p.rerollSeen) p.rerollSeen = new Set();
+  for (const u of curCards) p.rerollSeen.add(u.id);
   refreshCards();
 });
 document.getElementById('btnBan').addEventListener('click', () => {

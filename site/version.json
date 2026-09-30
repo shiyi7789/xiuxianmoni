@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.30-1812",
-  "build": "20260930-181246",
+  "v": "2026.09.30-1837",
+  "build": "20260930-183703",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 685753,
+  "totalGameBytes": 699078,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 306224,
-      "sha256": "9195cbc9598285e66af17eef98533cc90bf5ee34b056934a46ea8aacd7e43bf9",
+      "bytes": 319549,
+      "sha256": "7fb99fe11098336d73281a387505ca8ee00bc163364b20d383cf75e10926fc46",
       "files": 9
     }
   ],
-  "note": "rogue 渲染性能优化：清屏合并 / 后处理 1/4 合成层 / 背景单次贴图 / 星星免字符串 / filter 改原地压缩",
-  "time": "2026-09-30T18:12:46.342+08:00"
+  "note": "rogue v3：无尽五阶阶梯 + 品质曲线标定 + 6 张新史诗卡 + 刷新改版",
+  "time": "2026-09-30T18:37:03.914+08:00"
 }

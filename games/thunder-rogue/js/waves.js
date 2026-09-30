@@ -111,12 +111,47 @@ function fmRing(G, type, n, y, o = {}) {
    --------------------------------------------------------- */
 function waveTier(n) { return Math.floor((n - 1) / 5); }
 
+/* ---------------------------------------------------------
+   五阶定义（设计提案 §2.3）—— 每 10 波一阶
+   ---------------------------------------------------------
+   每阶引入的**不是新怪**（新怪由 INTRO_WAVE 表负责），而是一条**新的组合规则**。
+   这是"制造新决策"与"数值膨胀"的分界线。
+   ⚠ T4 的「波次重叠」与 T5 的「自适应补强」属五期，需要一期真实数据支撑，本轮未实现
+     —— 这里只落 T2（哨塔常驻）与 T3（修饰件常驻）两条规则 + 全阶密度。
+   --------------------------------------------------------- */
+const TIERS = [
+  { t: 1, name: '勘测区', from:  1, dens: 1.00, hint: '单类型阵型 · 建立读弹能力' },
+  { t: 2, name: '裂隙带', from: 11, dens: 1.25, hint: '哨塔成对常驻 · 逼出「先清塔还是先走位」' },
+  { t: 3, name: '深空区', from: 21, dens: 1.50, hint: '修饰件每波必带 · 盾卫 / 修复舰 / 窃能虫' },
+  { t: 4, name: '断  层', from: 31, dens: 1.75, hint: '波次重叠（五期实现）' },
+  { t: 5, name: '奇  点', from: 41, dens: 2.00, hint: '自适应补强（五期实现）' },
+];
+const TIER_CN = ['', '一', '二', '三', '四', '五'];
+function tierOf(n) { let t = TIERS[0]; for (const x of TIERS) if (n >= x.from) t = x; return t; }
+
+/* 阶内呼吸（§2.5）：纯阶梯的死穴是跳级瞬间的死亡尖峰 —— 玩家在阶末正被消耗到低血，
+   下一阶立刻撞上高一阶的密度，那不是难度，是随机处决。所以每阶前 3 波做密度塑形。 */
+function tierBreath(n) {
+  if (n < 11) return 1;                       // T1 是教学期，不塑形
+  const pos = ((n - 1) % 10) + 1;             // 阶内位置 1..10
+  if (pos === 1) return 0.85;                 // 让玩家"读"新规则，不是被它打死
+  if (pos === 3) return 1.12;                 // 第一次真正的新密度
+  return 1.00;
+}
+
 /** 玩家可见的波次规模提示（血量系数 v2：1 + 0.24 × n^1.17） */
 function waveScale(n) {
+  /* v3 解封（设计提案 §2.4）：原先 count 在第 18 波撞上限 2.1、spd 在第 31 波撞 1.5，
+     导致 W18 与 W30 每波都是 61 只敌人 ——「无尽」实际上从未发生。
+     现在改为撞线后转指数增长，并各自封顶（6.0 / 2.4，上限由性能实测决定）。 */
   return {
-    hp: 1 + 0.24 * Math.pow(n, 1.17),
-    count: clamp(1 + (n - 6) * 0.10, 1, 2.1),
-    spd: clamp(1 + (n - 8) * 0.022, 1, 1.5),
+    hp: 1 + 0.24 * Math.pow(n, 1.17),                                  // 不变（本就无上限）
+    count: n <= 17 ? clamp(1 + (n - 6) * 0.10, 1, 2.1)
+                   : clamp(2.10 * Math.pow(1.055, n - 17), 2.1, 6.0),
+    spd:   n <= 31 ? clamp(1 + (n - 8) * 0.022, 1, 1.5)
+                   : clamp(1.50 * Math.pow(1.02, n - 31), 1.5, 2.4),
+    /* dens = 阶级基础密度 × 阶内呼吸（§2.3 + §2.5） */
+    dens:  tierOf(n).dens * tierBreath(n),
   };
 }
 
@@ -189,7 +224,7 @@ function buildWave(n) {
   const S = waveScale(n);
   const groups = [];
   const add = (t, fn) => groups.push({ t, fn });
-  const N = (base) => Math.max(1, Math.round(base * S.count));
+  const N = (base) => Math.max(1, Math.round(base * S.count * S.dens));
 
   if (boss) {
     // Boss 波也带护卫/新怪：否则 W15 的横扫者永远见不到（5 的倍数波没有普通阵型）
@@ -301,7 +336,7 @@ function buildWave(n) {
     const step = 2.8 - Math.min(1.0, tier * 0.14);
     const t = i === 0 ? 0.4 : i * step + rand(0.4);
     add(t, () => {
-      const cnt = Math.round((5 + randInt(0, 2)) * S.count * 0.82);
+      const cnt = Math.round((5 + randInt(0, 2)) * S.count * S.dens * 0.82);
       switch (c.fm) {
         case 'line':   fmLine(G, c.ty, cnt, -50, { spread: 360, ...o }); break;
         case 'v':      fmV(G, c.ty, cnt, -50, o); break;
@@ -312,13 +347,14 @@ function buildWave(n) {
         case 'lane':   fmLane(G, (c.ty === 'rammer' || c.ty === 'sweeper') ? c.ty : 'rammer', 3 + (cnt > 7 ? 1 : 0), -70, o); break;
         case 'ring':   fmRing(G, c.ty, Math.min(7, cnt), 220, o); break;
       }
-      /* 修饰件：伴随既有阵型出现（自带概率与上限，不会变成主力） */
-      if (chance(0.5)) attachMods(G, n, t, clamp(rand(430, 110)), 90);
+      /* 修饰件：伴随既有阵型出现；T3「深空区」起改为每波必带（§2.3） */
+      if (tierOf(n).t >= 3 || chance(0.5)) attachMods(G, n, t, clamp(rand(430, 110)), 90);
     });
   });
 
   // 定向压力：哨塔成对出现，逼出优先级判断
-  if (n >= 11 && chance(0.55)) {
+  /* T2「裂隙带」规则：定向压力常驻 —— 哨塔概率从 0.55 提到 0.85 */
+  if (n >= 11 && chance(tierOf(n).t >= 2 ? 0.85 : 0.55)) {
     add(groupCount * 2.0 + 2.5, () => fmTurrets(G, 'turret', chance(0.4) ? 3 : 2, -70, { hpMul: 0.9 }));
   }
   // 中段补一波追猎者，制造空间挤压

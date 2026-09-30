@@ -44,7 +44,7 @@ function makeEnemy(G, type, x, y, opt = {}) {
     type, ai: d.ai,
     x, y, x0: x, y0: y,
     r: d.r,
-    hp: d.hp * hpScale * (opt.hpMul || 1) * (G.waveHpMul || 1),
+    hp: d.hp * hpScale * (opt.hpMul || 1) * (G.waveHpMul || 1) * (G.pactHpMul || 1),
     xp: d.xp * (opt.xpMul || 1),
     score: d.score,
     color: d.color,
@@ -133,6 +133,16 @@ function spawnPBullet(G, x, y, ang, opt = {}) {
     born: G.t,                                    // 用于舰船系留束（0.16s）
     x0: x, y0: y,
   });
+  /* v3 弹幕回响（t_echo）：12%/层 概率额外射出一枚影子弹（0.4× 伤害、无元素）。
+     noEcho 防止影子弹再触发回响 —— 否则会指数爆炸。 */
+  if (p && p.stats.echo && !opt.noEcho && chance(0.12 * p.stats.echo)) {
+    spawnPBullet(G, x, y + 8, ang + rand(0.12, -0.12), {
+      spd: (opt.spd || 760) * 1.05, r: (opt.r || 4.5) * 0.85,
+      len: (opt.len || 18) * 0.85, dmg: (opt.dmg || 6) * 0.4,
+      color: opt.color || '#7ef9ff', src: opt.src || 'main',
+      noEcho: 1, trail: opt.trail,
+    });
+  }
 }
 
 /* ---------------------------------------------------------

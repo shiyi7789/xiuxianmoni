@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>星际裂隙 · 玩法详情 — 竖屏弹幕 Roguelite 游戏</title>
-<meta name="description" content="《星际裂隙 · ROGUE THUNDER》玩法详情：自动开火 + 走位闪避，8 种武器、54 张升级卡五选一、6 元素 × 15 种元素反应、19 种敌机原型、5 个 Boss 起递归缝合。附元素门规则、操作键位、Boss 阶段表与公平性说明。">
+<meta name="description" content="《星际裂隙 · ROGUE THUNDER》玩法详情：自动开火 + 走位闪避，8 种武器、60 张升级卡五选一、6 元素 × 15 种元素反应、19 种敌机原型、5 个 Boss 起递归缝合。附元素门规则、操作键位、Boss 阶段表与公平性说明。">
 <meta name="keywords" content="星际裂隙,ROGUE THUNDER,弹幕射击,Roguelite,竖屏游戏,离线网页游戏,玩法详情">
 <meta name="theme-color" content="#efe7d8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101018" media="(prefers-color-scheme: dark)">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="游戏大厅">
 <meta property="og:title" content="星际裂隙 · 玩法详情">
-<meta property="og:description" content="自动开火，你只负责走位。8 种武器、54 张升级卡五选一、6 元素两两组合出 15 种反应；19 种敌机原型，每 5 波一个递归 Boss。">
+<meta property="og:description" content="自动开火，你只负责走位。8 种武器、60 张升级卡五选一、6 元素两两组合出 15 种反应；19 种敌机原型，每 5 波一个递归 Boss。">
 <meta property="og:url" content="https://xiuxianmoni.me/rogue-info.html">
 <meta property="og:locale" content="zh_CN">
 <meta name="twitter:card" content="summary">
@@ -68,7 +68,7 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
         <h1>你是最后一架<br><em>截击机</em>。</h1>
         <p class="lead">
           你的炮口永远是开着的——所以这款游戏里<strong>唯一需要你做的操作，是活下来</strong>。
-          移动、闪避、在弹幕缝里找那条路；每一次升级从<strong>五张卡</strong>里挑一张，54 张卡的池子会滚成一整套只属于这局的 Build。
+          移动、闪避、在弹幕缝里找那条路；每一次升级从<strong>五张卡</strong>里挑一张，60 张卡的池子会滚成一整套只属于这局的 Build。
           到了 <strong>Lv4</strong> 与 <strong>Lv9</strong>，你还会额外拿到一次<strong>元素觉醒</strong>——两个元素两两组合，能撞出 15 种元素反应。
           死一次不代表输，只是下一局会更清楚该长成什么样。
         </p>
@@ -79,7 +79,7 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
         <ul class="chips">
           <li><b>9:16</b> 竖屏</li>
           <li><b>8</b> 种武器</li>
-          <li><b>54</b> 张升级卡</li>
+          <li><b>60</b> 张升级卡</li>
           <li><b>6</b> 元素 · <b>15</b> 反应</li>
           <li><b>19</b> 种敌机原型</li>
           <li>每 <b>5</b> 波一个 Boss</li>
@@ -147,7 +147,22 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
     <div class="wrap">
       <div class="sec-h">
         <h2>八 条 武 器 线，五 十 四 张 升 级 卡</h2>
-        <p>每局能拿到的强化是随机的，所以「这一局长成什么」是你现场决定的。武器之间刻意保留了协同——黑洞聚怪会放大散射与电弧的收益，无人机则替黑洞近身兜底。卡池按波次<strong>分层解锁</strong>：开局只有 25 张，越往后新卡越多，避免一上来就被 54 张卡稀释成杂牌军。</p>
+        <p>每局能拿到的强化是随机的，所以「这一局长成什么」是你现场决定的。武器之间刻意保留了协同——黑洞聚怪会放大散射与电弧的收益，无人机则替黑洞近身兜底。卡池按波次<strong>分层解锁</strong>：开局只有 25 张，越往后新卡越多，避免一上来就被 60 张卡稀释成杂牌军。</p>
+        <p><strong>无尽模式按 10 波一阶分成五段</strong>，每一阶换的不是新怪，而是<strong>一条新的组合规则</strong>——
+        这是「制造新决策」与「数值膨胀」的分界线。每阶的第 1 波密度会降到 0.85，让你先把规则<strong>读</strong>明白，
+        而不是被它打死（纯阶梯的死穴就是跳级瞬间的死亡尖峰）。阶跃前一波清理完毕时会弹出预告横幅。</p>
+        <table>
+          <thead><tr><th>阶</th><th>波次</th><th>名称</th><th>新规则</th><th>密度</th></tr></thead>
+          <tbody>
+            <tr><td>一</td><td>1–10</td><td>勘测区</td><td>单类型阵型 · 建立读弹能力</td><td>×1.00</td></tr>
+            <tr><td>二</td><td>11–20</td><td>裂隙带</td><td>哨塔成对常驻 · 逼出「先清塔还是先走位」</td><td>×1.25</td></tr>
+            <tr><td>三</td><td>21–30</td><td>深空区</td><td>修饰件每波必带 · 盾卫 / 修复舰 / 窃能虫</td><td>×1.50</td></tr>
+            <tr><td>四</td><td>31–40</td><td>断层</td><td>敌人数量与速度继续解封（数量上限 6.0）</td><td>×1.75</td></tr>
+            <tr><td>五</td><td>41+</td><td>奇点</td><td>全池随机复合 · 密度顶值</td><td>×2.00</td></tr>
+          </tbody>
+        </table>
+        <p>升级卡的品质也不再是常数：<strong>越往后，高品质卡出现的权重越高</strong>（W22 达到顶值），
+        所以「越玩越有机会拿到好东西」这件事是真的写在曲线里的。另外连续 4 次升没见到史诗会强制保底一张。</p>
       </div>
       <div class="grid feats">
         <article class="card">

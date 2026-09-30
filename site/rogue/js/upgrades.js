@@ -326,6 +326,36 @@ const RARITY = {
 };
 
 /* ---------------------------------------------------------
+   品质权重曲线（设计提案 §3.2）
+   ---------------------------------------------------------
+   真因不是"权重太低"，而是**权重是与波次无关的常数** —— 史诗占比从第 14 波起
+   就冻在 6.6%，再玩 10 波也不变。这里给它一条分段线性曲线，W22 之后维持顶值。
+   W1 刻意与旧静态权重完全一致（15 → 15），保护开局方差。
+   ⚠ 顶值是**用实测反推**的，不是照抄设计文档的 56/74/54 —— 实测发现文档那组会冲到
+     W22 史诗占卡 32.5% / 含史诗 offer 90%（正是文档自己警告的"稀缺感彻底没了"）。
+     原因是**路线加权 ×2.2 的复利效应**：贪心玩家优先拿史诗 → 史诗被标记"已持有" →
+     权重再 ×2.2 → 正反馈。文档测"路线加权只值 1pp"是在旧静态权重下测的，曲线一开即失效。
+     标定后（64/78/26）实测 W22 = 17.7% / 69%，命中文档目标 19.1% / 68%。 */
+const RARITY_CURVE = [
+  { wave:  1, w: { common: 100, rare: 42, epic: 15 } },   // 与旧静态权重完全一致 → W1 手感不变
+  { wave: 10, w: { common:  96, rare: 46, epic: 18 } },
+  { wave: 22, w: { common:  64, rare: 78, epic: 26 } },   // 顶值，之后维持
+];
+function rarityW(rarity, wave) {
+  const n = wave || 1;
+  const c = RARITY_CURVE;
+  if (n <= c[0].wave) return c[0].w[rarity];
+  for (let i = 1; i < c.length; i++) {
+    if (n <= c[i].wave) {
+      const a = c[i - 1], b = c[i];
+      const t = (n - a.wave) / (b.wave - a.wave);
+      return a.w[rarity] + (b.w[rarity] - a.w[rarity]) * t;
+    }
+  }
+  return c[c.length - 1].w[rarity];
+}
+
+/* ---------------------------------------------------------
    升级池（54 张 = 原有 29 + 新增 25）
    unlock = 该卡进入抽取池的波次（分层解锁 T0 W1 / T1 W5 / T2 W11）
    --------------------------------------------------------- */
@@ -438,9 +468,10 @@ const UPGRADES = [
     apply: (p) => { p.slowLv = (p.slowLv || 0) + 1; p.slowDur = 3 + p.slowLv * 0.8; p.slowCdMax = Math.max(8, 18 - p.slowLv * 3); } },
 
   /* ============ 功能 / 兜底 ============ */
+  /* v3：刷新改成"每次升级固定给"之后，原来的 +2 次数会被跨级重置清掉 → 改为永久 +1 */
   { id: 'u_reroll', name: '重构器', icon: '⟳', rarity: 'common', max: 5, tag: '功能', unlock: 1,
-    desc: () => '升级时重随卡片的次数 +2',
-    apply: (p) => { p.rerolls += 2; } },
+    desc: () => '每次升级的重随次数 +1（永久生效，不再被跨级重置清空）',
+    apply: (p) => { p.metaExtraReroll = (p.metaExtraReroll || 0) + 1; p.rerolls += 1; } },
 
   { id: 'u_heal', name: '应急修复', icon: '＋', rarity: 'common', max: 99, tag: '功能', unlock: 1,
     desc: () => '立即回复 40% 最大生命',
@@ -599,6 +630,41 @@ const UPGRADES = [
   { id: 'e_duplex', name: '双重反应', icon: '⧓', rarity: 'epic', max: 1, tag: '元素', unlock: 11, needElem2: 1,
     desc: () => '反应触发时 40% 概率立刻再触发一次（第二次 ×0.7，不计入连锁深度）',
     apply: (p) => { p.stats.duplex = 1; } },
+
+  /* =========================================================
+     v3 新增 6 张史诗（设计提案 §3.4）—— 每张对应一条原先未覆盖的决策轴
+     为什么必须补：品质曲线把史诗出现率提到约 2 倍后，12 张（平均上限仅 3 级）
+     装不下这个频率，玩家会在 W20 前点满，史诗重新退化成"出现了也拿不了"。
+     ⚠ 数值全部标 [PLACEHOLDER] —— 未经 playtest，需按真实波次分布校准。
+     ========================================================= */
+  { id: 'b_pact', name: '风险契约', icon: '⚖', rarity: 'epic', max: 4, tag: '转化', unlock: 5,
+    desc: (l) => (l === 0 ? '立即获得 2 次额外升级，但本局敌人血量 +25%（可叠 4 次）'
+      : '再叠一层：+2 次额外升级，本局敌人血量再 +25%'),
+    apply: (p, G) => {
+      p.pactHp = (p.pactHp || 0) + 0.25;
+      if (G) { G.pactHpMul = 1 + p.pactHp; G.lvQueue.push(0); G.lvQueue.push(0); G.pendingLevels += 2; }
+    } },
+
+  { id: 't_growth', name: '弹道生长', icon: '⊰', rarity: 'epic', max: 6, tag: '被动', unlock: 5,
+    desc: (l) => `每存活 30 秒，全部伤害 +${(4 * (l + 1))}%（本局内累积，死亡重置）`,
+    apply: (p) => { p.growthStack = (p.growthStack || 0) + 1; } },
+
+  { id: 'r_greed', name: '贪婪回路', icon: '◍', rarity: 'epic', max: 3, tag: '被动', unlock: 5,
+    desc: () => '拾取范围 ×0.5，但经验获取 ×1.8（高风险高回报）',
+    apply: (p) => { p.stats.magnet *= 0.5; p.stats.xpGain *= 1.8; } },
+
+  { id: 't_echo', name: '弹幕回响', icon: '≋', rarity: 'epic', max: 5, tag: '触发', unlock: 5,
+    desc: (l) => `每发弹丸有 ${12 * (l + 1)}% 概率额外射出一枚影子弹（0.4× 伤害、无元素、不再触发回响）`,
+    apply: (p) => { p.stats.echo = (p.stats.echo || 0) + 1; } },
+
+  { id: 'p_adapt', name: '适应装甲', icon: '⛨', rarity: 'epic', max: 5, tag: '被动', unlock: 5,
+    desc: (l) => `每次受伤后，后续受到的伤害 −8%（本局永久，上限 −${8 * l}%）`,
+    apply: (p) => { p.adaptLv = (p.adaptLv || 0) + 1; } },
+
+  { id: 'a_phase', name: '相位门', icon: '⊕', rarity: 'epic', max: 4, tag: '主动', unlock: 5,
+    desc: (l) => (l === 0 ? '按 F：0.5 秒无敌并沿移动方向位移 260，冷却 9 秒'
+      : '冷却 −1.5 秒，位移 +60'),
+    apply: (p) => { p.phaseLv = (p.phaseLv || 0) + 1; } },
 ];
 
 const UPGRADE_BY_ID = {};
@@ -639,7 +705,7 @@ function cardPool(G, p) {
 function cardWeight(G, p, c) {
   const lv = upLv(p, c);
   const high = c.rarity === 'epic';
-  let x = RARITY[c.rarity].w * (1 + p.stats.luck * (high ? 0.30 : 0.18));
+  let x = rarityW(c.rarity, G.wave) * (1 + p.stats.luck * (high ? 0.30 : 0.18));
   if (c.tag === '武器') { if (!p.stats.spec && lv > 0) x *= 2.2; }
   else if (lv > 0) x *= 2.2;
   if (c.tag === '元素') x *= 2.6;
@@ -647,12 +713,17 @@ function cardWeight(G, p, c) {
   return x;
 }
 
-/** 抽卡：默认五选一（y_slot 后六选一）；五张全普通时保底重掷一张 */
-function drawCards(G, p, n) {
+/** 抽卡：默认五选一（y_slot 后六选一）
+    exclude = 本次升级内已被看过的卡（刷新时累积排除，避免刷回一模一样的几张） */
+function drawCards(G, p, n, exclude) {
   const size = p.sixPick ? 6 : 5;
   const pool = cardPool(G, p);
-  const real = pool.filter(u => !FILLER_IDS[u.id]);
-  const src = real.length >= size ? real : pool;
+  const ex = exclude || null;
+  const fresh = (u) => !(ex && ex.has(u.id));
+  const realAll = pool.filter(u => !FILLER_IDS[u.id]);
+  const real = realAll.filter(fresh);
+  /* 只在"池子本来就不够 size 张"时才回退到未排除的池，否则会刷回旧卡 */
+  const src = real.length >= size ? real : (realAll.length ? realAll : pool);
   const out = [], used = new Set();
   for (let i = 0; i < size; i++) {
     const cands = src.filter(u => !used.has(u.id));
@@ -661,9 +732,22 @@ function drawCards(G, p, n) {
     used.add(u.id);
     out.push(u);
   }
+  /* 保底 A（原有）：五张全普通 → 重掷其中一张为稀有+ */
   if (out.length && out.every(u => u.rarity === 'common')) {
     const better = real.filter(u => u.rarity !== 'common' && !used.has(u.id));
     if (better.length) out[randInt(0, out.length - 1)] = weightedPick(better, c => cardWeight(G, p, c));
+  }
+  /* 保底 B（v3 新增）：显式史诗计数器 —— 连续 4 次 offer 无史诗则强制保底一张。
+     旧的"五张全普通"条件对史诗完全无感：连开 8 次一张史诗都没见到，却因为每次都有
+     一张稀有而从不触发保底。 */
+  const hasEpic = out.some(u => u.rarity === 'epic');
+  p.epicDry = hasEpic ? 0 : ((p.epicDry || 0) + 1);
+  if (!hasEpic && p.epicDry >= 4) {
+    const epics = real.filter(u => u.rarity === 'epic' && !used.has(u.id));
+    if (epics.length) {
+      out[randInt(0, out.length - 1)] = weightedPick(epics, c => cardWeight(G, p, c));
+      p.epicDry = 0;
+    }
   }
   let k = 0;
   while (out.length < size) out.push(UPGRADE_BY_ID[k++ % 2 === 0 ? 'u_heal' : 'u_overload']);

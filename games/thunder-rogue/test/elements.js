@@ -254,7 +254,18 @@ const driver = `
     const needElem = UPGRADES.filter(u => u.needElem || u.needElem2).length;
     ok('#6 W12 时全表可用（扣除元素前置）', w12.length === UPGRADES.length - needElem,
       'W12=' + w12.length + ' 表=' + UPGRADES.length + ' 元素前置=' + needElem);
-    ok('#6 卡池总数 = 54', UPGRADES.length === 54, 'count=' + UPGRADES.length);
+    /* v3：54 → 60（设计提案 §3.4 新增 6 张史诗，把史诗 12 张扩到 18 张，
+       否则品质曲线把史诗出现率提高约 2 倍后，12 张会被玩家在 W20 前点满） */
+    ok('#6 卡池总数 = 60', UPGRADES.length === 60, 'count=' + UPGRADES.length);
+    {
+      const byR = { common: 0, rare: 0, epic: 0 };
+      for (const u of UPGRADES) byR[u.rarity]++;
+      ok('#6 品质分档 = 18/24/18', byR.common === 18 && byR.rare === 24 && byR.epic === 18,
+        'common=' + byR.common + ' rare=' + byR.rare + ' epic=' + byR.epic);
+      // 史诗平均等级上限必须够高，否则「出现了也拿不了」
+      let mx = 0; for (const u of UPGRADES) if (u.rarity === 'epic') mx += u.max;
+      ok('#6 史诗 max 总和 >= 60', mx >= 60, 'sum=' + mx);
+    }
   }
 
   /* ============ #7 「五张全普通」保底 ============ */
