@@ -44,11 +44,11 @@ function makeEnemy(G, type, x, y, opt = {}) {
     type, ai: d.ai,
     x, y, x0: x, y0: y,
     r: d.r,
-    hp: d.hp * hpScale * (opt.hpMul || 1) * (G.waveHpMul || 1) * (G.pactHpMul || 1),
+    hp: d.hp * hpScale * (opt.hpMul || 1) * (G.waveHpMul || 1) * (G.pactHpMul || 1) * (G.abyssHpMul || 1),
     xp: d.xp * (opt.xpMul || 1),
     score: d.score,
     color: d.color,
-    spd: d.spd * (opt.spdMul || 1),
+    spd: d.spd * (opt.spdMul || 1) * (G.abyssSpdMul || 1),
     armor: d.armor || 0,
     t: 0, angle: 0, spin: 0,
     vx: 0, vy: 0,
@@ -304,6 +304,15 @@ function killEnemy(G, e) {
   // 每 10 连击给一次正反馈，让"连段手感"有听觉锚点
   if (G.combo > 0 && G.combo % 10 === 0) SFX.play('combo');
   G.score += Math.round(e.score * (1 + (G.combo - 1) * 0.04));
+  /* v3 元进度：击杀产出星尘（§5.2：enemy.score × 0.10），Boss 额外掉核心碎片 */
+  {
+    const sm = stepMul(G.wave), dm = G.abyssDustMul || 1;
+    G.dustEarn += e.score * 0.10 * sm * dm;
+    if (e.isBoss) {
+      G.dustEarn += (150 + 50 * G.bossIndex) * sm * dm;
+      G.coreEarn += (2 + G.bossIndex) + (G.abyssCoreBonus || 0);
+    }
+  }
 
   // 经验掉落
   if (e.type === 'xpblob') {

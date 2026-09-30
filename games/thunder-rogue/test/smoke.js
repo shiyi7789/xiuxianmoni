@@ -4,7 +4,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/entities.js', 'js/upgrades.js', 'js/waves.js', 'js/game.js'];
+const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/entities.js', 'js/upgrades.js', 'js/waves.js', 'js/game.js'];
 
 /* ---------------- DOM / Canvas 桩 ---------------- */
 function makeCtx() {
@@ -304,6 +304,35 @@ const driver = `
       if (REPORT.restarts > 8) break;
     }
   }
+
+  /* ---- v3：机库（元进度）冒烟：UI 渲染 + 三条动作 + 存档落盘 ---- */
+  REPORT.hangar = {};
+  try {
+    META.dust = 0; META.core = 0;
+    META.lines = { hull: 0, fire: 0, engine: 0 };
+    META.mods = []; META.abyss = 0;
+    renderHangar();
+    REPORT.hangar.render = 'ok';
+    REPORT.hangar.noDust = metaUpgrade('hull') === false;      // 星尘不足时必须拒绝
+    META.dust = 500000; META.core = 500;
+    REPORT.hangar.up = metaUpgrade('hull') && metaUpgrade('fire') && metaUpgrade('engine');
+    REPORT.hangar.lv = META.lines.hull + '/' + META.lines.fire + '/' + META.lines.engine;
+    META.core = 10;
+    REPORT.hangar.poor = metaBuyMod('m_third') === false;      // 碎片不足（10 < 240）必须拒绝
+    REPORT.hangar.nothingBought = META.mods.length === 0;
+    META.core = 300;
+    REPORT.hangar.mod = metaBuyMod('m_third') === true;        // 300 片应装配成功
+    REPORT.hangar.coreLeft = META.core;                        // 300 − 240 = 60
+    REPORT.hangar.modDup = metaBuyMod('m_third') === false;    // 不可重复装配
+    REPORT.hangar.cap = (function () { const q = newPlayer(); applyMetaToPlayer(q, META); return elemCap(q); })();
+    REPORT.hangar.abyssLocked = metaSetAbyss(1) === false;     // 未满 15 级应拒绝
+    META.lines.hull = 10; META.lines.fire = 5;
+    REPORT.hangar.abyss = metaSetAbyss(1) && metaSetAbyss(1);
+    REPORT.hangar.abyssVal = META.abyss;
+    const raw = JSON.parse(localStorage.getItem('rt_save_v2'));
+    REPORT.hangar.saved = raw.dust + '/' + raw.core + '/' + raw.mods.join(',') + '/' + raw.abyss;
+    REPORT.hangar.sumOk = metaSum(raw) === raw._sum;
+  } catch (e) { REPORT.errors.push('hangar: ' + e.message); }
 
   REPORT.rxKinds = Object.keys(REPORT.rxCount).length;
   REPORT.rxMissing = REACTIONS.filter(r => !REPORT.rxCount[r.name]).map(r => r.name);

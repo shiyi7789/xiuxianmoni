@@ -17,7 +17,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/entities.js',
+const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/entities.js',
   'js/upgrades.js', 'js/waves.js', 'js/game.js'];
 
 /* ---------------- DOM / Canvas 桩（与 smoke.js 同源） ---------------- */
@@ -315,6 +315,38 @@ const driver = `
     const duplexOn = cardPool(G, P).indexOf(UPGRADE_BY_ID.e_duplex) >= 0;
     ok('#9 元素类卡按前置数量进池', noEl && oneEl && duplexOff && duplexOn,
       [noEl, oneEl, duplexOff, duplexOn].join());
+  }
+
+  /* ============ #10 重入防护：冻结结算途中被反应击杀不得崩溃 ============
+     背景：elemFreeze 里 rxFire 可能把目标本人打死，而击杀钩子 elemOnKill() 会执行
+     e.st = null；函数末尾再读 e.st.ice 就是 "Cannot read properties of null"。
+     这是 2026-09-30 由 smoke.js 抓到的**真实线上崩溃**（elemFreeze → e.st.ice.n = 0）。
+     本用例把 rxFire 替换成"必定击杀目标"，把该路径变成**确定性**复现。 */
+  {
+    world(['ice', 'toxin']);
+    const e = makeEnemy(G, 'marksman', 270, 300);
+    e.dead = false; e.hp = e.maxHp = 60;
+    /* ice 配 toxin（非 fire）→ 走进 rxFire 分支；dmg 拉高确保这一击毙命 */
+    e.st = { ice: { n: 3, t: 99, dmg: 999, src: 'ice' },
+             toxin: { n: 3, t: 99, dmg: 99, src: 'toxin' } };
+    G.enemies.length = 0; G.enemies.push(e);
+
+    const _rx = rxFire;
+    let killed = false;
+    rxFire = function () {
+      if (!killed) {
+        killed = true;
+        const _kill = elemOnKill;            // 走真实的击杀钩子 → 会把 e.st 置空
+        _kill(G, e);
+        e.dead = true;
+      }
+      return false;
+    };
+    let threw = null;
+    try { elemFreeze(G, e); } catch (err) { threw = err.message; }
+    rxFire = _rx;
+    ok('#10 冻结途中被反应击杀不崩溃（重入防护）', threw === null && killed && e.st === null,
+      threw ? ('抛错: ' + threw) : ('killed=' + killed + ' e.st=' + e.st));
   }
 
   const failed = results.filter(r => !r.pass);

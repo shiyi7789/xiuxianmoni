@@ -11,6 +11,9 @@ let dpr = 1;
 /* ---------------------------------------------------------
    全局状态
    --------------------------------------------------------- */
+/* v3 元进度存档（meta.js 提供；localStorage 不可用时内部自动降级） */
+let META = loadMeta();
+
 const G = {
   state: 'menu',            // menu | playing | levelup | paused | over
   t: 0, dt: 0,
@@ -29,6 +32,9 @@ const G = {
   bonusPicks: 0,            // 波次预支带来的额外升级次数
   gateOn: false,            // 本次升级是否为元素门
   waveHpMul: 1, nextHpMul: 1,
+  /* v3 元进度：本局产出（结算时提交存档）+ 深渊乘子 */
+  dustEarn: 0, coreEarn: 0,
+  abyss: 0, abyssHpMul: 1, abyssSpdMul: 1, abyssDustMul: 1, abyssCoreBonus: 0,
   zeroSlow: 0,              // 零域冰封：全场敌方时缓
   resonateT: 0,             // 拾取共鸣：全场敌方时缓剩余时长
   rxTotal: 0,               // 本局元素反应触发总数（结算展示用）
@@ -183,6 +189,8 @@ function newPlayer() {
     rerolls: 1, taken: {}, buildLog: [], wlv: { main: 1 },
     /* v3：刷新 / 保底 / 新卡运行时状态 */
     epicDry: 0, metaExtraReroll: 0, rerollSeen: null,
+    /* v3 元进度：元素上限（改装槽「三相共鸣」可提到 3）、深渊深度、元素起手 */
+    elemCap: 2, abyss: 0, gateSkip: null,
     pactHp: 0, growthStack: 0, growthT: 0, adaptLv: 0, adaptStacks: 0,
     phaseLv: 0, phaseCd: 0,
     cd: { main: 0, laser: 0, spread: 0, missile: 0, drone: 0, arc: 0, boomer: 0, black: 0 },
@@ -268,6 +276,17 @@ function waveCleared() {
       G.banner('进入 第' + TIER_CN[t.t] + '阶 · ' + t.name, true);
       G.toast('敌人密度 ×' + t.dens.toFixed(2) + '　' + t.hint);
     }
+  }
+  /* v3 元进度：波次结算产出（§5.2）+ 提交存档 */
+  {
+    const sm = stepMul(G.wave), dm = G.abyssDustMul || 1;
+    G.dustEarn += (40 + 12 * G.wave) * sm * dm;
+    if (G.wave >= 20 && G.wave % 10 === 0) G.coreEarn += 5;         // 深层阶跃奖励
+    if (G.wave >= 3 && !META.coreGift) {                            // §5.8 新手保底碎片
+      META.coreGift = true; G.coreEarn += 5;
+      G.toast('首次抵达 W3 · 核心碎片 +5');
+    }
+    commitRun(META);
   }
   // 呼吸窗：吸附全部经验 + 每 3 波回血
   for (const o of G.orbs) o.mag = true;
@@ -1806,7 +1825,7 @@ function isElementGate(lv) {
   if (!p) return false;
   const flag = ELEM_GATES[lv];
   if (!flag) return false;
-  if (p.elems.length >= 2) return false;
+  if (p.elems.length >= elemCap(p)) return false;
   return !p[flag];
 }
 
@@ -1864,11 +1883,11 @@ function openElementPick(lv) {
 
 function pickElement(id) {
   const p = G.player;
-  if (!p || p.elems.length >= 2 || p.elems.indexOf(id) >= 0) return;
+  if (!p || p.elems.length >= elemCap(p) || p.elems.indexOf(id) >= 0) return;
   const d = ELEMENTS[id];
   p.elems.push(id);
   p._gate1Done = 1;
-  if (p.elems.length >= 2) p._gate2Done = 1;
+  if (p.elems.length >= elemCap(p)) p._gate2Done = 1;
   codexMark('元素 · ' + d.name);
   SFX.play('rxBig');
   G.toast('元素觉醒 · ' + d.name + ' ' + d.glyph);
@@ -1966,6 +1985,17 @@ function startGame() {
   G.lvQueue.length = 0; G.bonusPicks = 0; G.gateOn = false; G.rxTotal = 0; G._elemI = 0;
   elemResetRuntime(G);
   G.player = newPlayer();
+  /* v3 元进度：把存档里的三线 / 改装槽 / 深渊写进本局 */
+  applyMetaToPlayer(G.player, META);
+  applyAbyssToRun(G, META.abyss);
+  G.dustEarn = 0; G.coreEarn = 0;
+  /* 改装槽「元素注入」：指定元素起手，跳过 Lv4 门（Lv9 门仍在） */
+  if (G.player.gateSkip) {
+    const gid = G.player.gateSkip;
+    G.player.elems.push(gid);
+    G.player._gate1Done = 1;
+    codexMark('元素 · ' + ELEMENTS[gid].name);
+  }
   G.wavePlan = buildWave(1);
   startWave(1);
   document.getElementById('menu').classList.add('hidden');
@@ -2012,12 +2042,16 @@ function gameOver() {
   }
   G.particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, life: 1.1, max: 1.1, size: 1400, color: '#ff5566', kind: 'ring' });
 
-  const best = Number(localStorage.getItem('rt_best') || 0);
+  /* v3：把本局星尘/碎片落进存档，并同步历史最高分（best 现在也存进 v2） */
+  G.lastDust = G.dustEarn; G.lastCore = G.coreEarn;
+  commitRun(META);
+  const best = Math.max(META.best.score | 0, Number(localStorage.getItem('rt_best') || 0) || 0);
   const isNew = G.score > best;
-  if (isNew) localStorage.setItem('rt_best', String(G.score));
+  if (isNew) { try { localStorage.setItem('rt_best', String(G.score)); } catch (e) { } META.best.score = G.score; saveMeta(META); }
   document.getElementById('menuBest').textContent = fmt(Math.max(best, G.score));
 
   const mins = Math.floor(G.elapsed / 60), secs = Math.floor(G.elapsed % 60);
+  syncMenuMeta();
   document.getElementById('overTitle').textContent = G.wave >= 20 ? '传奇终结' : G.wave >= 12 ? '舰体损毁' : '任务失败';
   const ranks = [[25, 'S · 裂隙征服者'], [18, 'A · 要塞级火力'], [12, 'B · 精锐驾驶员'], [7, 'C · 合格的截击机'], [0, 'D · 还需更多实战']];
   document.getElementById('overRank').textContent = (isNew ? '★ 新纪录 · ' : '') +
@@ -2032,6 +2066,8 @@ function gameOver() {
     ['存活时长', mins + ':' + String(secs).padStart(2, '0')],
     ['元素觉醒', p.elems.length ? p.elems.map(id => ELEMENTS[id].name).join(' + ') : '未觉醒'],
     ['元素反应', String(G.rxTotal)],
+    ['本局星尘', '+' + fmt(Math.round(G.lastDust || 0))],
+    ['本局碎片', '+' + String(Math.round(G.lastCore || 0))],
   ];
   document.getElementById('overStats').innerHTML = stats.map(s =>
     '<div class="stat"><b>' + s[1] + '</b><span>' + s[0] + '</span></div>').join('');
@@ -2131,6 +2167,160 @@ document.getElementById('btnCodexPause').addEventListener('click', openCodex);
 document.getElementById('btnCodexClose').addEventListener('click', closeCodex);
 
 /* ---------------------------------------------------------
+   星港机库（元进度 · 设计提案 §5.5）
+   ★ 关键 UI：每条线必须直接显示「下一级要多少 / 还差多少」——
+     这是留存钩子的物理载体：玩家关掉游戏前看到"还差 320 星尘"，下次打开的概率显著提高。
+   --------------------------------------------------------- */
+function renderHangar() {
+  const out = [];
+  const dust = META.dust | 0, core = META.core | 0;
+  document.getElementById('hgDust').textContent = fmt(dust);
+  document.getElementById('hgCore').textContent = String(core);
+
+  /* ---- 三线 ---- */
+  out.push('<div class="hg-h">主战机 · 三条升级线</div>');
+  for (const L of META_LINES) {
+    const lv = META.lines[L.id] | 0;
+    const cost = nextCost(META, L.id);
+    const lack = cost === null ? 0 : Math.max(0, cost - dust);
+    const can = cost !== null && lack === 0;
+    out.push('<div class="hg-line">' +
+      '<div class="hg-line-head"><b>' + L.icon + ' ' + L.name + '</b><span>Lv ' + lv + ' / ' + META_MAX_LV + '</span></div>' +
+      '<div class="hg-bar"><i style="width:' + Math.round(lv / META_MAX_LV * 100) + '%"></i></div>' +
+      '<div class="hg-line-info"><span class="hg-per">' + L.per + '</span>' +
+      (cost === null
+        ? '<span class="hg-max">已满级</span>'
+        : '<span class="hg-cost">下一级 <b>' + fmt(cost) + '</b>' + (lack > 0 ? '　<i>还差 ' + fmt(lack) + '</i>' : '') + '</span>') +
+      '</div>' +
+      (cost === null ? '' :
+        '<button class="btn hg-up' + (can ? '' : ' off') + '" data-line="' + L.id +
+        (can ? '' : ' disabled') + '>' + (can ? '升 级' : '星尘不足') + '</button>') +
+      '</div>');
+  }
+
+  /* ---- 改装槽 ---- */
+  out.push('<div class="hg-h">改装槽 · 改变开局形态（不改变数值）</div>');
+  for (const M of META_MODS) {
+    const owned = META.mods.indexOf(M.id) >= 0;
+    const can = !owned && core >= M.cost;
+    out.push('<div class="hg-mod' + (owned ? ' on' : '') + '">' +
+      '<div class="hg-mod-head"><b>' + M.name + '</b><span>' + (owned ? '已装配' : M.cost + ' 片') + '</span></div>' +
+      '<p>' + M.desc + '</p>');
+    if (!owned) {
+      out.push('<button class="btn hg-buy' + (can ? '' : ' off') + '" data-mod="' + M.id + '"' +
+        (can ? '' : ' disabled') + '>' + (can ? '装 配' : '碎片不足') + '</button>');
+    } else if (M.id === 'm_card' || M.id === 'm_elem') {
+      const isCard = M.id === 'm_card';
+      const list = isCard ? META_CARDS : ELEMENT_ORDER.map(id => ({ id: id, name: ELEMENTS[id].name }));
+      const cur = isCard ? META.pickCard : META.pickElem;
+      out.push('<div class="hg-pick"><span>起手选择</span><select data-pick="' + (isCard ? 'card' : 'elem') + '">' +
+        list.map(o => '<option value="' + o.id + '"' + (o.id === cur ? ' selected' : '') + '>' + o.name + '</option>').join('') +
+        '</select></div>');
+    }
+    out.push('</div>');
+  }
+
+  /* ---- 深渊深度 ---- */
+  const unlocked = abyssUnlocked(META);
+  out.push('<div class="hg-h">深渊深度 · 把难度变成资源</div>');
+  if (!unlocked) {
+    out.push('<div class="hg-lock">需要三线总等级 ≥ ' + ABYSS_UNLOCK_LV + '（当前 ' + metaTotalLv(META) +
+      '）。每 +1 档：敌人血量 +12%／速度 +3%，但星尘 +25%、每 Boss 碎片 +0.6。</div>');
+  } else {
+    const d = META.abyss | 0;
+    out.push('<div class="hg-abyss">' +
+      '<div class="hg-abyss-row"><span>当前深度</span><b>' + d + ' / ' + ABYSS_MAX + '</b></div>' +
+      '<div class="hg-abyss-row">' +
+        '<button class="btn hg-ab" data-ab="-1"' + (d <= 0 ? ' disabled' : '') + '>−</button>' +
+        '<button class="btn hg-ab" data-ab="1"' + (d >= ABYSS_MAX ? ' disabled' : '') + '>＋</button>' +
+      '</div>' +
+      '<p>敌人血量 <b>+' + (12 * d) + '%</b>　速度 <b>+' + (3 * d) + '%</b><br>' +
+      '星尘 <b>+' + (25 * d) + '%</b>　每 Boss 碎片 <b>+' + (0.6 * d).toFixed(1) + '</b></p>' +
+      '</div>');
+  }
+
+  /* ---- 装备预览 ---- */
+  const L = META.lines;
+  out.push('<div class="hg-h">当前配装预览</div>');
+  out.push('<div class="hg-lock">最大生命 <b>+' + (6 * L.hull) + '</b>　减伤 <b>' + (1.5 * L.hull).toFixed(1) + '%</b>' +
+    '　伤害 <b>+' + (2 * L.fire) + '%</b>　射速 <b>+' + (1.5 * L.fire) + '%</b><br>' +
+    '移速 <b>+' + (1.5 * L.engine) + '%</b>　冲刺冷却 <b>−' + (0.12 * L.engine).toFixed(2) + 's</b>' +
+    '　元素上限 <b>' + (META.mods.indexOf('m_third') >= 0 ? 3 : 2) + '</b></div>');
+
+  document.getElementById('hgBody').innerHTML = out.join('');
+  wireHangar();
+}
+
+/* 三个动作抽成具名函数：UI 与无头自检走同一条路径（否则点击逻辑无法被测试覆盖） */
+function metaUpgrade(lineId) {
+  const cost = nextCost(META, lineId);
+  if (cost === null || META.dust < cost) return false;
+  META.dust -= cost;
+  META.lines[lineId] = (META.lines[lineId] | 0) + 1;
+  saveMeta(META);
+  SFX.play('uiClick');
+  G.toast(META_LINES.find(l => l.id === lineId).name + ' → Lv ' + META.lines[lineId]);
+  renderHangar();
+  return true;
+}
+function metaBuyMod(modId) {
+  const M = META_MOD_BY_ID[modId];
+  if (!M || META.mods.indexOf(modId) >= 0 || META.core < M.cost) return false;
+  META.core -= M.cost;
+  META.mods.push(modId);
+  saveMeta(META);
+  SFX.play('rxBig');
+  G.toast('改装槽装配 · ' + M.name);
+  renderHangar();
+  return true;
+}
+function metaSetAbyss(delta) {
+  if (!abyssUnlocked(META)) return false;
+  const d = clamp((META.abyss | 0) + Number(delta), 0, ABYSS_MAX);
+  if (d === META.abyss) return false;
+  META.abyss = d;
+  saveMeta(META);
+  SFX.play('uiClick');
+  renderHangar();
+  return true;
+}
+
+function wireHangar() {
+  const body = document.getElementById('hgBody');
+  body.querySelectorAll('.hg-up').forEach(el =>
+    el.addEventListener('click', () => metaUpgrade(el.dataset.line)));
+  body.querySelectorAll('.hg-buy').forEach(el =>
+    el.addEventListener('click', () => metaBuyMod(el.dataset.mod)));
+  body.querySelectorAll('.hg-ab').forEach(el =>
+    el.addEventListener('click', () => metaSetAbyss(el.dataset.ab)));
+  body.querySelectorAll('select[data-pick]').forEach(el => el.addEventListener('change', () => {
+    if (el.dataset.pick === 'card') META.pickCard = el.value; else META.pickElem = el.value;
+    saveMeta(META);
+    SFX.play('uiClick');
+    G.toast('起手已设为 ' + el.options[el.selectedIndex].text);
+  }));
+}
+
+function openHangar() {
+  SFX.play('uiClick');
+  renderHangar();
+  document.getElementById('hangar').classList.remove('hidden');
+}
+function closeHangar() {
+  SFX.play('uiBack');
+  document.getElementById('hangar').classList.add('hidden');
+  syncMenuMeta();
+}
+/** 主菜单上顺带露出资源，省得每次都要点进机库看 */
+function syncMenuMeta() {
+  const btn = document.getElementById('btnHangar');
+  if (btn) btn.textContent = '星港机库 · 星尘 ' + fmt(META.dust | 0) + ' / 碎片 ' + (META.core | 0);
+}
+document.getElementById('btnHangar').addEventListener('click', openHangar);
+document.getElementById('btnHangarClose').addEventListener('click', closeHangar);
+document.getElementById('btnHangarLaunch').addEventListener('click', () => { closeHangar(); startGame(); });
+
+/* ---------------------------------------------------------
    主循环
    --------------------------------------------------------- */
 let last = performance.now();
@@ -2160,7 +2350,12 @@ function boot() {
   buildNebula();
   buildFX();
   resize();
-  document.getElementById('menuBest').textContent = fmt(Number(localStorage.getItem('rt_best') || 0));
+  document.getElementById('menuBest').textContent = fmt(Math.max(META.best.score | 0, Number(localStorage.getItem('rt_best') || 0) || 0));
+  syncMenuMeta();
+  /* v1 → v2 存档迁移：一次性说明，避免老玩家以为进度丢了 */
+  if (META._migrated) {
+    setTimeout(() => G.toast('存档已升级 v2 · 按最高分换算 ' + fmt(META.dust) + ' 星尘'), 900);
+  }
   requestAnimationFrame(loop);
   devHook();
 }

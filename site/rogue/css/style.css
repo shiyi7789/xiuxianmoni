@@ -237,3 +237,48 @@ kbd{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font
   .card{padding:11px 13px}
   .card .ico{width:38px;height:38px;flex-basis:38px;font-size:20px}
 }
+
+/* ======================== 星港机库（元进度 · v3） ======================== */
+.hangar-panel{width:min(468px,100%);max-height:calc(100% - 40px);overflow:auto}
+.hg-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.hg-kicker{font-size:9.5px;letter-spacing:.28em;color:var(--dim);margin-top:2px}
+.hg-res{display:flex;gap:14px;text-align:right;flex-shrink:0}
+.hg-res-item span{display:block;font-size:9.5px;letter-spacing:.12em;color:var(--dim)}
+.hg-res-item b{font-size:16px;color:var(--gold)}
+.hg-res-item:nth-child(2) b{color:var(--violet)}
+.hg-sub{font-size:11px;line-height:1.75;color:var(--dim);margin:12px 0 16px}
+.hg-sub b{color:var(--cyan)}
+.hg-body{display:flex;flex-direction:column;gap:8px}
+.hg-h{font-size:10.5px;letter-spacing:.16em;color:var(--cyan);margin-top:8px;padding-bottom:3px;
+  border-bottom:1px solid var(--line)}
+.hg-line,.hg-mod{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;padding:10px 11px}
+.hg-mod.on{border-color:rgba(176,107,255,.5);background:rgba(176,107,255,.08)}
+.hg-line-head,.hg-mod-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.hg-line-head b,.hg-mod-head b{font-size:13px;color:var(--ink)}
+.hg-line-head span,.hg-mod-head span{font-size:10.5px;color:var(--dim);letter-spacing:.06em}
+.hg-mod-head span{color:var(--violet)}
+.hg-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.09);margin:7px 0 6px;overflow:hidden}
+.hg-bar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--cyan),var(--blue))}
+.hg-line-info{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;color:var(--dim);align-items:baseline}
+.hg-cost b{color:var(--gold);font-size:12px}
+.hg-cost i{font-style:normal;color:var(--red)}
+.hg-max{color:var(--green)}
+.hg-up,.hg-buy{margin-top:8px;padding:8px;font-size:11.5px}
+.hg-up.off,.hg-buy.off{opacity:.42;cursor:not-allowed}
+.hg-mod p{font-size:10.5px;line-height:1.6;color:var(--dim);margin-top:4px}
+.hg-pick{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;
+  font-size:10.5px;color:var(--dim)}
+.hg-pick select{background:#0b1020;color:var(--ink);border:1px solid var(--line);border-radius:7px;
+  padding:5px 7px;font-size:11px;font-family:inherit}
+.hg-abyss{background:rgba(255,85,102,.07);border:1px solid rgba(255,85,102,.28);border-radius:11px;padding:10px 11px}
+.hg-abyss-row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.hg-abyss-row span{font-size:11px;color:var(--dim);letter-spacing:.1em}
+.hg-abyss-row b{font-size:19px;color:var(--red)}
+.hg-ab{width:44px;margin:0;padding:7px;font-size:15px;line-height:1}
+.hg-ab:disabled{opacity:.35;cursor:not-allowed}
+.hg-abyss p{font-size:10.5px;line-height:1.65;color:var(--dim);margin-top:7px}
+.hg-abyss p b{color:var(--red)}
+.hg-lock{font-size:10.5px;color:var(--dim);padding:9px 11px;border:1px dashed rgba(255,255,255,.16);border-radius:11px}
+.hg-foot{display:flex;flex-direction:column;margin-top:14px}
+.hg-foot .btn{margin-top:8px}

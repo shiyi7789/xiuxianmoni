@@ -105,6 +105,7 @@
         </div>
 
         <button id="btnStart" class="btn primary">开始战斗</button>
+        <button id="btnHangar" class="btn ghost">星港机库 · 强化主战机</button>
         <button id="btnCodex" class="btn ghost">元素图鉴 <kbd>C</kbd></button>
         <div class="best">历史最高分 <b id="menuBest">0</b></div>
         <p class="hint">击杀敌人获得经验 → 升级时从五张卡中<br>选择新武器、被动或主动技能 → 用 Build 撕裂弹幕<br>
@@ -139,6 +140,29 @@
         </div>
         <div class="elems-pick" id="elemCards"></div>
         <p class="elem-foot">不可重随 · 不可跳过 · 最多两种元素</p>
+      </div>
+    </div>
+
+    <!-- ======================== 星港机库（元进度） ======================== -->
+    <div id="hangar" class="overlay hidden">
+      <div class="panel hangar-panel">
+        <div class="hg-top">
+          <div>
+            <h2>星港机库</h2>
+            <p class="hg-kicker">META PROGRESSION</p>
+          </div>
+          <div class="hg-res">
+            <div class="hg-res-item"><span>星尘</span><b id="hgDust">0</b></div>
+            <div class="hg-res-item"><span>核心碎片</span><b id="hgCore">0</b></div>
+          </div>
+        </div>
+        <p class="hg-sub">元进度只改变<b>起点</b>，不替代过程 —— 满级约等于白送 4–5 波，<br>
+          不可能靠它无脑撑过 W30。想更强，去调「深渊深度」。</p>
+        <div class="hg-body" id="hgBody"></div>
+        <div class="hg-foot">
+          <button id="btnHangarLaunch" class="btn primary">出 击</button>
+          <button id="btnHangarClose" class="btn ghost">返回主菜单</button>
+        </div>
       </div>
     </div>
 
@@ -183,6 +207,7 @@
 <script src="js/utils.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/elements.js"></script>
+<script src="js/meta.js"></script>
 <script src="js/entities.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/waves.js"></script>

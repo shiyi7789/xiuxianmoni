@@ -75,7 +75,7 @@ const files = [
   '/version.json', '/404.html', '/robots.txt', '/sitemap.xml',
   '/assets/site.css', '/assets/site.js',
   '/rogue/css/style.css', '/rogue/js/utils.js', '/rogue/js/audio.js', '/rogue/js/elements.js',
-  '/rogue/js/entities.js', '/rogue/js/upgrades.js', '/rogue/js/waves.js', '/rogue/js/game.js'
+  '/rogue/js/entities.js', '/rogue/js/upgrades.js', '/rogue/js/waves.js', '/rogue/js/meta.js', '/rogue/js/game.js'
 ];
 const bodies = {};
 for (const f of files) {
@@ -301,17 +301,52 @@ chk('游戏页 JSON-LD 为 VideoGame', /"@type":"VideoGame"/.test(RGI), '');
 chk('游戏页有独立 favicon 与 theme-color', /rel="icon"/.test(RGI) && /name="theme-color"/.test(RGI), '');
 chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'elements', 'entities', 'upgrades', 'waves', 'game']
   .every(n => RGI.indexOf('js/' + n + '.js') >= 0), 'utils→audio→elements→entities→upgrades→waves→game');
+/* ---------- v3 元进度（设计提案 §5） ---------- */
+{
+  const MT = (bodies['/rogue/js/meta.js'] || {}).text || '';
+  const GMC = (bodies['/rogue/js/game.js'] || {}).text || '';
+  /* ⚠ 必须比对 <script> 标签：index.html 顶部的 subpathBase 注释里也提到了 js/game.js，
+     用裸文件名 indexOf 会命中注释（实测 meta 在 9076、注释里的 game 在 1766）→ 假失败。 */
+  chk('meta.js 在 game.js 之前加载',
+    RGI.indexOf('<script src="js/meta.js"></script>') >= 0 &&
+    RGI.indexOf('<script src="js/meta.js"></script>') < RGI.indexOf('<script src="js/game.js"></script>'),
+    'elements → meta → … → game');
+  chk('存档 v2：双份写入 + 校验和 + v1 迁移',
+    /SAVE_KEY = 'rt_save_v2'/.test(MT) && /SAVE_BAK = 'rt_save_v2_bak'/.test(MT) &&
+    /function metaSum/.test(MT) && /rt_best/.test(MT),
+    'v2 + bak + _sum 校验 + 从 v1 最高分迁移');
+  chk('三线升级齐全（机体 / 火力 / 引擎）',
+    /机体线/.test(MT) && /火力线/.test(MT) && /引擎线/.test(MT) && /380 \* Math\.pow\(1\.42/.test(MT),
+    '3 条线 · cost=380×1.42^(n−1)');
+  chk('改装槽 5 个且花核心碎片', (MT.match(/id: 'm_/g) || []).length === 5 &&
+    /cost: 240/.test(MT), '5 个槽 · 12/30/60/120/240 片');
+  chk('深渊深度 0–10、需三线总等级 ≥ 15 解锁',
+    /ABYSS_MAX = 10/.test(MT) && /ABYSS_UNLOCK_LV = 15/.test(MT), '解锁门槛有守卫');
+  chk('机库面板与主菜单入口就位',
+    /id="hangar"/.test(RGI) && /id="btnHangar"/.test(RGI) && /id="hgBody"/.test(RGI), '');
+  chk('机库首屏显示「下一级 / 还差 X 星尘」（留存钩子的物理载体）',
+    /下一级/.test(GMC) && /还差/.test(GMC), '§5.5 的 ★ 关键 UI');
+  chk('元素上限走 elemCap（改装槽「三相共鸣」才能生效）',
+    /function elemCap/.test(MT) && /elemCap\(p\)/.test(GMC), '');
+}
+
 chk('elements.js 在 entities.js 之前加载（下游依赖它）',
   RGI.indexOf('js/elements.js') < RGI.indexOf('js/entities.js'), 'elements < entities');
 chk('样式表为同源相对路径', /<link rel="stylesheet" href="css\/style\.css">/.test(RGI), 'css/style.css');
 chk('游戏页自带子路径资源基准（subpathBase）', /id="subpathBase"/.test(RGI),
   '站点对外是 /rogue（无尾斜杠），没有它相对子资源会 404 成一片纯文字');
 chk('游戏本体无外部子资源请求', !/<script[^>]+src="https?:/.test(RGI) && !/<link[^>]+rel="stylesheet"[^>]*href="https?:/.test(RGI) && !/<img[^>]+src="https?:/.test(RGI), '音频为程序化合成，图片为零');
-/* 体积闸门（v2 上调 250 → 320 KB）：本轮内容扩容 = 6 元素 + 15 反应 + 25 张卡 +
-   10 个新小怪 + 5 个新 Boss + 元素 UI/图鉴，源码从 162 KB 增至 290 KB。闸门的本意是
-   「不许塞二进制素材把单文件撑爆」——该守卫在下方单独断言（BIN_ASSET），且 gzip 后仅 ~89 KB，
-   所以这里放宽上限，同时把 gzip 与「两款合计」两条硬线留在原位。 */
-chk('游戏体积可控（< 320 KB）', rogueBytes < 320 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
+/* 体积闸门（v3 上调 320 → 350 KB）：
+   历史：v2 250 → 320（6 元素 + 15 反应 + 25 卡 + 10 怪 + 5 Boss）；v3 320 → 350
+   （无尽五阶 + 品质曲线 + 6 张新史诗 + 元进度 + 存档 v2 + 机库 UI + 深渊深度）。
+   闸门的本意是「不许塞二进制素材把单文件撑爆」—— BIN_ASSET 守卫在下方单独断言，
+   所以这里只做「源码不许爆炸式膨胀」的软提醒。
+   ⚠ 真正的传输成本是 gzip，所以下面另加一条 gzip 硬线（原先只有显示、没有断言）。 */
+chk('游戏体积可控（< 350 KB 源码）', rogueBytes < 350 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
+{
+  const gzR = gzipSync(roguePairs.map(p => p[1]).reduce((a, b) => Buffer.concat([a, b]))).length;
+  chk('星际裂隙 gzip < 130 KB（真实传输成本）', gzR < 130 * 1024, (gzR / 1024).toFixed(1) + ' KB');
+}
 chk('脚本按顺序拼接即可运行（无打包器、无 import）', !/^\s*import\s/m.test(roguePairs.map(p => p[1].toString()).join('\n')), '六个文件共享同一全局作用域');
 
 /* ---------- 7.2 体积闸门与「不许内嵌素材」守卫（单文件形态的命门） ---------- */
@@ -326,7 +361,9 @@ chk('修仙模拟器仍是单文件（< 400 KB）', GAMEBODY.length < GBUDGET,
 const BIN_ASSET = /data:(image\/(png|jpe?g|gif|webp|avif|bmp)|audio\/|video\/|font\/)/i;
 chk('修仙模拟器无内嵌二进制素材', !BIN_ASSET.test(GAMEBODY), '音频/图像均为程序化生成');
 chk('星际裂隙无内嵌二进制素材', !roguePairs.some(p => BIN_ASSET.test(p[1].toString())), '音效为 WebAudio 合成');
-chk('两款游戏合计不超过 700 KB', xiuxianBuf.length + rogueBytes < 700 * 1024,
+/* v3：700 → 780 KB。原先只有 102 B 余量（699.9 / 700），任意一处改动都会立刻爆掉 ——
+   闸门不该是"卡在边界上"的。这里同样是源码体积的软提醒，真实成本看 gzip。 */
+chk('两款游戏合计不超过 780 KB', xiuxianBuf.length + rogueBytes < 780 * 1024,
   ((xiuxianBuf.length + rogueBytes) / 1024).toFixed(1) + ' KB');
 
 /* ---------- 7.5 404 页（独立成组：不套文案页规范，因为它刻意 noindex） ---------- */
@@ -508,7 +545,8 @@ out('  共享样式 / 脚本   : ' + (CSS.length / 1024).toFixed(1) + ' KB / ' +
 out('  修仙模拟器        : ' + (xiuxianBuf.length / 1024).toFixed(1) + ' KB（单文件）');
 out('  星际裂隙          : ' + (rogueBytes / 1024).toFixed(1) + ' KB（' + roguePairs.length + ' 个文件，gzip 后 ' +
   (gzipSync(roguePairs.map(p => p[1]).reduce((a, b) => Buffer.concat([a, b]))).length / 1024).toFixed(1) + ' KB）');
-out('  两款游戏合计      : ' + ((xiuxianBuf.length + rogueBytes) / 1024).toFixed(1) + ' KB');
+out('  两款游戏合计      : ' + ((xiuxianBuf.length + rogueBytes) / 1024).toFixed(1) + ' KB（gzip 后 ' +
+  ((gzipSync(xiuxianBuf).length + gzipSync(roguePairs.map(p => p[1]).reduce((a, b) => Buffer.concat([a, b]))).length) / 1024).toFixed(1) + ' KB）');
 
 server.close();
 out('');

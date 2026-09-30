@@ -56,6 +56,10 @@ jobs:
         run: node test/audio.js
         working-directory: games/thunder-rogue
 
+      - name: 星际裂隙 · 元进度与存档 v2 测试
+        run: node test/meta.js
+        working-directory: games/thunder-rogue
+
       # 渲染回归：常规自检管"能不能跑、数值对不对"，这条管"跑得顺不顺"
       - name: 星际裂隙 · 渲染性能回归（overdraw 闸门）
         run: node test/perf.js --assert

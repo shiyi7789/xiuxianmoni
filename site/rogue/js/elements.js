@@ -298,6 +298,12 @@ function elemDischarge(G, e, depth) {
 /** 冰：满层冻结 */
 function elemFreeze(G, e) {
   if (e.dead || !e.st || !e.st.ice) return;
+  /* ⚠⚠ 重入防护（曾造成线上崩溃，2026-09-30 定位）：
+     下面的 rxFire / damageEnemy 可能把 e **本人**打死，而击杀钩子 elemOnKill()
+     会执行 e.st = null。此时再读 e.st.ice 就是 "Cannot read properties of null"。
+     实测崩点：本函数末尾的 e.st.ice.n = 0（冰 + 非火伙伴时，rxFire 先击杀 → 回来即崩）。
+     修法：入口把要用的数值快照到局部变量，之后一律不再依赖 e.st。 */
+  const iceDmg = e.st.ice.dmg;
   const o = elemPartner(e, 'ice');
   const rx = o ? RX[_rxKey('ice', o)] : null;
   let dur = 0.9;
@@ -310,13 +316,14 @@ function elemFreeze(G, e) {
   e._freezeRx = o;
   if (o === 'void') e.pullSrc = 1;                 // 引力冰狱
   if (o === 'light') e.mirror = 1;                 // 霜镜
-  if (rx && o !== 'fire') rxFire(G, e, rx, Math.max(4, e.st.ice.dmg) * 0.5, 0);
+  if (rx && o !== 'fire') rxFire(G, e, rx, Math.max(4, iceDmg) * 0.5, 0);
   if (o === 'thunder' && rx) {                     // 超导：全场冻结者连锁（rxFire 已在上一步登记，勿重复）
     for (const t of G.enemies) {
       if (t.dead || t === e || !elemFrozen(t)) continue;
-      damageEnemy(G, t, Math.max(4, e.st.ice.dmg) * 0.5, { noElem: true, src: 'rx' });
+      damageEnemy(G, t, Math.max(4, iceDmg) * 0.5, { noElem: true, src: 'rx' });
     }
   }
+  /* e 已被 rxFire / 连锁打死时，视觉照放（e.x / e.r 仍然有效），但不要再碰 e.st */
   SFX.playAt('eFreeze', e.x, e.y);
   for (let i = 0; i < 10; i++) {
     const a = rand(TAU);
@@ -324,7 +331,7 @@ function elemFreeze(G, e) {
       vx: Math.cos(a) * 60, vy: Math.sin(a) * 60, life: 0.5, max: 0.5,
       size: 3.6, color: '#7FC8FF', kind: 'spark' });
   }
-  e.st.ice.n = 0;
+  if (e.st && e.st.ice) e.st.ice.n = 0;
 }
 
 /** 冰：冻结结束（热震 / 腐蚀冻土的锁定解除） */

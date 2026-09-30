@@ -21,7 +21,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/entities.js', 'js/upgrades.js', 'js/waves.js', 'js/game.js'];
+const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/entities.js', 'js/upgrades.js', 'js/waves.js', 'js/game.js'];
 const W = 540, H = 960, SCREEN = W * H;
 
 /* 回归阈值（overdraw 倍数）。超过即判定"画面变卡"，--assert 模式下 exit 1。

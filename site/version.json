@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.30-1843",
-  "build": "20260930-184358",
+  "v": "2026.09.30-2207",
+  "build": "20260930-220756",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 693787,
+  "totalGameBytes": 717557,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 314258,
-      "sha256": "08597ecf34c40d2261dbb100b2671594ad55b410f404d2d364a7f277504396f3",
-      "files": 9
+      "bytes": 338028,
+      "sha256": "e334fa23e9a610ee9c48c16c1b2834a1520ed7cd988d715a1f398a1d79f124b1",
+      "files": 10
     }
   ],
-  "note": "修 release 的 CRLF/LF 计量：version.json 体积与指纹改为平台无关（修 CI 长期红）",
-  "time": "2026-09-30T18:43:58.573+08:00"
+  "note": "rogue v3 三期 + 修 elemFreeze 重入崩溃（真机可见的帧中断）",
+  "time": "2026-09-30T22:07:56.195+08:00"
 }
