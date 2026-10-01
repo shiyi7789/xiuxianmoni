@@ -310,7 +310,11 @@ function killEnemy(G, e) {
     G.dustEarn += e.score * 0.10 * sm * dm;
     if (e.isBoss) {
       G.dustEarn += (150 + 50 * G.bossIndex) * sm * dm;
-      G.coreEarn += (2 + G.bossIndex) + (G.abyssCoreBonus || 0);
+      /* v3.1 数据修正（《肉鸽数据报告》§4.2 方案①）：
+         原式 2+bossIndex 使中位玩家（一局只打得过 3 个 Boss）一局仅得 7 片，
+         开满五个改装槽要 38.5 局（设计意图 20 局）——碎片侧是量级错误，不是"稍慢"。
+         改为 4+2×bossIndex：W5/W10/W15 → 6/8/10 片，W15 一局 24 片 → 五槽 ≈19 局。 */
+      G.coreEarn += (4 + 2 * G.bossIndex) + (G.abyssCoreBonus || 0);
     }
   }
 

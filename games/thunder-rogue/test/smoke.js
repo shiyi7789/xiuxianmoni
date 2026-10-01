@@ -305,6 +305,44 @@ const driver = `
     }
   }
 
+  /* ---- v3.1：中途续玩 + 菜单显隐（用户要求二/三） ---- */
+  REPORT.resume = {};
+  try {
+    startGame();
+    G.wave = 7; G.score = 1234; G.kills = 56; G.bossIndex = 2;
+    G.player.hp = 42; G.player.wlv.arc = 2; G.player.elems = ['ice'];
+    G.player._gate1Done = 1; G.player.phaseLv = 1;
+    saveRun();
+    const snap = readRun();
+    REPORT.resume.saved = !!snap && snap.wave === 7 && snap.score === 1234 && Math.round(snap.p.hp) === 42;
+
+    G.player = null; G.state = 'menu';
+    REPORT.resume.resumed = resumeSavedRun();
+    REPORT.resume.wave = G.wave;
+    REPORT.resume.score = G.score;
+    REPORT.resume.hp = Math.round(G.player.hp);
+    REPORT.resume.arcLv = G.player.wlv.arc;
+    REPORT.resume.elems = G.player.elems.join(',');
+    REPORT.resume.gate1 = G.player._gate1Done;
+    REPORT.resume.graceInvuln = G.player.invuln >= 1.9;     // 回来给 2s 无敌
+    REPORT.resume.cooldownReset = G.player.dashCd === 0 && G.player.phaseCd === 0;
+
+    /* 死亡必须终结续玩（否则"关掉重来续命"就是漏洞） */
+    gameOver();
+    REPORT.resume.clearedOnDeath = readRun() === null;
+
+    /* 菜单显隐：原来是真 bug（只隐藏、从未显示） */
+    showMenu(true);
+    REPORT.resume.menuShown = !document.getElementById('menu').classList.contains('hidden');
+    showMenu(false);
+    REPORT.resume.menuHidden = document.getElementById('menu').classList.contains('hidden');
+
+    /* 回归：非法快照必须被忽略 */
+    localStorage.setItem('rt_run_v1', '{"v":1,"wave":0}');
+    REPORT.resume.badSnapshotIgnored = readRun() === null;
+    localStorage.removeItem('rt_run_v1');
+  } catch (e) { REPORT.errors.push('resume: ' + e.message); }
+
   /* ---- v3：机库（元进度）冒烟：UI 渲染 + 三条动作 + 存档落盘 ---- */
   REPORT.hangar = {};
   try {

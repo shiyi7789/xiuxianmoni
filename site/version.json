@@ -1,11 +1,11 @@
 {
-  "v": "2026.09.30-2207",
-  "build": "20260930-220756",
+  "v": "2026.10.01-1707",
+  "build": "20261001-170703",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 717557,
+  "totalGameBytes": 731113,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 338028,
-      "sha256": "e334fa23e9a610ee9c48c16c1b2834a1520ed7cd988d715a1f398a1d79f124b1",
+      "bytes": 351584,
+      "sha256": "28495d50495ddca1a8ffa0d9b9b64805df7de67cd6fbf50c61c6b3a922d04d6a",
       "files": 10
     }
   ],
-  "note": "rogue v3 三期 + 修 elemFreeze 重入崩溃（真机可见的帧中断）",
-  "time": "2026-09-30T22:07:56.195+08:00"
+  "note": "rogue v3.1：碎片经济修正 + 中途续玩 + 返回菜单 + 移动端技能键",
+  "time": "2026-10-01T17:07:03.727+08:00"
 }

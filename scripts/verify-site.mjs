@@ -326,6 +326,31 @@ chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'elements',
     /id="hangar"/.test(RGI) && /id="btnHangar"/.test(RGI) && /id="hgBody"/.test(RGI), '');
   chk('机库首屏显示「下一级 / 还差 X 星尘」（留存钩子的物理载体）',
     /下一级/.test(GMC) && /还差/.test(GMC), '§5.5 的 ★ 关键 UI');
+  /* ---------- v3.1：数据驱动修正 + 中途续玩 + 移动端技能 ---------- */
+  {
+    const CSSR = (bodies['/rogue/css/style.css'] || {}).text || '';
+    /* ⚠ 碎片公式在 entities.js（killEnemy 里），不在 game.js */
+    const ENTC = (bodies['/rogue/js/entities.js'] || {}).text || '';
+    chk('碎片掉落按《肉鸽数据报告》§4.2 修正为 4+2×bossIndex',
+      /4 \+ 2 \* G\.bossIndex/.test(ENTC) && !/\(2 \+ G\.bossIndex\) \+/.test(ENTC),
+      '原先 2+bossIndex 使五槽要 38.5 局');
+    chk('中途续玩：快照 + 恢复 + 死亡即清（防关掉重来续命）',
+      /RUN_KEY = 'rt_run_v1'/.test(GMC) && /function resumeSavedRun/.test(GMC) &&
+      /function clearRun/.test(GMC), '');
+    chk('退出时自动保存（visibilitychange + pagehide）',
+      /visibilitychange/.test(GMC) && /pagehide/.test(GMC), '移动端 pagehide 比 beforeunload 可靠');
+    chk('主菜单有「继续上次战斗」入口', /id="btnContinue"/.test(RGI), '');
+    chk('HUD 有「返回菜单」按钮', /id="btnHudMenu"/.test(RGI), '');
+    chk('菜单显隐统一走 showMenu（修「只隐藏从不显示」的卡死 bug）',
+      /function showMenu/.test(GMC) && !/getElementById\('menu'\)\.classList\.add\('hidden'\)/.test(GMC),
+      '原来返回主菜单后菜单不出现，玩家卡在空画布');
+    chk('移动端技能按钮 4 个（冲刺 / 核弹 / 时缓 / 相位）',
+      (RGI.match(/class="tsk[ "]/g) || []).length === 4, '');
+    chk('技能按钮仅在触摸设备显示（pointer: coarse）',
+      /pointer:\s*coarse/.test(CSSR) && /\.touch-skills/.test(CSSR), '桌面端保持键位 UI');
+    chk('本机波次中位数（零隐私风险的"自己的分布"）',
+      /function metaMedianWave/.test(MT) && /recent/.test(MT), '数据报告 §6.4 方案①');
+  }
   chk('元素上限走 elemCap（改装槽「三相共鸣」才能生效）',
     /function elemCap/.test(MT) && /elemCap\(p\)/.test(GMC), '');
 }
@@ -338,11 +363,12 @@ chk('游戏页自带子路径资源基准（subpathBase）', /id="subpathBase"/.
 chk('游戏本体无外部子资源请求', !/<script[^>]+src="https?:/.test(RGI) && !/<link[^>]+rel="stylesheet"[^>]*href="https?:/.test(RGI) && !/<img[^>]+src="https?:/.test(RGI), '音频为程序化合成，图片为零');
 /* 体积闸门（v3 上调 320 → 350 KB）：
    历史：v2 250 → 320（6 元素 + 15 反应 + 25 卡 + 10 怪 + 5 Boss）；v3 320 → 350
-   （无尽五阶 + 品质曲线 + 6 张新史诗 + 元进度 + 存档 v2 + 机库 UI + 深渊深度）。
+   v3.1 再 350 → 380（中途续玩 + 返回菜单 + 移动端技能键 + 波次记录）。
+   ⚠ 上调依据是"留 10% 余量"：350 时实测已到 343.3（仅 2%），一条新功能就会爆。
    闸门的本意是「不许塞二进制素材把单文件撑爆」—— BIN_ASSET 守卫在下方单独断言，
    所以这里只做「源码不许爆炸式膨胀」的软提醒。
    ⚠ 真正的传输成本是 gzip，所以下面另加一条 gzip 硬线（原先只有显示、没有断言）。 */
-chk('游戏体积可控（< 350 KB 源码）', rogueBytes < 350 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
+chk('游戏体积可控（< 380 KB 源码）', rogueBytes < 380 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
 {
   const gzR = gzipSync(roguePairs.map(p => p[1]).reduce((a, b) => Buffer.concat([a, b]))).length;
   chk('星际裂隙 gzip < 130 KB（真实传输成本）', gzR < 130 * 1024, (gzR / 1024).toFixed(1) + ' KB');

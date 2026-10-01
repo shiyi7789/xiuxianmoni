@@ -68,6 +68,7 @@
           <div class="elems" id="hudElems"></div>
         </div>
         <div class="hud-col-right">
+          <button id="btnHudMenu" class="hud-btn">☰ 菜单</button>
           <div class="wave-tag">WAVE <b id="hudWave">1</b></div>
           <div class="score" id="hudScore">0</div>
           <div class="sub" id="hudKills">击杀 0</div>
@@ -77,6 +78,16 @@
       <div class="hud-bottom">
         <div class="loadout" id="hudLoadout"></div>
         <div class="abilities" id="hudAbilities"></div>
+      </div>
+
+      <!-- 移动端技能按钮（v3.1 · 用户要求四）：手机没有键盘，四个技能必须有可点入口。
+           用 @media (pointer: coarse) 只在触摸设备显示，桌面端保持纯净的键位 UI。
+           注意：它在 #hud 内（随 HUD 显隐），而 #hud 是 pointer-events:none —— 按钮各自打开命中。 -->
+      <div id="touchSkills" class="touch-skills">
+        <button class="tsk hidden" id="tskDash" type="button"><i>⇢</i><small>冲刺</small><u></u></button>
+        <button class="tsk hidden" id="tskBomb" type="button"><i>☢</i><small>核弹</small><u></u></button>
+        <button class="tsk hidden" id="tskSlow" type="button"><i>⧗</i><small>时缓</small><u></u></button>
+        <button class="tsk hidden" id="tskPhase" type="button"><i>⊕</i><small>相位</small><u></u></button>
       </div>
     </div>
 
@@ -104,6 +115,7 @@
           <div class="key-item"><kbd>P</kbd><span>暂停</span><kbd>M</kbd><span>静音</span><kbd>C</kbd><span>元素图鉴</span><kbd>1 – 6</kbd><span>选择</span></div>
         </div>
 
+        <button id="btnContinue" class="btn primary hidden">继续上次战斗 · 第 <b id="continueWave">1</b> 波</button>
         <button id="btnStart" class="btn primary">开始战斗</button>
         <button id="btnHangar" class="btn ghost">星港机库 · 强化主战机</button>
         <button id="btnCodex" class="btn ghost">元素图鉴 <kbd>C</kbd></button>

@@ -177,6 +177,52 @@ const DRIVER = `
     const M3 = blankMeta();
     T('#29 0 级时 nextCost = 380', nextCost(M3, 'hull') === 380, 'cost=' + nextCost(M3, 'hull'));
   }
+  /* ---------- 9. v3.1 新增：本机波次记录（recent）与老存档兼容 ---------- */
+  {
+    /* 老存档兼容（最关键）：v3.1 之前写入的 v2 存档没有 recent 字段，
+       新增字段**绝不能**让校验和变化，否则所有老玩家的进度会在升级瞬间清零。 */
+    const m = blankMeta();
+    m.dust = 7777; m.core = 33; m.lines.hull = 4; m.best.wave = 11;
+    saveMeta(m);
+    const raw = JSON.parse(S.getItem('rt_save_v2'));
+    delete raw.recent;                                  // 模拟"没有 recent 的老存档"
+    S.setItem('rt_save_v2', JSON.stringify(raw));
+    S.removeItem('rt_save_v2_bak');
+    const back = loadMeta();
+    T('#30 老 v2 存档（无 recent）仍完整读取，进度不丢',
+      back.dust === 7777 && back.core === 33 && back.lines.hull === 4 && back.best.wave === 11 &&
+      Array.isArray(back.recent) && back.recent.length === 0,
+      'dust=' + back.dust + ' core=' + back.core + ' hull=' + back.lines.hull + ' recent=' + JSON.stringify(back.recent));
+  }
+  {
+    /* recent 去重与上限：同一局同一波只记一次，最多留 20 条 */
+    const m = blankMeta();
+    saveMeta(m);
+    const M = loadMeta();
+    G.recentHost = M;
+    G.wave = 3; G._runLogged = 0;
+    // 直接驱动记录逻辑：用 commitRun（它内含去重）
+    G.dustEarn = 0; G.coreEarn = 0; G.score = 0;
+    for (let i = 0; i < 5; i++) commitRun(M);            // 同一波重复落盘 5 次
+    const after5 = M.recent.length;
+    G.wave = 4; for (let i = 0; i < 3; i++) commitRun(M);
+    const after4 = M.recent.length;
+    T('#31 recent 同一波只记一次（3→+1→4→+1）', after5 === 1 && after4 === 2,
+      'afterW3=' + after5 + ' afterW4=' + after4);
+    for (let w = 5; w <= 40; w++) { G.wave = w; commitRun(M); }
+    T('#32 recent 上限 20 条', M.recent.length === 20, 'len=' + M.recent.length);
+    T('#33 中位数计算正确', metaMedianWave({ recent: [12, 14, 15, 16, 20] }) === 15 &&
+      metaMedianWave({ recent: [12, 14, 16, 20] }) === 15 && metaMedianWave({ recent: [] }) === 0,
+      'odd=' + metaMedianWave({ recent: [12, 14, 15, 16, 20] }) +
+      ' even=' + metaMedianWave({ recent: [12, 14, 16, 20] }));
+    T('#34 recent 异常值被清洗', (function () {
+      const bad = blankMeta(); bad.recent = [0, -3, 'x', null, 7, 9];
+      saveMeta(bad);
+      const r = loadMeta().recent;
+      return r.length === 2 && r[0] === 7 && r[1] === 9;
+    })());
+  }
+
   return R;
 })()
 `;

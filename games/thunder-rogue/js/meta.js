@@ -77,6 +77,10 @@ function blankMeta() {
     abyss: 0,
     pickCard: 'laser', pickElem: 'ice',   // 改装槽的可选项（默认值，避免未选时崩）
     best: { wave: 0, score: 0 },
+    /* v3.1：本机最近 20 局的抵达波次。用途见《肉鸽数据报告》§6.4 ——
+       玩家自己看得到中位数成长曲线，反馈时能贴一个数字；**不采集、不上传**。
+       ⚠ 刻意**不计入 metaSum**：校验和一旦变化，所有已存在的 v2 存档都会失效 → 玩家进度清零。 */
+    recent: [],
     coreGift: false,                      // 是否已发过 W3 保底碎片
     _sum: 0,
   };
@@ -104,6 +108,8 @@ function normalizeMeta(m) {
   m.lines = Object.assign({ hull: 0, fire: 0, engine: 0 }, m.lines || {});
   if (!Array.isArray(m.mods)) m.mods = [];
   if (!m.best) m.best = { wave: 0, score: 0 };
+  if (!Array.isArray(m.recent)) m.recent = [];           // v3.1 新增字段：老存档没有 → 补空数组
+  m.recent = m.recent.filter(w => typeof w === 'number' && w > 0).slice(-20);
   for (const l of META_LINES) m.lines[l.id] = clamp(m.lines[l.id] | 0, 0, META_MAX_LV);
   m.abyss = clamp(m.abyss | 0, 0, ABYSS_MAX);
   m.dust = Math.max(0, m.dust | 0);
@@ -193,7 +199,26 @@ function commitRun(M) {
   G.dustEarn = 0; G.coreEarn = 0;
   if (G.wave > (M.best.wave | 0)) M.best.wave = G.wave;
   if (G.score > (M.best.score | 0)) M.best.score = G.score;
+  /* v3.1：记录本局抵达波次（同一局同一波只记一次 —— 用 _runLogged 去重）。
+     放在 commitRun 里：它每波结算 + 死亡时都会调用。 */
+  if (G.wave >= 1) {
+    G._runLogged = G._runLogged || 0;
+    if (G.wave > G._runLogged) {
+      M.recent.push(G.wave);
+      if (M.recent.length > 20) M.recent.splice(0, M.recent.length - 20);
+      G._runLogged = G.wave;
+    }
+  }
   saveMeta(M);
+}
+
+/** 本机最近 20 局的抵达波次中位数（没有样本时返回 0）。
+    用途见《肉鸽数据报告》§6.4：让玩家自己看到"我的中位数"，同时给开发者一个可索取的数字。 */
+function metaMedianWave(M) {
+  const a = ((M && M.recent) || []).slice().sort((x, y) => x - y);
+  if (!a.length) return 0;
+  const mid = a.length >> 1;
+  return a.length % 2 ? a[mid] : Math.round((a[mid - 1] + a[mid]) / 2);
 }
 
 /** 三线总等级（深渊解锁条件） */

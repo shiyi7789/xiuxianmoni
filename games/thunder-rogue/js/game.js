@@ -287,6 +287,7 @@ function waveCleared() {
       G.toast('首次抵达 W3 · 核心碎片 +5');
     }
     commitRun(META);
+    saveRun();                       // v3.1 中途续玩：每波结算落一次盘
   }
   // 呼吸窗：吸附全部经验 + 每 3 波回血
   for (const o of G.orbs) o.mag = true;
@@ -464,7 +465,8 @@ function doPhase() {
   p.x = clamp(p.x + dx / m * dist, 24, W - 24);
   p.y = clamp(p.y + dy / m * dist, 60, H - 40);
   p.invuln = Math.max(p.invuln, 0.5);
-  p.phaseCd = Math.max(4.5, 9 - (p.phaseLv - 1) * 1.5);
+  p.phaseCdMax = Math.max(4.5, 9 - (p.phaseLv - 1) * 1.5);
+  p.phaseCd = p.phaseCdMax;
   SFX.playAt('dash', p.x, p.y);
   for (let i = 0; i < 10; i++) {
     const t = i / 10;
@@ -1800,11 +1802,65 @@ function syncUI() {
   if (p.dashLv) ab.push({ k: 'SPACE', i: '⇢', cd: p.dashCd / p.dashCdMax, ready: p.dashCd <= 0 });
   if (p.bombCount > 0) ab.push({ k: 'Q', i: '☢', n: p.bombCount, ready: true });
   if (p.slowLv) ab.push({ k: 'E', i: '⧗', cd: p.slowCd / p.slowCdMax, ready: p.slowCd <= 0 });
+  /* v3.1：相位门原先漏在 HUD 之外 —— 玩家拿了卡却看不到指示 */
+  if (p.phaseLv) ab.push({ k: 'F', i: '⊕', cd: p.phaseCd / (p.phaseCdMax || 9), ready: p.phaseCd <= 0 });
   const ahtml = ab.map(a => '<div class="ab' + (a.ready ? '' : ' off') + '">' + a.i +
     (a.n != null ? '<small>×' + a.n + '</small>' : '<small>' + a.k + '</small>') +
     (a.cd > 0 ? '<span class="cd" style="transform:scaleY(' + clamp(a.cd, 0, 1) + ')"></span>' : '') +
     '</div>').join('');
   if (_prev.ab !== ahtml) { ui.abilities.innerHTML = ahtml; _prev.ab = ahtml; }
+  syncTouchSkills();
+}
+
+/* 移动端技能按钮（v3.1 · 用户要求四）
+   用 pointerdown 而不是 click：手机 click 有 ~300ms 延迟，技能要"按下即响应"。
+   preventDefault + stopPropagation 防止冒泡到画布触发拖拽走位。 */
+const tskEls = {
+  dash: document.getElementById('tskDash'),
+  bomb: document.getElementById('tskBomb'),
+  slow: document.getElementById('tskSlow'),
+  phase: document.getElementById('tskPhase'),
+};
+{
+  const ACT = { dash: doDash, bomb: doBomb, slow: doSlow, phase: doPhase };
+  for (const k in tskEls) {
+    const el = tskEls[k];
+    if (!el) continue;
+    el.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      SFX.resume();
+      const fn = ACT[k];
+      if (typeof fn === 'function') fn();
+    });
+    /* 兜底：某些老 WebView 不给 pointer 事件 */
+    el.addEventListener('touchstart', (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      SFX.resume();
+      const fn = ACT[k];
+      if (typeof fn === 'function') fn();
+    }, { passive: false });
+  }
+}
+
+function syncTouchSkills() {
+  const p = G.player;
+  if (!p) return;
+  const upd = (el, show, cd, count) => {
+    if (!el) return;
+    el.classList.toggle('hidden', !show);
+    if (!show) return;
+    el.classList.toggle('off', cd > 0);
+    const u = el.querySelector('u');
+    if (u) u.style.transform = 'scaleY(' + clamp(cd, 0, 1) + ')';
+    if (count != null) {
+      const sm = el.querySelector('small');
+      if (sm) sm.textContent = '×' + count;
+    }
+  };
+  upd(tskEls.dash, !!p.dashLv, p.dashCd / Math.max(0.01, p.dashCdMax), null);
+  upd(tskEls.bomb, p.bombCount > 0, 0, p.bombCount);
+  upd(tskEls.slow, !!p.slowLv, p.slowCd / Math.max(0.01, p.slowCdMax), null);
+  upd(tskEls.phase, !!p.phaseLv, p.phaseCd / Math.max(0.01, p.phaseCdMax || 9), null);
 }
 
 /* ---------------------------------------------------------
@@ -1971,7 +2027,10 @@ function pickCard(u) {
    --------------------------------------------------------- */
 function startGame() {
   SFX.resume();
+  showMenu(false);
   G.state = 'playing';
+  G.runId = 'r' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+  G._runLogged = 0;
   G.t = 0; G.elapsed = 0; G.score = 0; G.kills = 0; G.combo = 0; G.bestCombo = 0; G.comboT = 0;
   G.wave = 0; G.bossIndex = 0; G.boss = null; G.pendingLevels = 0;
   G.enemies.length = 0; G.pBullets.length = 0; G.eBullets.length = 0;
@@ -1998,7 +2057,6 @@ function startGame() {
   }
   G.wavePlan = buildWave(1);
   startWave(1);
-  document.getElementById('menu').classList.add('hidden');
   document.getElementById('over').classList.add('hidden');
   document.getElementById('pause').classList.add('hidden');
   elLevelUp.classList.add('hidden');
@@ -2045,6 +2103,7 @@ function gameOver() {
   /* v3：把本局星尘/碎片落进存档，并同步历史最高分（best 现在也存进 v2） */
   G.lastDust = G.dustEarn; G.lastCore = G.coreEarn;
   commitRun(META);
+  clearRun();                        // v3.1：本局终结 → 不允许再续玩
   const best = Math.max(META.best.score | 0, Number(localStorage.getItem('rt_best') || 0) || 0);
   const isNew = G.score > best;
   if (isNew) { try { localStorage.setItem('rt_best', String(G.score)); } catch (e) { } META.best.score = G.score; saveMeta(META); }
@@ -2086,16 +2145,143 @@ function gameOver() {
 }
 
 /* ---------------------------------------------------------
+   中途续玩（v3.1 · 用户要求二）
+   ---------------------------------------------------------
+   只存"局面"，不存敌人/子弹 —— 回来时该波从头开始。这样实现简单且不可利用
+   （死亡立刻 clearRun，所以"关掉重来续命"这条路是堵死的）。
+   --------------------------------------------------------- */
+const RUN_KEY = 'rt_run_v1';
+
+function snapshotRun() {
+  const p = G.player;
+  if (!p) return null;
+  if (G.state !== 'playing' && G.state !== 'levelup' && G.state !== 'paused') return null;
+  return {
+    v: 1, ts: Date.now(), runId: G.runId,
+    wave: G.wave | 0, score: G.score | 0, kills: G.kills | 0, elapsed: G.elapsed || 0,
+    bossIndex: G.bossIndex | 0, bestCombo: G.bestCombo | 0, rxTotal: G.rxTotal | 0,
+    dustEarn: G.dustEarn || 0, coreEarn: G.coreEarn || 0,
+    pactHpMul: G.pactHpMul || 1, runLogged: G._runLogged | 0,
+    pendingLevels: G.pendingLevels | 0, lvQueue: (G.lvQueue || []).slice(0, 8),
+    p: {
+      level: p.level, xp: p.xp, xpNext: p.xpNext, xpMul: p.xpMul,
+      hp: p.hp, maxHp: p.maxHp, stats: p.stats, wlv: p.wlv, taken: p.taken,
+      buildLog: (p.buildLog || []).slice(-100), elems: (p.elems || []).slice(),
+      noShield: p.noShield, removed: p.removed, sixPick: p.sixPick,
+      elemCap: p.elemCap, gateSkip: p.gateSkip, epicDry: p.epicDry,
+      metaExtraReroll: p.metaExtraReroll, pactHp: p.pactHp,
+      growthStack: p.growthStack, growthT: p.growthT,
+      adaptLv: p.adaptLv, adaptStacks: p.adaptStacks, phaseLv: p.phaseLv,
+      dashLv: p.dashLv, bombCount: p.bombCount, bombDmg: p.bombDmg, slowLv: p.slowLv,
+      energy: p.energy, lanceOn: p.lanceOn,
+      g1: p._gate1Done, g2: p._gate2Done,
+    },
+  };
+}
+function saveRun() {
+  const s = snapshotRun();
+  if (!s) return;
+  try { localStorage.setItem(RUN_KEY, JSON.stringify(s)); } catch (e) { /* 隐私模式静默降级 */ }
+}
+function readRun() {
+  try {
+    const t = localStorage.getItem(RUN_KEY);
+    if (!t) return null;
+    const s = JSON.parse(t);
+    if (!s || s.v !== 1 || !s.p || !(s.wave >= 1)) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function clearRun() { try { localStorage.removeItem(RUN_KEY); } catch (e) { } }
+
+/** 主菜单上同步「继续上次战斗」按钮 */
+function refreshResumeButton() {
+  const s = readRun();
+  const btn = document.getElementById('btnContinue');
+  if (!btn) return;
+  if (s) {
+    btn.classList.remove('hidden');
+    document.getElementById('continueWave').textContent = String(s.wave);
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+/** 从快照恢复一局 */
+function resumeSavedRun() {
+  const s = readRun();
+  if (!s) return false;
+  startGame();                                   // 重建世界 + 重新应用 meta/深渊
+  const p = G.player, q = s.p;
+  Object.assign(p, {
+    level: q.level, xp: q.xp, xpNext: q.xpNext, xpMul: q.xpMul,
+    hp: q.hp, maxHp: q.maxHp, stats: q.stats, wlv: q.wlv, taken: q.taken,
+    buildLog: q.buildLog, elems: q.elems,
+    noShield: q.noShield, removed: q.removed, sixPick: q.sixPick,
+    elemCap: q.elemCap, gateSkip: q.gateSkip, epicDry: q.epicDry,
+    metaExtraReroll: q.metaExtraReroll, pactHp: q.pactHp,
+    growthStack: q.growthStack, growthT: q.growthT,
+    adaptLv: q.adaptLv, adaptStacks: q.adaptStacks, phaseLv: q.phaseLv,
+    dashLv: q.dashLv, bombCount: q.bombCount, bombDmg: q.bombDmg, slowLv: q.slowLv,
+    energy: q.energy, lanceOn: q.lanceOn,
+    _gate1Done: q.g1, _gate2Done: q.g2,
+  });
+  G.wave = Math.max(1, s.wave | 0);
+  G.score = s.score | 0; G.kills = s.kills | 0; G.elapsed = s.elapsed || 0;
+  G.bossIndex = s.bossIndex | 0; G.bestCombo = s.bestCombo | 0; G.rxTotal = s.rxTotal | 0;
+  G.dustEarn = s.dustEarn || 0; G.coreEarn = s.coreEarn || 0;
+  G.pactHpMul = s.pactHpMul || 1; G._runLogged = s.runLogged | 0;
+  G.runId = s.runId || G.runId;
+  /* 冷却清零 + 2 秒无敌：避免刚回来就被贴脸打死 */
+  p.dashCd = 0; p.slowCd = 0; p.bombCd = 0; p.phaseCd = 0;
+  p.invuln = Math.max(p.invuln || 0, 2.0);
+  p.x = W / 2; p.y = H - 160;
+  G.wavePlan = buildWave(G.wave);
+  startWave(G.wave);
+  /* 未结算的升级补回来（否则关闭页面会白吞一次升级） */
+  if ((s.pendingLevels | 0) > 0) {
+    G.pendingLevels = s.pendingLevels | 0;
+    G.lvQueue = (s.lvQueue || []).slice();
+    openLevelUp();
+  }
+  G.toast('已恢复 · 第 ' + G.wave + ' 波');
+  return true;
+}
+
+/** 统一的菜单显隐（原来 #menu 只被隐藏过、从未显示 → 返回菜单会卡在空画布） */
+function showMenu(on) {
+  document.getElementById('menu').classList.toggle('hidden', !on);
+  if (on) {
+    G.state = 'menu';
+    G.player = null;
+    ui.hud.classList.add('hidden');
+    for (const id of ['over', 'pause', 'levelup', 'elementPick', 'hangar']) {
+      document.getElementById(id).classList.add('hidden');
+    }
+    refreshResumeButton();
+    syncMenuMeta();
+  }
+}
+
+/** HUD「菜单」按钮：**保存本局后**回菜单（与"放弃本次战斗"语义不同） */
+function returnToMenu() {
+  if (G.state === 'playing' || G.state === 'levelup' || G.state === 'paused' || G.state === 'over') {
+    if (G.player) saveRun();
+  }
+  SFX.play('uiClick');
+  showMenu(true);
+}
+
+/* ---------------------------------------------------------
    按钮绑定
    --------------------------------------------------------- */
 document.getElementById('btnStart').addEventListener('click', () => { SFX.play('uiClick'); startGame(); });
+document.getElementById('btnContinue').addEventListener('click', () => { SFX.play('uiClick'); resumeSavedRun(); });
+document.getElementById('btnHudMenu').addEventListener('click', () => returnToMenu());
 document.getElementById('btnRetry').addEventListener('click', () => { SFX.play('uiClick'); startGame(); });
 document.getElementById('btnMenu').addEventListener('click', () => {
   SFX.play('uiClick');
-  G.state = 'menu';
-  document.getElementById('over').classList.add('hidden');
-  ui.hud.classList.add('hidden');
-  G.player = null;
+  showMenu(true);                    // ⚠ 修 bug：原来只隐藏了 #menu、从没显示回来 → 卡在空画布
 });
 document.getElementById('btnResume').addEventListener('click', () => { SFX.play('uiClick'); resumeGame(); });
 document.getElementById('btnQuit').addEventListener('click', () => {
@@ -2247,6 +2433,16 @@ function renderHangar() {
     '移速 <b>+' + (1.5 * L.engine) + '%</b>　冲刺冷却 <b>−' + (0.12 * L.engine).toFixed(2) + 's</b>' +
     '　元素上限 <b>' + (META.mods.indexOf('m_third') >= 0 ? 3 : 2) + '</b></div>');
 
+  /* 本机波次中位数（数据报告 §6.4 方案①：零隐私风险的"自己的分布"） */
+  const med = metaMedianWave(META);
+  out.push('<div class="hg-h">本机波次记录</div>');
+  out.push('<div class="hg-lock">' +
+    (med
+      ? '近 <b>' + META.recent.length + '</b> 局中位数：<b>W' + med + '</b>　最高 W' + (META.best.wave | 0) +
+        '<br><span class="hg-dim">只存在本机浏览器里，不上传</span>'
+      : '还没有完成过一局；打一局就会开始记录（只存本机，不上传）') +
+    '</div>');
+
   document.getElementById('hgBody').innerHTML = out.join('');
   wireHangar();
 }
@@ -2352,6 +2548,10 @@ function boot() {
   resize();
   document.getElementById('menuBest').textContent = fmt(Math.max(META.best.score | 0, Number(localStorage.getItem('rt_best') || 0) || 0));
   syncMenuMeta();
+  refreshResumeButton();
+  /* v3.1 退出自动保存（移动端 pagehide 比 beforeunload 可靠） */
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveRun(); });
+  window.addEventListener('pagehide', saveRun);
   /* v1 → v2 存档迁移：一次性说明，避免老玩家以为进度丢了 */
   if (META._migrated) {
     setTimeout(() => G.toast('存档已升级 v2 · 按最高分换算 ' + fmt(META.dust) + ' 星尘'), 900);

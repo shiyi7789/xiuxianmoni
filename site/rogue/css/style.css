@@ -282,3 +282,36 @@ kbd{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font
 .hg-lock{font-size:10.5px;color:var(--dim);padding:9px 11px;border:1px dashed rgba(255,255,255,.16);border-radius:11px}
 .hg-foot{display:flex;flex-direction:column;margin-top:14px}
 .hg-foot .btn{margin-top:8px}
+/* 数据报告 §5：面板很高时「出击」会被推到首屏之外，而"还差 X 星尘"在顶栏 ——
+   留存钩子与出口不在同一屏。改为吸底，保证任何滚动位置都能直接出击。 */
+.hg-foot{position:sticky;bottom:-26px;margin:14px -22px -26px;padding:10px 22px 14px;
+  background:#0c1222;border-top:1px solid var(--line);z-index:2}
+.hg-dim{color:var(--dim);opacity:.8}
+
+/* ======================== HUD 菜单按钮（v3.1） ======================== */
+/* #hud 整体 pointer-events:none，按钮要单独打开命中 */
+.hud-btn{pointer-events:auto;display:block;margin:0 0 6px auto;padding:4px 9px;font-size:10.5px;
+  letter-spacing:.06em;border-radius:8px;cursor:pointer;font-family:inherit;
+  background:rgba(10,18,34,.78);color:var(--dim);border:1px solid rgba(126,249,255,.22)}
+.hud-btn:hover{color:var(--ink);border-color:rgba(126,249,255,.5)}
+.hud-btn:active{transform:translateY(1px)}
+
+/* ======================== 移动端技能按钮（v3.1） ======================== */
+.touch-skills{position:absolute;left:0;right:0;bottom:8px;display:none;justify-content:center;
+  gap:12px;pointer-events:none;z-index:3}
+.touch-skills .tsk{pointer-events:auto;width:56px;height:56px;border-radius:50%;position:relative;
+  overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(10,18,34,.86);border:1px solid rgba(126,249,255,.34);color:var(--ink);
+  font-family:inherit;cursor:pointer;padding:0;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none}
+.touch-skills .tsk i{font-style:normal;font-size:19px;line-height:1}
+.touch-skills .tsk small{font-size:9px;color:var(--dim);margin-top:1px;letter-spacing:.04em}
+.touch-skills .tsk u{position:absolute;inset:0;background:rgba(255,255,255,.30);
+  transform-origin:bottom;transform:scaleY(0);pointer-events:none}
+.touch-skills .tsk.off{opacity:.34}
+.touch-skills .tsk:active{transform:scale(.93)}
+/* 只在触摸设备出现；并把 HUD 底行抬起来，避免和技能圈重叠 */
+@media (pointer: coarse){
+  .touch-skills{display:flex}
+  .hud-bottom{margin-bottom:58px}
+}
