@@ -14,6 +14,76 @@ let dpr = 1;
 /* v3 元进度存档（meta.js 提供；localStorage 不可用时内部自动降级） */
 let META = loadMeta();
 
+/* ---------------------------------------------------------
+   v3.3 设置（独立键 rt_set_v1）
+   ⚠ 刻意不进 metaSum：校验和一旦变化，所有已存在的 v2 存档都会失效 → 玩家进度清零。
+     这类"非进度数据"一律独立存键（与 v3.1 的 rt_run_v1 同一个原则）。
+   --------------------------------------------------------- */
+const SET_KEY = 'rt_set_v1';
+const SET_DEF = { fx: 'high', shake: 1, contrast: 0, volMaster: 1, volSfx: 1, volMusic: 1 };
+function loadSettings() {
+  const s = Object.assign({}, SET_DEF);
+  try {
+    const raw = JSON.parse(localStorage.getItem(SET_KEY) || 'null');
+    if (raw && typeof raw === 'object') {
+      if (raw.fx === 'high' || raw.fx === 'low' || raw.fx === 'off') s.fx = raw.fx;
+      s.shake = raw.shake ? 1 : 0;
+      s.contrast = raw.contrast ? 1 : 0;
+      for (const k of ['volMaster', 'volSfx', 'volMusic']) {
+        const v = Number(raw[k]);
+        if (isFinite(v)) s[k] = clamp(v, 0, 1);
+      }
+    }
+  } catch (e) { /* 隐私模式 / 配额满：静默用默认值 */ }
+  return s;
+}
+let SET = loadSettings();
+function saveSettings() {
+  try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) { }
+}
+/** 粒子硬顶：低配/省电时真正减负的地方（渲染桩里不生效，真机才看得出） */
+function particleCap() { return SET.fx === 'off' ? 90 : SET.fx === 'low' ? 260 : 720; }
+function applySettings() {
+  if (SFX && SFX.setVolume) {
+    SFX.setVolume('master', SET.volMaster);
+    SFX.setVolume('sfx', SET.volSfx);
+    SFX.setVolume('music', SET.volMusic);
+  }
+  refreshSettingsUI();
+}
+
+/* ---------------------------------------------------------
+   v3.3 涂装：6 套配色（独立键 rt_skin_v1）
+   解锁挂在已有成就上 —— 不新增进度系统，也不给数值，纯外观回报。
+   --------------------------------------------------------- */
+const SKINS = [
+  { id: 'cyan',    n: '标准', glow: '#7ef9ff', trail: '#4ea8ff', body: ['#eafcff', '#5fd8ee', '#1b4a6b'], need: null },
+  { id: 'amber',   n: '琥珀', glow: '#ffd166', trail: '#ff9d3d', body: ['#fff4d6', '#ffc857', '#6b3a12'], need: 'w10' },
+  { id: 'violet',  n: '紫穹', glow: '#c39bff', trail: '#7a5cff', body: ['#f0e6ff', '#a97cff', '#3a1f6b'], need: 'evo1' },
+  { id: 'toxic',   n: '翠毒', glow: '#b6f06a', trail: '#5ee08a', body: ['#f0ffd9', '#8fd94d', '#22521f'], need: 'rx30' },
+  { id: 'crimson', n: '猩红', glow: '#ff8fa3', trail: '#ff4d6d', body: ['#ffe0e6', '#ff6b8a', '#6b1226'], need: 'w20' },
+  { id: 'void',    n: '虚空', glow: '#d9c2ff', trail: '#8f9bff', body: ['#f3ecff', '#9a8cff', '#1b1a3a'], need: 'line30' },
+];
+const SKIN_BY_ID = {};
+for (const s of SKINS) SKIN_BY_ID[s.id] = s;
+const SKIN_KEY = 'rt_skin_v1';
+function loadSkin() {
+  try {
+    const id = localStorage.getItem(SKIN_KEY);
+    if (id && SKIN_BY_ID[id]) return SKIN_BY_ID[id];
+  } catch (e) { }
+  return SKINS[0];
+}
+let SKIN = loadSkin();
+function skinUnlocked(s) { return !s.need || !!ACH[s.need]; }
+function setSkin(id) {
+  const s = SKIN_BY_ID[id];
+  if (!s || !skinUnlocked(s)) return false;
+  SKIN = s;
+  try { localStorage.setItem(SKIN_KEY, id); } catch (e) { }
+  return true;
+}
+
 const G = {
   state: 'menu',            // menu | playing | levelup | paused | over
   t: 0, dt: 0,
@@ -34,6 +104,9 @@ const G = {
   waveHpMul: 1, nextHpMul: 1,
   /* v3 元进度：本局产出（结算时提交存档）+ 深渊乘子 */
   dustEarn: 0, coreEarn: 0,
+  /* v3.3：图鉴 / 成就 / 死亡叙事用的本局统计 */
+  playerHits: 0, bossKills: 0, usedOverload: 0, isDaily: 0,
+  deathSrc: '', deathBy: '', milestones: [],
   abyss: 0, abyssHpMul: 1, abyssSpdMul: 1, abyssDustMul: 1, abyssCoreBonus: 0,
   zeroSlow: 0,              // 零域冰封：全场敌方时缓
   resonateT: 0,             // 拾取共鸣：全场敌方时缓剩余时长
@@ -208,6 +281,7 @@ function newPlayer() {
     shield: 0, shieldMax: 0, shieldTimer: 0, shieldPulse: 0,
     noShield: 0, removed: {}, sixPick: 0,
     elems: [],                       // 元素（上限 2，Lv4 / Lv9 各一次，不进卡池）
+    evo: {},                         // v3.3 武器进化标记（key = 武器 id）
     energy: 0, lanceOn: false, lanceOver: 0, lanceCd: 0,
     stillT: 0, _bastionK: 0, fieldSlow: 0, pickupN: 0,
     // 主动
@@ -288,6 +362,7 @@ function waveCleared() {
     }
     commitRun(META);
     saveRun();                       // v3.1 中途续玩：每波结算落一次盘
+    achCheck(G);                     // v3.3：成就逐波判定（够条件立刻弹提示）
   }
   // 呼吸窗：吸附全部经验 + 每 3 波回血
   for (const o of G.orbs) o.mag = true;
@@ -329,6 +404,7 @@ function hurtPlayer(amount) {
     if (dmg <= 0) { p.invuln = 0.5; p.shieldTimer = 0; return; }
   }
   p.hp -= dmg;
+  G.playerHits = (G.playerHits | 0) + 1;      // v3.3：无伤类成就的判定依据
   if (p.adaptLv > 0) p.adaptStacks = Math.min(p.adaptLv, (p.adaptStacks || 0) + 1);
   p.invuln = 1.15;
   p.hurtFlash = 1;
@@ -813,6 +889,18 @@ function updateWorld(dt) {
         vx: -Math.cos(a) * 200, vy: -Math.sin(a) * 200,
         life: 0.45, max: 0.45, size: 3.4, color: '#8f9bff', kind: 'spark' });
     }
+    /* v3.3 奇点（进化）：每 0.6 秒向外打一圈引力脉冲 */
+    if (h.pulse) {
+      h.pulseT = (h.pulseT || 0) - wdt;
+      if (h.pulseT <= 0) {
+        h.pulseT = 0.6;
+        for (const e of G.enemies) {
+          if (e.dead || e.isBoss) continue;
+          if (dist(e, h) < h.r * 1.5) damageEnemy(G, e, h.dps * 0.5, { showText: false, src: 'hole' });
+        }
+        G.particles.push({ x: h.x, y: h.y, vx: 0, vy: 0, life: 0.3, max: 0.3, size: h.r * 2.6, color: '#8f9bff', kind: 'ring' });
+      }
+    }
   }
   G.holes = compact(G.holes, h => !(h.life > 0));
 
@@ -834,7 +922,9 @@ function updateWorld(dt) {
       if ((b.x - e.x) ** 2 + (b.y - e.y) ** 2 < rr * rr) {
         /* 霜镜（冰+光）：冻住的目标是折射镜 —— 命中它时 40% 概率把这一发裂成 2 枚 0.5× */
         const mirrorSplit = e.mirror && !b._split && chance(0.4);
-        damageEnemy(G, e, b.dmg, { crit: b.crit, big: b.r > 6, src: b.src, ang: bang });
+        /* v3.3 超新星：出膛 140px 内命中额外 ×1.6（逼玩家贴身打） */
+        const hitDmg = (b.nova && Math.hypot(b.x - b.x0, b.y - b.y0) < 140) ? b.dmg * 1.6 : b.dmg;
+        damageEnemy(G, e, hitDmg, { crit: b.crit, big: b.r > 6, src: b.src, ang: bang });
         if (mirrorSplit) {
           b._split = 1;
           const sp = Math.hypot(b.vx, b.vy) || 700;
@@ -847,6 +937,31 @@ function updateWorld(dt) {
           }
           G.particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.22, max: 0.22, size: 54, color: '#D9C2FF', kind: 'ring' });
           SFX.playAt('rxMid', e.x, e.y);
+        }
+        /* v3.3 棱镜炮（进化）：激光命中后向附近敌机折射 2 跳，每跳 65% */
+        if (b.evoChain && !b._chainDone) {
+          b._chainDone = 1;
+          let cx = e.x, cy = e.y, mul = 0.65;
+          const seen = new Set([e]);
+          for (let k = 0; k < b.evoChain; k++) {
+            const nx = nearestEnemy(G, cx, cy, 300, seen);
+            if (!nx) break;
+            seen.add(nx);
+            const cc = rollCrit(p);
+            damageEnemy(G, nx, b.dmg * mul * cc, { crit: cc > 1, src: 'laser' });
+            G.zaps.push({ pts: [{ x: cx, y: cy }, { x: nx.x, y: nx.y }], life: 0.14, max: 0.14 });
+            cx = nx.x; cy = nx.y; mul *= 0.8;
+          }
+        }
+        /* v3.3 千刃回廊（进化）：飞刃首次命中裂成 2 片 */
+        if (b.evoBlade && !b._bladeSplit) {
+          b._bladeSplit = 1;
+          for (let k = 0; k < 2; k++) {
+            spawnPBullet(G, b.x, b.y, bang + (k ? 1.9 : -1.9), {
+              spd: 640 * p.stats.pspd, r: 6, len: 0, dmg: b.dmg * 0.6, color: '#5ee0c8',
+              kind: 'blade', pierce: 0, src: 'boomer', life: 1.2, noSplit: 1,
+            });
+          }
         }
         if (!b.hits) b.hits = new Set();
         b.hits.add(e);
@@ -873,7 +988,8 @@ function updateWorld(dt) {
           if (b.kind === 'missile' && p.stats.tSplit && !b.noSplit) {
             const lv = p.stats.tSplit;
             const n = 3 + 2 * (lv - 1);
-            const dm = b.dmg * (0.45 + 0.15 * (lv - 1));
+            /* v3.3 蜂群母舰（进化）：分裂弹不再衰减伤害 */
+            const dm = b.dmg * (p.evo.missile ? 1 : (0.45 + 0.15 * (lv - 1)));
             for (let i = 0; i < n; i++) {
               spawnPBullet(G, b.x, b.y, bang + rand(0.72, -0.72), {
                 spd: 430, r: 4, len: 13, dmg: dm, kind: 'missile', homing: 5.6,
@@ -1043,7 +1159,7 @@ function updateFX(dt) {
     if (q.kind === 'smoke') { q.vx *= Math.pow(0.3, dt); q.vy *= Math.pow(0.3, dt); }
   }
   G.particles = compact(G.particles, q => !(q.life > 0));
-  if (G.particles.length > 720) G.particles.splice(0, G.particles.length - 720);
+  { const pcap = particleCap(); if (G.particles.length > pcap) G.particles.splice(0, G.particles.length - pcap); }
 
   for (const tx of G.texts) { tx.life -= dt; tx.y += tx.vy * dt; tx.vy *= Math.pow(0.2, dt); }
   G.texts = compact(G.texts, t => !(t.life > 0));
@@ -1135,13 +1251,13 @@ function drawPlayer() {
   for (let i = 0; i < p.trail.length; i++) {
     const t = p.trail[i];
     const a = (1 - i / p.trail.length) * 0.16;
-    drawGlow(ctx, t.x, t.y, 30 - i * 1.5, '#4ea8ff', a);
+    drawGlow(ctx, t.x, t.y, 30 - i * 1.5, SKIN.trail, a);
   }
 
   const blink = p.invuln > 0 && Math.floor(G.t * 22) % 2 === 0;
   ctx.globalAlpha = blink ? 0.42 : 1;
 
-  drawGlow(ctx, p.x, p.y, 76, '#7ef9ff', 0.55);
+  drawGlow(ctx, p.x, p.y, 76, SKIN.glow, 0.55);
 
   // 引擎尾焰：长度随真实速度变化（静止时收束成一个 3px 亮点）→ 让「移动」有物理感
   const spd = p._spd || 0;
@@ -1156,8 +1272,8 @@ function drawPlayer() {
   } else {
     const fg = ctx.createLinearGradient(p.x, p.y + 8, p.x, p.y + 8 + fl);
     fg.addColorStop(0, 'rgba(255,255,255,.95)');
-    fg.addColorStop(0.4, 'rgba(126,249,255,.7)');
-    fg.addColorStop(1, 'rgba(78,168,255,0)');
+    fg.addColorStop(0.4, rgba(SKIN.trail, 0.7));
+    fg.addColorStop(1, rgba(SKIN.trail, 0));
     ctx.fillStyle = fg;
   }
   ctx.fill();
@@ -1177,9 +1293,9 @@ function drawPlayer() {
   ctx.lineTo(-7, -4);
   ctx.closePath();
   const g = ctx.createLinearGradient(0, -20, 0, 14);
-  g.addColorStop(0, '#eafcff');
-  g.addColorStop(0.45, '#5fd8ee');
-  g.addColorStop(1, '#1b4a6b');
+  g.addColorStop(0, SKIN.body[0]);
+  g.addColorStop(0.45, SKIN.body[1]);
+  g.addColorStop(1, SKIN.body[2]);
   ctx.fillStyle = g; ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.6; ctx.stroke();
   // 座舱
@@ -1365,6 +1481,12 @@ function drawBullets() {
     ctx.fillStyle = b.color; ctx.fill();
     ctx.beginPath(); ctx.arc(b.x - b.r * 0.2, b.y - b.r * 0.2, b.r * 0.42, 0, TAU);
     ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.fill();
+    /* v3.3 弹幕高对比：给每颗敌弹再套一圈冷色描边。
+       一次解决三件事：密集弹幕糊成一团、色盲难分冷暖、以及低亮度屏幕上看不清。 */
+    if (SET.contrast) {
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 1.28, 0, TAU);
+      ctx.strokeStyle = 'rgba(215,245,255,.95)'; ctx.lineWidth = 1.6; ctx.stroke();
+    }
   }
   ctx.restore();
 }
@@ -1696,7 +1818,7 @@ function render(dt) {
   ctx.fillStyle = BG_BASE;
   ctx.fillRect(0, 0, W, H);
 
-  const s = G.shake;
+  const s = SET.shake ? G.shake : 0;      // v3.3：设置里可以关掉屏幕震动
   ctx.save();
   if (s > 0.2) ctx.translate(rand(s, -s) * 0.6, rand(s, -s) * 0.6);
 
@@ -1789,7 +1911,7 @@ function syncUI() {
   // 元素徽章（当前已选元素，最多 2 个）
   const eb = (p.elems || []).map(id => {
     const d = ELEMENTS[id];
-    return '<span class="echip" style="--ec:' + d.color + '">' + d.glyph + ' ' + d.name + '</span>';
+    return '<span class="echip" style="--ec:' + d.color + '">' + iconHtml(d.glyph, 14, 'ec-ic') + ' ' + d.name + '</span>';
   }).join('');
   if (_prev.elems !== eb) { ui.elems.innerHTML = eb; _prev.elems = eb; }
 
@@ -1800,25 +1922,25 @@ function syncUI() {
     const lv = p.wlv[k] || 0;
     if (!lv) continue;
     parts.push('<span class="wchip' + (EPIC_SET[k] ? ' epic' : '') + '">' +
-      WEAPONS[k].icon + ' <b>Lv' + lv + '</b></span>');
+      iconHtml(WEAPONS[k].icon, 14) + ' <b>Lv' + lv + '</b></span>');
   }
   const html = parts.join('');
   if (_prev.loadout !== html) { ui.loadout.innerHTML = html; _prev.loadout = html; }
 
   // 主动技能
   const ab = [];
-  if (p.dashLv) ab.push({ k: 'SPACE', i: '⇢', cd: p.dashCd / p.dashCdMax, ready: p.dashCd <= 0 });
-  if (p.bombCount > 0) ab.push({ k: 'Q', i: '☢', n: p.bombCount, ready: true });
-  if (p.slowLv) ab.push({ k: 'E', i: '⧗', cd: p.slowCd / p.slowCdMax, ready: p.slowCd <= 0 });
+  if (p.dashLv) ab.push({ k: 'SPACE', i: 'dash', cd: p.dashCd / p.dashCdMax, ready: p.dashCd <= 0 });
+  if (p.bombCount > 0) ab.push({ k: 'Q', i: 'bomb', n: p.bombCount, ready: true });
+  if (p.slowLv) ab.push({ k: 'E', i: 'slow', cd: p.slowCd / p.slowCdMax, ready: p.slowCd <= 0 });
   /* v3.1：相位门原先漏在 HUD 之外 —— 玩家拿了卡却看不到指示 */
-  if (p.phaseLv) ab.push({ k: 'F', i: '⊕', cd: p.phaseCd / (p.phaseCdMax || 9), ready: p.phaseCd <= 0 });
+  if (p.phaseLv) ab.push({ k: 'F', i: 'phase', cd: p.phaseCd / (p.phaseCdMax || 9), ready: p.phaseCd <= 0 });
   /* v3.2：持续光束改手动释放后，HUD 必须给出"按 R"的入口（否则玩家只会看到能量条满着不动） */
   if (p.stats.lance) ab.push({
-    k: 'R', i: '❂',
+    k: 'R', i: 'lance',
     cd: p.lanceOn ? 1 : 1 - clamp(p.energy / Math.max(1, p.stats.energyMax), 0, 1),
     ready: !!p.lanceOn || p.energy >= 10,
   });
-  const ahtml = ab.map(a => '<div class="ab' + (a.ready ? '' : ' off') + '">' + a.i +
+  const ahtml = ab.map(a => '<div class="ab' + (a.ready ? '' : ' off') + '">' + iconHtml(a.i, 18) +
     (a.n != null ? '<small>×' + a.n + '</small>' : '<small>' + a.k + '</small>') +
     (a.cd > 0 ? '<span class="cd" style="transform:scaleY(' + clamp(a.cd, 0, 1) + ')"></span>' : '') +
     '</div>').join('');
@@ -1946,7 +2068,7 @@ function openElementPick(lv) {
     const d = ELEMENTS[id];
     if (have.indexOf(id) >= 0) {
       cells.push('<div class="ecard locked" style="--ec:' + d.color + '">' +
-        '<div class="eg">' + d.glyph + '</div>' +
+        '<div class="eg">' + iconHtml(d.glyph, 24) + '</div>' +
         '<div class="en">' + d.name + '<span class="est">' + d.status + '</span></div>' +
         '<div class="epos">当前已有 · 已锁定</div>' +
         '<div class="el">第二元素的空位已被它占满，本届不可再选</div></div>');
@@ -1961,7 +2083,7 @@ function openElementPick(lv) {
         '</b><br>' + r.note + '</div>';
     }
     cells.push('<div class="ecard" data-el="' + id + '" style="--ec:' + d.color + ';--bd:' + border + '">' +
-      '<div class="eg">' + d.glyph + '</div>' +
+      '<div class="eg">' + iconHtml(d.glyph, 24) + '</div>' +
       '<div class="en">' + d.name + '<span class="est">' + d.status + '</span></div>' +
       '<div class="epos">' + d.pos + '</div>' +
       '<div class="el">' + d.line + '</div>' + extra + '</div>');
@@ -1983,7 +2105,7 @@ function pickElement(id) {
   if (p.elems.length >= elemCap(p)) p._gate2Done = 1;
   codexMark('元素 · ' + d.name);
   SFX.play('rxBig');
-  G.toast('元素觉醒 · ' + d.name + ' ' + d.glyph);
+  G.toast('元素觉醒 · ' + d.name);        /* toast 用 textContent，放 SVG 也渲染不出来 */
   G.flash = 0.6;
   G.shake = Math.min(16, G.shake + 8);
   for (let i = 0; i < 46; i++) {
@@ -2030,7 +2152,7 @@ function refreshCards() {
     const rar = RARITY[u.rarity];
     return '<div class="card is-new ' + rar.cls + '" data-i="' + i + '" style="animation-delay:' + (i * 0.04) + 's">' +
       '<span class="key">' + (i + 1) + '</span>' +
-      '<div class="ico">' + u.icon + '</div>' +
+      '<div class="ico">' + cardIconHtml(u, 22) + '</div>' +
       '<div class="body">' +
         '<div class="nm">' + u.name +
           '<span class="lvl">' + (lv > 0 ? 'Lv ' + lv + ' → ' + (lv + 1) : 'NEW') + '</span>' +
@@ -2085,6 +2207,9 @@ function startGame() {
   applyMetaToPlayer(G.player, META);
   applyAbyssToRun(G, META.abyss);
   G.dustEarn = 0; G.coreEarn = 0;
+  G.playerHits = 0; G.bossKills = 0; G.usedOverload = 0;
+  G.deathSrc = ''; G.deathBy = ''; G.milestones = [];
+  if (typeof ACH_NEW !== 'undefined') ACH_NEW.length = 0;   // 结算页只展示"本局新解锁"
   /* 改装槽「元素注入」：指定元素起手，跳过 Lv4 门（Lv9 门仍在） */
   if (G.player.gateSkip) {
     const gid = G.player.gateSkip;
@@ -2141,6 +2266,20 @@ function gameOver() {
   G.lastDust = G.dustEarn; G.lastCore = G.coreEarn;
   commitRun(META);
   clearRun();                        // v3.1：本局终结 → 不允许再续玩
+  /* v3.3 死亡叙事：把这一局讲成一句话。
+     凶手判定不去逐个伤害调用点打标（那要改十几处），而是取死亡瞬间离玩家最近的敌机 ——
+     弹幕战里绝大多数情况就是它或者它刚打出的弹。措辞按"疑似"写，不吹成定论。 */
+  {
+    let killer = null, kd = 1e9;
+    for (const e of G.enemies) {
+      if (e.dead) continue;
+      const d = dist(e, p);
+      if (d < kd) { kd = d; killer = e; }
+    }
+    G.deathSrc = (G.enemies.length && kd < 120) ? '撞击' : '弹幕';
+    G.deathBy = killer ? (ENEMY_NAME[killer.type] || killer.type) : '';
+  }
+  achCheck(G);                       // 局终统一结算成就
   const best = Math.max(META.best.score | 0, Number(localStorage.getItem('rt_best') || 0) || 0);
   const isNew = G.score > best;
   if (isNew) { try { localStorage.setItem('rt_best', String(G.score)); } catch (e) { } META.best.score = G.score; saveMeta(META); }
@@ -2167,13 +2306,30 @@ function gameOver() {
   ];
   document.getElementById('overStats').innerHTML = stats.map(s =>
     '<div class="stat"><b>' + s[1] + '</b><span>' + s[0] + '</span></div>').join('');
+  /* v3.3 这一局的故事：build + 关键事件 + 死因，一句话说给别人听 */
+  {
+    const evoNames = [];
+    for (const k in (p.evo || {})) {
+      if (!p.evo[k]) continue;
+      const e = (typeof EVOLUTIONS !== 'undefined') && EVOLUTIONS.find(x => x.w === k);
+      if (e) evoNames.push(e.name);
+    }
+    const bits = [];
+    bits.push('第 ' + G.wave + ' 波' + (G.deathBy ? '，被「' + G.deathBy + '」的' + (G.deathSrc || '弹幕') + '终结' : '，舰体损毁'));
+    if (evoNames.length) bits.push('进化 ' + evoNames.join(' · '));
+    if (p.elems && p.elems.length) bits.push('元素 ' + p.elems.map(id => ELEMENTS[id].name).join(' + '));
+    if (G.bossKills) bits.push('击破 Boss ×' + G.bossKills);
+    if (typeof ACH_NEW !== 'undefined' && ACH_NEW.length) bits.push('新成就 ' + ACH_NEW.map(a => a.n).join(' · '));
+    const storyEl = document.getElementById('overStory');
+    if (storyEl) { storyEl.textContent = bits.join('　·　'); storyEl.classList.remove('hidden'); }
+  }
 
   const counts = {};
   p.buildLog.forEach(id => counts[id] = (counts[id] || 0) + 1);
   const list = Object.keys(counts)
     .filter(id => UPGRADE_BY_ID[id] && UPGRADE_BY_ID[id].tag !== '功能')
     .sort((a, b) => counts[b] - counts[a])
-    .map(id => '<span class="wchip">' + UPGRADE_BY_ID[id].icon + ' ' + UPGRADE_BY_ID[id].name + ' <b>×' + counts[id] + '</b></span>');
+    .map(id => '<span class="wchip">' + cardIconHtml(UPGRADE_BY_ID[id], 14) + ' ' + UPGRADE_BY_ID[id].name + ' <b>×' + counts[id] + '</b></span>');
   document.getElementById('overBuild').innerHTML = list.length ? list.join('') : '<span class="wchip">纯主炮流派</span>';
 
   document.getElementById('over').classList.remove('hidden');
@@ -2211,6 +2367,7 @@ function snapshotRun() {
       adaptLv: p.adaptLv, adaptStacks: p.adaptStacks, phaseLv: p.phaseLv,
       dashLv: p.dashLv, bombCount: p.bombCount, bombDmg: p.bombDmg, slowLv: p.slowLv,
       energy: p.energy, lanceOn: p.lanceOn, lanceOver: p.lanceOver,
+      evo: p.evo || {},
       g1: p._gate1Done, g2: p._gate2Done,
     },
   };
@@ -2261,6 +2418,7 @@ function resumeSavedRun() {
     adaptLv: q.adaptLv, adaptStacks: q.adaptStacks, phaseLv: q.phaseLv,
     dashLv: q.dashLv, bombCount: q.bombCount, bombDmg: q.bombDmg, slowLv: q.slowLv,
     energy: q.energy, lanceOn: q.lanceOn, lanceOver: q.lanceOver,
+    evo: q.evo || {},
     _gate1Done: q.g1, _gate2Done: q.g2,
   });
   G.wave = Math.max(1, s.wave | 0);
@@ -2292,7 +2450,7 @@ function showMenu(on) {
     G.state = 'menu';
     G.player = null;
     ui.hud.classList.add('hidden');
-    for (const id of ['over', 'pause', 'levelup', 'elementPick', 'hangar']) {
+    for (const id of ['over', 'pause', 'levelup', 'elementPick', 'hangar', 'settings']) {
       document.getElementById(id).classList.add('hidden');
     }
     refreshResumeButton();
@@ -2355,7 +2513,7 @@ function renderCodex() {
     const d = ELEMENTS[id];
     const got = !!seen['元素 · ' + d.name];
     out.push('<div class="cx-el' + (got ? '' : ' off') + '" style="--ec:' + (got ? d.color : '#5f7391') + '">' +
-      '<b>' + (got ? d.glyph + ' ' + d.name + ' · ' + d.status : '？ ? ?') + '</b>' +
+      '<b>' + (got ? iconHtml(d.glyph, 15) + ' ' + d.name + ' · ' + d.status : '？ ? ?') + '</b>' +
       '<span>' + (got ? '上限 ' + d.max + ' 层 · ' + d.dur + 's · ' + d.pos : '未觉醒') + '</span>' +
       '<em>' + (got ? d.line : '在 Lv4 / Lv9 的元素门里觉醒后解锁') + '</em></div>');
   }
@@ -2373,6 +2531,9 @@ function renderCodex() {
   out.push('</div>');
   out.push('<p class="cx-tip">已解锁反应 <b>' + n + ' / ' + REACTIONS.length +
     '</b>　·　图鉴只写在本机 localStorage，不采集、不上传</p>');
+  /* v3.3：图鉴不再只有元素 —— 敌机与成就是"我在积累什么"的可见载体 */
+  out.push(codexEnemyHtml());
+  out.push(codexAchHtml());
   document.getElementById('codexBody').innerHTML = out.join('');
 }
 
@@ -2408,7 +2569,7 @@ function renderHangar() {
     const lack = cost === null ? 0 : Math.max(0, cost - dust);
     const can = cost !== null && lack === 0;
     out.push('<div class="hg-line">' +
-      '<div class="hg-line-head"><b>' + L.icon + ' ' + L.name + '</b><span>Lv ' + lv + ' / ' + META_MAX_LV + '</span></div>' +
+      '<div class="hg-line-head"><b>' + iconHtml(L.icon, 16) + ' ' + L.name + '</b><span>Lv ' + lv + ' / ' + META_MAX_LV + '</span></div>' +
       '<div class="hg-bar"><i style="width:' + Math.round(lv / META_MAX_LV * 100) + '%"></i></div>' +
       '<div class="hg-line-info"><span class="hg-per">' + L.per + '</span>' +
       (cost === null
@@ -2557,6 +2718,82 @@ document.getElementById('btnHangarClose').addEventListener('click', closeHangar)
 document.getElementById('btnHangarLaunch').addEventListener('click', () => { closeHangar(); startGame(); });
 
 /* ---------------------------------------------------------
+   v3.3 设置面板：特效强度 / 震动 / 弹幕高对比 / 三条音量
+   全部落到 rt_set_v1（独立键），不碰 metaSum。
+   --------------------------------------------------------- */
+function refreshSettingsUI() {
+  const $ = id => document.getElementById(id);
+  const fx = $('setFx');
+  if (fx && fx.querySelectorAll) fx.querySelectorAll('button[data-fx]').forEach(b => b.classList.toggle('on', b.dataset.fx === SET.fx));
+  const sh = $('setShake');
+  if (sh) { sh.textContent = SET.shake ? '开' : '关'; sh.classList.toggle('on', !!SET.shake); }
+  const ct = $('setContrast');
+  if (ct) { ct.textContent = SET.contrast ? '开' : '关'; ct.classList.toggle('on', !!SET.contrast); }
+  /* 涂装：动态渲染（解锁状态会随本局成就变化，写死在 HTML 里会过期） */
+  const sk = $('setSkin');
+  if (sk) {
+    sk.innerHTML = SKINS.map(s => {
+      const un = skinUnlocked(s);
+      return '<button type="button" data-skin="' + s.id + '"' +
+        (s.id === SKIN.id ? ' class="on"' : '') + (un ? '' : ' disabled title="需要成就：' + (ACH_BY_ID[s.need] ? ACH_BY_ID[s.need].n : '') + '"') +
+        '>' + s.n + '</button>';
+    }).join('');
+  }
+  const map = { setVolMaster: 'volMaster', setVolSfx: 'volSfx', setVolMusic: 'volMusic' };
+  for (const id in map) {
+    const el = $(id); if (!el) continue;
+    const v = Math.round(SET[map[id]] * 100);
+    el.value = String(v);
+    const lab = $(id + 'V'); if (lab) lab.textContent = String(v);
+  }
+}
+function openSettings() {
+  SFX.play('uiClick');
+  refreshSettingsUI();
+  document.getElementById('settings').classList.remove('hidden');
+}
+function closeSettings() {
+  SFX.play('uiBack');
+  document.getElementById('settings').classList.add('hidden');
+}
+function setSetting(key, val) {
+  if (key === 'fx') SET.fx = val;
+  else if (key === 'shake' || key === 'contrast') SET[key] = val ? 1 : 0;
+  else if (key === 'volMaster' || key === 'volSfx' || key === 'volMusic') SET[key] = clamp(Number(val) || 0, 0, 1);
+  saveSettings();
+  applySettings();
+}
+document.getElementById('btnSettings').addEventListener('click', openSettings);
+document.getElementById('btnSettingsPause').addEventListener('click', openSettings);
+document.getElementById('btnSettingsClose').addEventListener('click', closeSettings);
+{
+  const fxEl = document.getElementById('setFx');
+  if (fxEl && fxEl.querySelectorAll) {
+    fxEl.querySelectorAll('button[data-fx]').forEach(b =>
+      b.addEventListener('click', () => { setSetting('fx', b.dataset.fx); SFX.play('uiClick'); }));
+  }
+  document.getElementById('setShake').addEventListener('click', () => { setSetting('shake', !SET.shake); SFX.play('uiClick'); });
+  document.getElementById('setContrast').addEventListener('click', () => { setSetting('contrast', !SET.contrast); SFX.play('uiClick'); });
+  /* 涂装按钮是动态重建的 → 用事件委托，避免每次刷新都重新绑定 */
+  {
+    const box = document.getElementById('setSkin');
+    if (box) box.addEventListener('click', (ev) => {
+      const t = ev && ev.target;
+      const b = (t && typeof t.closest === 'function') ? t.closest('button[data-skin]') : null;
+      if (!b || b.disabled) return;
+      if (setSkin(b.dataset.skin)) { refreshSettingsUI(); SFX.play('uiClick'); }
+    });
+  }
+  const vols = [['setVolMaster', 'volMaster'], ['setVolSfx', 'volSfx'], ['setVolMusic', 'volMusic']];
+  for (const pair of vols) {
+    const el = document.getElementById(pair[0]);
+    if (!el) continue;
+    /* input 事件逐帧触发：只存盘与套用，不播音效（否则拖滑条会变成噪音） */
+    el.addEventListener('input', () => { SET[pair[1]] = clamp(Number(el.value) / 100, 0, 1); saveSettings(); applySettings(); });
+  }
+}
+
+/* ---------------------------------------------------------
    主循环
    --------------------------------------------------------- */
 let last = performance.now();
@@ -2586,6 +2823,7 @@ function boot() {
   buildNebula();
   buildFX();
   resize();
+  applySettings();                 // v3.3：把存下来的音量/特效强度/震动开关套上去
   document.getElementById('menuBest').textContent = fmt(Math.max(META.best.score | 0, Number(localStorage.getItem('rt_best') || 0) || 0));
   syncMenuMeta();
   refreshResumeButton();

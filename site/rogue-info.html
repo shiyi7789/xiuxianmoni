@@ -136,8 +136,16 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
           <p>到 <strong>Lv4</strong> 和 <strong>Lv9</strong> 各开一次「元素门」，从六种元素里挑一种，附加到你的<strong>全部武器</strong>上。上限两种元素——<strong>不可重随、不可跳过，也不占升级卡池</strong>。按 <kbd>1</kbd>–<kbd>6</kbd> 选元素，<kbd>C</kbd> 随时查元素图鉴。</p>
         </article>
         <article class="card">
-          <h3><span class="dot d6" aria-hidden="true"></span>存档</h3>
-          <p>只在本机记住一个<strong>历史最高分</strong>。没有账号、没有云端同步、不采集任何信息——换设备就从头开始，这很符合 Roguelite 的脾气。</p>
+          <h3><span class="dot d2" aria-hidden="true"></span>相位门</h3>
+          <p><kbd>F</kbd>：0.5 秒无敌 + 沿移动方向瞬移，冷却 9 秒（点满后每级 −1.5s、+60 距离）。从包围里钻出去就靠它。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d4" aria-hidden="true"></span>光束释放</h3>
+          <p><kbd>R</kbd>：拿到「持续光束」后启用。<strong>能量由你决定什么时候放</strong>——一直不开火就会一路充到满；<strong>满能量释放 = 过载</strong>，伤害 ×1.8、判定宽度翻倍、光束转金。</p>
+        </article>
+        <article class="card">
+          <h3><span class="dot d6" aria-hidden="true"></span>存档与续玩</h3>
+          <p>局内可以<strong>中途退出再继续</strong>（主菜单会多出「继续上次战斗」，恢复时给 2 秒无敌）；局外的<strong>星尘 / 碎片 / 机库升级 / 深渊深度 / 涂装 / 图鉴成就</strong>都只存在本机浏览器里，没有账号、没有云端同步、不采集任何信息。</p>
         </article>
       </div>
     </div>
@@ -146,7 +154,7 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
   <section id="build">
     <div class="wrap">
       <div class="sec-h">
-        <h2>八 条 武 器 线，五 十 四 张 升 级 卡</h2>
+        <h2>八 条 武 器 线，六 十 张 升 级 卡</h2>
         <p>每局能拿到的强化是随机的，所以「这一局长成什么」是你现场决定的。武器之间刻意保留了协同——黑洞聚怪会放大散射与电弧的收益，无人机则替黑洞近身兜底。卡池按波次<strong>分层解锁</strong>：开局只有 25 张，越往后新卡越多，避免一上来就被 60 张卡稀释成杂牌军。</p>
         <p><strong>无尽模式按 10 波一阶分成五段</strong>，每一阶换的不是新怪，而是<strong>一条新的组合规则</strong>——
         这是「制造新决策」与「数值膨胀」的分界线。每阶的第 1 波密度会降到 0.85，让你先把规则<strong>读</strong>明白，
@@ -238,6 +246,42 @@ d.setAttribute('data-theme',t);}catch(e){d.setAttribute('data-theme','light');}}
           <h3><span class="dot d4" aria-hidden="true"></span>互斥协议</h3>
           <p>有几组卡是<strong>刻意互斥</strong>的：「专精协议」会移除武器协同、「玻璃加农」会移除全部护盾类卡并把护盾清零、「生命献祭」与「静止炮台」不能同持。互斥不是惩罚，是让你在<strong>两个方向里真的选一个</strong>。</p>
         </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 武器进化 & 星港机库（v3.3） ==================== -->
+  <section id="meta">
+    <div class="wrap">
+      <div class="sec-h">
+        <h2>武 器 进 化 与 星 港 机 库</h2>
+        <p>八条武器线各自有一条进化路线：<strong>武器到指定等级 + 持有对应被动</strong>，升级时最后一张卡位会换成进化卡 —— 拿下它就是另一把武器，这是这一局的转折点，不是再多 8% 伤害。</p>
+      </div>
+      <div class="tw">
+        <table>
+          <caption>八条进化路线（阈值按各武器真实满级设定：主炮 8 / 激光·散射·导弹 6 / 无人机·电弧 5 / 飞刃 4 / 黑洞 3）</caption>
+          <thead><tr><th>组合</th><th>进化</th><th>变化</th></tr></thead>
+          <tbody>
+            <tr><td>贯穿激光 Lv5 + 能量护盾</td><td>棱镜炮</td><td>命中后向附近敌机折射 2 跳，每跳 65% 伤害</td></tr>
+            <tr><td>散射炮 Lv6 + 散射聚合</td><td>超新星</td><td>改成整圈环形爆发，近距离伤害 ×1.6</td></tr>
+            <tr><td>追踪导弹 Lv6 + 导弹分导</td><td>蜂群母舰</td><td>每 6 秒一圈 12 枚自导小弹，分裂不再衰减</td></tr>
+            <tr><td>环绕无人机 Lv5 + 无人机列阵</td><td>护航舰队</td><td>无人机 +2、固定纵列、射速 +35%</td></tr>
+            <tr><td>电弧链 Lv5 + 连锁爆破</td><td>雷暴矩阵</td><td>链数 +4、衰减变慢、链尾再炸一圈</td></tr>
+            <tr><td>回旋飞刃 Lv4 + 暴击折射</td><td>千刃回廊</td><td>首次命中后裂成 2 片</td></tr>
+            <tr><td>引力黑洞 Lv3 + 弹幕回响</td><td>奇点</td><td>存活 ×2.2、半径 ×1.25、每 0.6s 打一圈引力脉冲</td></tr>
+            <tr><td>主炮 Lv8 + 过载校准 ×3</td><td>重炮形态</td><td>单发重型穿甲弹：伤害 ×3.2、穿透 3</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="grid feats mt">
+        <article class="card"><h3><span class="dot" aria-hidden="true"></span>星港机库</h3>
+          <p>打到的<strong>星尘</strong>（波次 / 击杀 / Boss）升三条线：机体（生命 + 减伤）、火力（伤害 + 射速）、引擎（移速 + 冲刺冷却）；<strong>核心碎片</strong>（只从 Boss 掉）开五个改装槽 —— 改的是开局形态，不是数值。</p></article>
+        <article class="card"><h3><span class="dot d2" aria-hidden="true"></span>深渊深度</h3>
+          <p>三线总等级 ≥15 解锁，0–10 档玩家自选。每档敌人血量 +12%、速度 +3%，但星尘 +25%、每 Boss 碎片 +0.6 —— 把难度变成资源。</p></article>
+        <article class="card"><h3><span class="dot d3" aria-hidden="true"></span>图鉴与成就</h3>
+          <p>19 条敌机图鉴（每条写「怎么打」而不是「是什么」）+ 24 条成就。解锁进度只存本机，和存档一样不上传。</p></article>
+        <article class="card"><h3><span class="dot d4" aria-hidden="true"></span>设置</h3>
+          <p>特效强度（高/低/关）、屏幕震动开关、弹幕高对比（色盲友好）、主/音效/音乐三条音量、六套舰体涂装 —— 全部本机存储。</p></article>
       </div>
     </div>
   </section>

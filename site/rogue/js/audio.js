@@ -25,6 +25,9 @@ const SFX = (() => {
   let ac = null;
   let supported = true;          // 浏览器是否提供 WebAudio
   let enabled = true;            // 用户是否静音
+  /* v3.3 设置面板：三条音量（0..1）。master 缩放总输出，sfx 缩放 SFX/UI/武器三条子总线，
+     music 作为音乐床的乘子 —— 都不改事件本身的混音配平，避免"调音量把音色调坏"。 */
+  let volMaster = 1, volSfx = 1, volMusic = 1;
 
   let master = null, comp = null;
   const BUS = { sfx: null, ui: null, music: null, wpn: null };
@@ -76,17 +79,17 @@ const SFX = (() => {
     comp.release.value = 0.22;
 
     master = ac.createGain();
-    master.gain.value = enabled ? 0.55 : 0;
+    master.gain.value = enabled ? 0.55 * volMaster : 0;
     comp.connect(master);
     master.connect(ac.destination);
 
     /* 总线级配平：SFX / 武器整体抬 ~3.2dB，让枪声、命中、敌弹确实压在音乐床之上；
        UI 保持克制（比 SFX 低 ~5dB），否则菜单音效会盖过战斗反馈。
        实测依据见 musicLevel() 注释。 */
-    BUS.sfx = ac.createGain();   BUS.sfx.gain.value = 1.45;
-    BUS.ui = ac.createGain();    BUS.ui.gain.value = 0.80;
+    BUS.sfx = ac.createGain();   BUS.sfx.gain.value = 1.45 * volSfx;
+    BUS.ui = ac.createGain();    BUS.ui.gain.value = 0.80 * volSfx;
     BUS.music = ac.createGain(); BUS.music.gain.value = 1.0;
-    BUS.wpn = ac.createGain();   BUS.wpn.gain.value = 1.45;
+    BUS.wpn = ac.createGain();   BUS.wpn.gain.value = 1.45 * volSfx;
 
     /* 武器专属子总线：后期 4~6 把武器同时自动开火时，用一台 glue 压缩把它们
        粘成"一个整体"而不是各响各的，避免叠加成噪音墙 */
@@ -878,10 +881,11 @@ const SFX = (() => {
   function musicLevel() {
     /* 音乐是"床"，不是主角：始终压在音效之下，枪声/命中/敌弹才留得住可读性。
        旧值让音乐峰值(-11dB)高过主炮(-15dB)、比敌弹(-28dB)高 17dB，等于把战斗反馈全盖住。 */
-    if (scene === 'menu') return 0.09;
-    if (scene === 'over') return 0.045;
-    if (scene === 'paused') return 0.032;
-    return 0.105 + intensity * 0.09;
+    const base = scene === 'menu' ? 0.09
+      : scene === 'over' ? 0.045
+      : scene === 'paused' ? 0.032
+      : 0.105 + intensity * 0.09;
+    return base * volMusic;
   }
 
   /** 战斗强度 0..1；做脏检查，避免每帧排程自动化 */
@@ -932,9 +936,29 @@ const SFX = (() => {
     get supported() { return supported; },
     toggleMute() {
       enabled = !enabled;
-      if (master) master.gain.setTargetAtTime(enabled ? 0.55 : 0, ac ? ac.currentTime : 0, 0.05);
+      if (master) master.gain.setTargetAtTime(enabled ? 0.55 * volMaster : 0, ac ? ac.currentTime : 0, 0.05);
       return enabled;
     },
+    /** v3.3 设置面板：part = 'master' | 'sfx' | 'music'，v = 0..1 */
+    setVolume(part, v) {
+      v = clamp(Number(v) || 0, 0, 1);
+      if (part === 'master') {
+        volMaster = v;
+        if (master) master.gain.setTargetAtTime(enabled ? 0.55 * volMaster : 0, ac ? ac.currentTime : 0, 0.05);
+      } else if (part === 'sfx') {
+        volSfx = v;
+        if (BUS.sfx) {
+          BUS.sfx.gain.value = 1.45 * v;
+          BUS.ui.gain.value = 0.80 * v;
+          BUS.wpn.gain.value = 1.45 * v;
+        }
+      } else if (part === 'music') {
+        volMusic = v;
+        if (musicVca && ac && musicOn) musicVca.gain.setTargetAtTime(musicLevel(), ac.currentTime, 0.2);
+      }
+      return v;
+    },
+    getVolume() { return { master: volMaster, sfx: volSfx, music: volMusic }; },
     debug() {
       return {
         voices: voiceCount, peak: STAT.peak, dropped: STAT.dropped,

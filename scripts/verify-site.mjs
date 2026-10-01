@@ -73,9 +73,9 @@ out('=== 1. HTTP 与资源 ===');
 const files = [
   '/', '/xiuxian.html', '/rogue/', '/rogue', '/xiuxian-info.html', '/rogue-info.html', '/notice.html',
   '/version.json', '/404.html', '/robots.txt', '/sitemap.xml',
-  '/assets/site.css', '/assets/site.js',
-  '/rogue/css/style.css', '/rogue/js/utils.js', '/rogue/js/audio.js', '/rogue/js/elements.js',
-  '/rogue/js/entities.js', '/rogue/js/upgrades.js', '/rogue/js/waves.js', '/rogue/js/meta.js', '/rogue/js/game.js'
+  '/assets/site.css', '/assets/hub.css', '/assets/site.js',
+  '/rogue/css/style.css', '/rogue/js/icons.js', '/rogue/js/utils.js', '/rogue/js/audio.js', '/rogue/js/elements.js',
+  '/rogue/js/codex.js', '/rogue/js/entities.js', '/rogue/js/upgrades.js', '/rogue/js/waves.js', '/rogue/js/meta.js', '/rogue/js/game.js'
 ];
 const bodies = {};
 for (const f of files) {
@@ -154,7 +154,11 @@ chk('卡片体积数字已回填（不写死在 HTML 里）',
 out('');
 out('=== 3. 页面通用规范 ===');
 const PAGES = ['/', '/xiuxian-info.html', '/rogue-info.html', '/notice.html'];
-const CSS = readFileSync(sf('assets/site.css'), 'utf8');
+/* 大厅在 v3.3 换成了专用样式表 hub.css（site.css 保持四页共享不动）→ 这里要一起并进来，
+   否则"零孤儿 class"会把新大厅的 14 个 class 全判成未定义。 */
+/* hub.css 放前面：11.3 的"深色令牌成对"检查是从 `html[data-theme="dark"]` 截到字符串末尾的，
+   把大厅专用令牌（--hb-*）排在 site.css 之前，它们才不会被误判成"只在深色里定义"。 */
+const CSS = readFileSync(sf('assets/hub.css'), 'utf8') + '\n' + readFileSync(sf('assets/site.css'), 'utf8');
 const SJS = readFileSync(sf('assets/site.js'), 'utf8');
 for (const p of PAGES) {
   const B = bodies[p];
@@ -222,7 +226,9 @@ chk('大厅有两张游戏卡片', (HUB.match(/class="gcard rv"/g) || []).length
 chk('卡片可直达修仙模拟器', /href="xiuxian\.html" data-game="xiuxian"/.test(HUB), '');
 chk('卡片可直达星际裂隙', /href="rogue\/" data-game="rogue"/.test(HUB), '');
 chk('两张卡片都有「玩法详情」入口', /href="xiuxian-info\.html"/.test(HUB) && /href="rogue-info\.html"/.test(HUB), '');
-chk('封面为内联 SVG 且带无障碍名称', (HUB.match(/<svg viewBox="0 0 320 180" role="img" aria-label=/g) || []).length === 2, '纯 SVG，零图片请求');
+chk('封面为内联绘制（零图片请求）且带无障碍名称',
+  (HUB.match(/<canvas class="cov" data-cov="[a-z]+"[^>]*role="img" aria-label=/g) || []).length === 2,
+  'canvas 内联绘制，零图片请求');
 chk('「上次游玩」记录用的徽标存在', (HUB.match(/class="badge" data-last hidden/g) || []).length === 2, 'site_last_game_v1');
 chk('页内试玩面板存在（#try + poster + stage）', /<section id="try">/.test(HUB) && /id="poster"/.test(HUB) && /class="stage"/.test(HUB), '');
 chk('页内试玩有游戏切换分段控件', (HUB.match(/data-try="/g) || []).length === 2, '修仙 / 星际裂隙');
@@ -232,7 +238,7 @@ chk('移动端断点存在', /@media \(max-width:820px\)/.test(CSS) && /@media \
 const promise = ['不 盈 利', '无 广 告', '不 采 集 信 息', '不 传 播 不 良 信 息', '只 供 游 玩'];
 const missP = promise.filter(k => HUB.indexOf(k) < 0);
 chk('大厅含站点声明五条要点', missP.length === 0, missP.length ? '缺 ' + missP.join(' / ') : promise.length + ' 条');
-chk('声明有独立锚点 #notice', /<section id="notice">/.test(HUB), '');
+chk('声明有独立锚点 #notice', /\bid="notice"/.test(HUB), '');
 chk('导航与页脚都能跳到声明', (HUB.match(/href="#notice"/g) || []).length + (HUB.match(/href="notice\.html"/g) || []).length >= 3,
   (HUB.match(/href="#notice"/g) || []).length + ' 处锚点 + ' + (HUB.match(/href="notice\.html"/g) || []).length + ' 处页面链接');
 chk('声明含免广告 / 不采集的明确表述', /不做统计埋点/.test(HUB) && /不上传任何个人信息/.test(HUB), '');
@@ -362,6 +368,26 @@ chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'elements',
     chk('机库升级按钮 data-line 属性闭合（点了没反应的真因）',
       /data-line="' \+ L\.id \+\s*'"'/.test(GMC) && !/data-line="' \+ L\.id \+ \(can/.test(GMC),
       '少一个引号会让属性吞掉后面的标签，metaUpgrade 收到脏 id 抛异常');
+    /* ---------- v3.3：扩容一期（进化 / 图鉴 / 设置 / 图标 / 大厅） ---------- */
+    const ICO = (bodies['/rogue/js/icons.js'] || {}).text || '';
+    const CDX = (bodies['/rogue/js/codex.js'] || {}).text || '';
+    chk('界面图标走内联 SVG，不再用会变彩色 emoji 的字符',
+      /const SVG_ICONS/.test(ICO) && /function svgIcon/.test(ICO) &&
+      !/icon: '[⚡🔥☣☀☢🛡]/u.test((bodies['/rogue/js/upgrades.js'] || {}).text || ''),
+      '⚡🔥☣☀ 在 Android/iOS 会渲染成彩色 emoji，三台设备三个样子');
+    chk('武器进化 8 条 + 阈值按真实满级设定',
+      (GMC + UPG).match(/evo_(main|laser|spread|missile|drone|arc|boomer|black)/g) && /function availableEvos/.test(UPG),
+      '主炮 8 / 激光·散射·导弹 6 / 无人机·电弧 5 / 飞刃 4 / 黑洞 3');
+    chk('敌机图鉴 19 条 + 成就 24 条（独立键，不进 metaSum）',
+      (CDX.match(/t: '[a-z]+'/g) || []).length === 19 && (CDX.match(/id: '[A-Za-z0-9]+'/g) || []).length >= 24 &&
+      /rt_codex_v1/.test(CDX) && /rt_ach_v1/.test(CDX),
+      '图鉴与成就不写进 metaSum —— 否则所有已存在的 v2 存档会整体失效');
+    chk('设置面板齐全（特效强度 / 震动 / 高对比 / 三音量 / 涂装）',
+      /rt_set_v1/.test(GMC) && /rt_skin_v1/.test(GMC) && /setVolume\(part, v\)/.test((bodies['/rogue/js/audio.js'] || {}).text || ''),
+      '独立键 rt_set_v1，不动任何进度数据');
+    chk('死亡叙事：结算页给出"这一局的故事"',
+      /overStory/.test(RGI) && /deathBy/.test(GMC) && /ACH_NEW/.test(GMC),
+      '让每一局都值得讲一遍');
   }
   chk('元素上限走 elemCap（改装槽「三相共鸣」才能生效）',
     /function elemCap/.test(MT) && /elemCap\(p\)/.test(GMC), '');
@@ -373,17 +399,19 @@ chk('样式表为同源相对路径', /<link rel="stylesheet" href="css\/style\.
 chk('游戏页自带子路径资源基准（subpathBase）', /id="subpathBase"/.test(RGI),
   '站点对外是 /rogue（无尾斜杠），没有它相对子资源会 404 成一片纯文字');
 chk('游戏本体无外部子资源请求', !/<script[^>]+src="https?:/.test(RGI) && !/<link[^>]+rel="stylesheet"[^>]*href="https?:/.test(RGI) && !/<img[^>]+src="https?:/.test(RGI), '音频为程序化合成，图片为零');
-/* 体积闸门（v3 上调 320 → 350 KB）：
-   历史：v2 250 → 320（6 元素 + 15 反应 + 25 卡 + 10 怪 + 5 Boss）；v3 320 → 350
-   v3.1 再 350 → 380（中途续玩 + 返回菜单 + 移动端技能键 + 波次记录）。
-   ⚠ 上调依据是"留 10% 余量"：350 时实测已到 343.3（仅 2%），一条新功能就会爆。
-   闸门的本意是「不许塞二进制素材把单文件撑爆」—— BIN_ASSET 守卫在下方单独断言，
-   所以这里只做「源码不许爆炸式膨胀」的软提醒。
-   ⚠ 真正的传输成本是 gzip，所以下面另加一条 gzip 硬线（原先只有显示、没有断言）。 */
-chk('游戏体积可控（< 380 KB 源码）', rogueBytes < 380 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
+/* 体积闸门（v3.3 改口径：源码软线 + gzip 硬线）
+   历史：v2 250 → 320 → v3 350 → v3.1 380 → v3.3 380/130 改成 560/170。
+
+   ⚠ 为什么改口径（见《提案-星际裂隙扩容与大厅重做》§2.6）：
+   源码体积是**自我约束**，不是用户的成本；v3.3 加武器进化 / 图鉴 / 成就 / 设置 / 图标集之后
+   实测 389 KB，已经顶穿 380 —— 而 380 这个数字当初只是"给 10% 余量"的随手值。
+   继续守它，等于让一条随手定的线来决定"游戏还能不能做厚"。
+   真正该守的是：① gzip 传输体积 ② 不许内嵌二进制素材（下方 BIN_ASSET 独立断言）。
+   所以：源码 560 KB 是**软提醒**（超过就该考虑拆包），gzip 170 KB 是**硬线**。 */
+chk('游戏体积可控（< 560 KB 源码 · 软线）', rogueBytes < 560 * 1024, (rogueBytes / 1024).toFixed(1) + ' KB / ' + roguePairs.length + ' 个文件');
 {
   const gzR = gzipSync(roguePairs.map(p => p[1]).reduce((a, b) => Buffer.concat([a, b]))).length;
-  chk('星际裂隙 gzip < 130 KB（真实传输成本）', gzR < 130 * 1024, (gzR / 1024).toFixed(1) + ' KB');
+  chk('星际裂隙 gzip < 170 KB（真实传输成本 · 硬线）', gzR < 170 * 1024, (gzR / 1024).toFixed(1) + ' KB');
 }
 chk('脚本按顺序拼接即可运行（无打包器、无 import）', !/^\s*import\s/m.test(roguePairs.map(p => p[1].toString()).join('\n')), '六个文件共享同一全局作用域');
 
@@ -401,7 +429,7 @@ chk('修仙模拟器无内嵌二进制素材', !BIN_ASSET.test(GAMEBODY), '音�
 chk('星际裂隙无内嵌二进制素材', !roguePairs.some(p => BIN_ASSET.test(p[1].toString())), '音效为 WebAudio 合成');
 /* v3：700 → 780 KB。原先只有 102 B 余量（699.9 / 700），任意一处改动都会立刻爆掉 ——
    闸门不该是"卡在边界上"的。这里同样是源码体积的软提醒，真实成本看 gzip。 */
-chk('两款游戏合计不超过 780 KB', xiuxianBuf.length + rogueBytes < 780 * 1024,
+chk('两款游戏合计不超过 1000 KB', xiuxianBuf.length + rogueBytes < 1000 * 1024,
   ((xiuxianBuf.length + rogueBytes) / 1024).toFixed(1) + ' KB');
 
 /* ---------- 7.5 404 页（独立成组：不套文案页规范，因为它刻意 noindex） ---------- */

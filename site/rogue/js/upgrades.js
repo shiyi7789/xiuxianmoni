@@ -35,10 +35,23 @@ function rollCrit(p) {
 const WEAPONS = {
   /* ---------- 主炮：一切 Build 的底座 ---------- */
   main: {
-    name: '主炮', icon: '✦', color: '#7ef9ff',
+    name: '主炮', icon: 'main', color: '#7ef9ff',
     update(G, p, dt) {
       const lv = p.wlv.main; if (!lv) return;
       p.cd.main -= dt; if (p.cd.main > 0) return;
+      /* v3.3 重炮形态（进化）：换成单发重型穿甲弹 —— 慢，但每发顶得上三四发 */
+      if (p.evo.main) {
+        p.cd.main = 0.5 / p.stats.rate;
+        const c = rollCrit(p);
+        spawnPBullet(G, p.x, p.y - 18, -Math.PI / 2, {
+          spd: 900 * p.stats.pspd, r: 9, len: 30,
+          dmg: (5 + lv * 1.9) * dmgMul(p, 'main') * 3.2 * c, crit: c > 1,
+          pierce: 3 + p.stats.pierce, color: '#7ef9ff', src: 'main', burst: 64,
+        });
+        SFX.playAt('shoot', p.x, p.y);
+        G.particles.push({ x: p.x, y: p.y - 24, vx: 0, vy: -220, life: 0.16, max: 0.16, size: 18, color: '#7ef9ff', kind: 'ring' });
+        return;
+      }
       const focus = p.stats.tFocus ? 0.5 : 1;     // 聚焦透镜：宽度换密度
       const narrow = p.stats.tNarrow ? 0.6 : 1;   // 散射聚合
       p.cd.main = (p.stats.tNarrow ? 0.22 : 0.16) / p.stats.rate;
@@ -63,7 +76,7 @@ const WEAPONS = {
 
   /* ---------- 贯穿激光：扫线利器（可被「持续光束」改形态） ---------- */
   laser: {
-    name: '贯穿激光', icon: '❂', color: '#4ea8ff',
+    name: '贯穿激光', icon: 'laser', color: '#4ea8ff',
     update(G, p, dt) {
       const lv = p.wlv.laser; if (!lv) return;
       if (p.stats.lance) { tLanceUpdate(G, p, lv, dt); return; }
@@ -77,6 +90,7 @@ const WEAPONS = {
         spawnPBullet(G, p.x + off, p.y - 22, -Math.PI / 2, {
           spd: 1250 * p.stats.pspd, r: 3, len: 52, dmg: dmg * c, crit: c > 1,
           pierce: 4 + p.stats.pierce, color: '#4ea8ff', kind: 'beam', src: 'laser', life: 1.1,
+          evoChain: p.evo.laser ? 2 : 0,          // 棱镜炮：命中后向附近敌机折射 2 跳
         });
       }
       SFX.playAt('laser', p.x, p.y);
@@ -85,15 +99,17 @@ const WEAPONS = {
 
   /* ---------- 散射炮：近距离清场 ---------- */
   spread: {
-    name: '散射炮', icon: '❋', color: '#7cffb2',
+    name: '散射炮', icon: 'spread', color: '#7cffb2',
     update(G, p, dt) {
       const lv = p.wlv.spread; if (!lv) return;
       p.cd.spread -= dt; if (p.cd.spread > 0) return;
       const nar = p.stats.tNarrow ? 0.6 : 1;
       p.cd.spread = (0.62 / p.stats.rate) * (p.stats.tNarrow ? 1.35 : 1);
-      const n = Math.max(1, Math.round((3 + lv + p.stats.extraShots * 2) * nar));
+      const evo = !!p.evo.spread;                 // 超新星：整圈环形爆发 + 近距离增伤
+      const n0 = Math.max(1, Math.round((3 + lv + p.stats.extraShots * 2) * nar));
+      const n = evo ? Math.max(12, n0 * 2) : n0;
       const dmg = (4.8 + lv * 1.5) * dmgMul(p, 'spread') * (p.stats.tNarrow ? 2.0 : 1);
-      const arc = (0.55 + lv * 0.09) * nar;
+      const arc = evo ? TAU : (0.55 + lv * 0.09) * nar;
       for (let i = 0; i < n; i++) {
         const f = n === 1 ? 0 : (i / (n - 1) - 0.5) * 2;
         const c = rollCrit(p);
@@ -101,7 +117,7 @@ const WEAPONS = {
           spd: 660 * p.stats.pspd * rand(1.08, 0.94), r: 5, len: 12,
           dmg: dmg * c, crit: c > 1, pierce: p.stats.pierce,
           color: '#7cffb2', kind: 'pellet', src: 'spread', life: 0.8,
-          burst: p.stats.tNarrow ? 34 : 0,
+          burst: p.stats.tNarrow ? 34 : 0, nova: evo ? 1 : 0,
         });
       }
       SFX.playAt('spread', p.x, p.y);
@@ -110,9 +126,23 @@ const WEAPONS = {
 
   /* ---------- 追踪导弹：索敌补刀 ---------- */
   missile: {
-    name: '追踪导弹', icon: '➤', color: '#b39dff',
+    name: '追踪导弹', icon: 'missile', color: '#b39dff',
     update(G, p, dt) {
       const lv = p.wlv.missile; if (!lv) return;
+      /* v3.3 蜂群母舰（进化）：每 6 秒放出一圈 12 枚自导小弹 */
+      if (p.evo.missile) {
+        p.swarmT = (p.swarmT || 6) - dt;
+        if (p.swarmT <= 0) {
+          p.swarmT = 6;
+          for (let i = 0; i < 12; i++) {
+            spawnPBullet(G, p.x, p.y, i / 12 * TAU, {
+              spd: 300, r: 4, len: 13, dmg: (8 + lv * 3) * dmgMul(p, 'missile'),
+              kind: 'missile', homing: 5.2, color: '#b39dff', src: 'missile', life: 3.2, noSplit: 1,
+            });
+          }
+          SFX.playAt('missile', p.x, p.y);
+        }
+      }
       p.cd.missile -= dt; if (p.cd.missile > 0) return;
       p.cd.missile = 1.0 / p.stats.rate;
       const n = 1 + Math.floor((lv + 1) / 2);
@@ -131,14 +161,16 @@ const WEAPONS = {
 
   /* ---------- 环绕无人机：贴身护卫（可被「无人机列阵」改形态） ---------- */
   drone: {
-    name: '环绕无人机', icon: '◈', color: '#d9f7ff',
+    name: '环绕无人机', icon: 'drone', color: '#d9f7ff',
     update(G, p, dt) {
       const lv = p.wlv.drone; if (!lv) return;
-      if (p.drones.length !== lv) {
+      /* v3.3 护航舰队（进化）：无人机 +2 且固定成纵列 */
+      const wantN = lv + (p.evo.drone ? 2 : 0);
+      if (p.drones.length !== wantN) {
         p.drones.length = 0;
-        for (let i = 0; i < lv; i++) p.drones.push({ a: i / lv * TAU, cd: rand(0.3) });
+        for (let i = 0; i < wantN; i++) p.drones.push({ a: i / wantN * TAU, cd: rand(0.3) });
       }
-      const col = !!p.stats.tColumn;
+      const col = !!p.stats.tColumn || !!p.evo.drone;
       p.droneAngle += 1.75 * dt;
       const R = 66;
       for (let i = 0; i < p.drones.length; i++) {
@@ -154,7 +186,7 @@ const WEAPONS = {
         }
         d.cd -= dt;
         if (d.cd <= 0) {
-          d.cd = 0.58 / p.stats.rate / (col ? 1.35 : 1);
+          d.cd = 0.58 / p.stats.rate / (col ? 1.35 : 1) / (p.evo.drone ? 1.35 : 1);
           const tgt = nearestEnemy(G, d.x, d.y, col ? 560 : 460);
           if (tgt) {
             const dmg = (6 + lv * 2.4) * dmgMul(p, 'drone');
@@ -186,12 +218,13 @@ const WEAPONS = {
 
   /* ---------- 电弧链：专治密集阵 ---------- */
   arc: {
-    name: '电弧链', icon: '⚡', color: '#9fefff',
+    name: '电弧链', icon: 'arc', color: '#9fefff',
     update(G, p, dt) {
       const lv = p.wlv.arc; if (!lv) return;
       p.cd.arc -= dt; if (p.cd.arc > 0) return;
       p.cd.arc = 1.15 / p.stats.rate;
-      const chains = 1 + lv;
+      const evo = !!p.evo.arc;                    // 雷暴矩阵：链数 +4、衰减更慢、链尾再炸一圈
+      const chains = 1 + lv + (evo ? 4 : 0);
       const dmg0 = (10 + lv * 4.5) * dmgMul(p, 'arc');
       let cur = { x: p.x, y: p.y - 12 };
       let decay = 1;
@@ -205,7 +238,15 @@ const WEAPONS = {
         damageEnemy(G, tgt, dmg0 * decay * c, { crit: c > 1, src: 'arc' });
         pts.push({ x: tgt.x, y: tgt.y });
         cur = tgt;
-        decay *= 0.84;
+        decay *= evo ? 0.90 : 0.84;
+      }
+      if (evo && pts.length > 1) {
+        let n2 = 0;
+        for (const e of G.enemies) {
+          if (e.dead || n2 >= 3) continue;
+          if (dist(e, cur) < 150) { damageEnemy(G, e, dmg0 * 0.6, { src: 'arc' }); n2++; }
+        }
+        G.particles.push({ x: cur.x, y: cur.y, vx: 0, vy: 0, life: 0.28, max: 0.28, size: 190, color: '#9fefff', kind: 'ring' });
       }
       if (pts.length > 1) {
         G.zaps.push({ pts, life: 0.16, max: 0.16 });
@@ -216,7 +257,7 @@ const WEAPONS = {
 
   /* ---------- 回旋飞刃：去而复返 ---------- */
   boomer: {
-    name: '回旋飞刃', icon: '✧', color: '#5ee0c8',
+    name: '回旋飞刃', icon: 'boomer', color: '#5ee0c8',
     update(G, p, dt) {
       const lv = p.wlv.boomer; if (!lv) return;
       p.cd.boomer -= dt; if (p.cd.boomer > 0) return;
@@ -230,6 +271,7 @@ const WEAPONS = {
           spd: 620 * p.stats.pspd, r: 9, len: 0, dmg: dmg * c, crit: c > 1,
           color: '#5ee0c8', kind: 'blade', pierce: 99, src: 'boomer', life: 3,
           boomer: { out: 0.55, back: false, passes: 0 },
+          evoBlade: p.evo.boomer ? 1 : 0,          // 千刃回廊：首次命中裂成 2 片
         });
       }
       SFX.playAt('blade', p.x, p.y);
@@ -238,7 +280,7 @@ const WEAPONS = {
 
   /* ---------- 引力黑洞：聚怪 + 持续伤害 ---------- */
   black: {
-    name: '引力黑洞', icon: '◉', color: '#5f6bff',
+    name: '引力黑洞', icon: 'black', color: '#5f6bff',
     update(G, p, dt) {
       const lv = p.wlv.black; if (!lv) return;
       p.cd.black -= dt; if (p.cd.black > 0) return;
@@ -253,15 +295,70 @@ const WEAPONS = {
       }
       const tx = best ? clamp(best.x, 70, 470) : p.x;
       const ty = best ? clamp(best.y, 140, p.y - 140) : p.y - 300;
+      const evo = !!p.evo.black;                  // 奇点：更大、更久、每 0.6s 打一圈引力脉冲
+      const hr = (96 + lv * 22) * (evo ? 1.25 : 1);
       G.holes.push({
-        x: tx, y: ty, r: 96 + lv * 22, life: 2.8, max: 2.8,
-        dps: (6 + lv * 5.5) * dmgMul(p, 'black'), spin: 0, born: 0,
+        x: tx, y: ty, r: hr, life: evo ? 6.2 : 2.8, max: evo ? 6.2 : 2.8,
+        dps: (6 + lv * 5.5) * dmgMul(p, 'black') * (evo ? 1.4 : 1), spin: 0, born: 0,
+        pulse: evo ? 1 : 0, pulseT: 0,
       });
       SFX.playAt('void', tx, ty);
       G.shake = Math.min(16, G.shake + 3);
     },
   },
 };
+
+/* ---------------------------------------------------------
+   武器进化（v3.3）
+   ---------------------------------------------------------
+   设计主线："让每一局都值得讲一遍"。
+   60 张卡里绝大多数是数值加法，缺的是**质变时刻** —— 这张表就是那个时刻：
+   武器到指定等级 + 持有指定被动 → 变成另一把武器，而不是再多 8% 伤害。
+
+   ⚠ 阈值必须对照各武器真实满级：主炮 8 / 激光·散射·导弹 6 / 无人机·电弧 5 / 飞刃 4 / 黑洞 3。
+   ========================================================= */
+const EVOLUTIONS = [
+  { id: 'evo_main',    w: 'main',    lv: 8, card: 'u_overload', need: 3, name: '重炮形态', icon: 'main',
+    desc: '主炮改成单发重型穿甲弹：伤害 ×3.2、穿透 3、命中爆裂' },
+  { id: 'evo_laser',   w: 'laser',   lv: 5, card: 'p_shield', name: '棱镜炮', icon: 'laser',
+    desc: '激光命中后向附近敌机折射 2 跳，每跳 65% 伤害' },
+  { id: 'evo_spread',  w: 'spread',  lv: 6, card: 't_narrow', name: '超新星', icon: 'spread',
+    desc: '散射改成整圈环形爆发，近距离（<140）伤害 ×1.6' },
+  { id: 'evo_missile', w: 'missile', lv: 6, card: 't_split', name: '蜂群母舰', icon: 'missile',
+    desc: '每 6 秒放出一圈 12 枚自导小弹；分导伤害不再衰减' },
+  { id: 'evo_drone',   w: 'drone',   lv: 5, card: 't_column', name: '护航舰队', icon: 'drone',
+    desc: '无人机 +2 并固定成纵列，射速提高 35%' },
+  { id: 'evo_arc',     w: 'arc',     lv: 5, card: 'k_chain', name: '雷暴矩阵', icon: 'arc',
+    desc: '链数 +4、衰减变慢；链尾再炸一圈电弧命中 3 个敌人' },
+  { id: 'evo_boomer',  w: 'boomer',  lv: 4, card: 'k_prism', name: '千刃回廊', icon: 'boomer',
+    desc: '飞刃首次命中后裂成 2 片' },
+  { id: 'evo_black',   w: 'black',   lv: 3, card: 't_echo', name: '奇点', icon: 'black',
+    desc: '黑洞存活 ×2.2、半径 ×1.25，每 0.6 秒向外打一圈引力脉冲' },
+];
+const EVO_BY_ID = {};
+for (const e of EVOLUTIONS) EVO_BY_ID[e.id] = e;
+
+/** 当前可选的进化：武器等级够 + 指定被动持有够 + 该武器还没进化过 */
+function availableEvos(p) {
+  if (!p || !p.evo) return [];
+  const out = [];
+  for (const e of EVOLUTIONS) {
+    if (p.evo[e.w]) continue;
+    if ((p.wlv[e.w] || 0) < e.lv) continue;
+    if (e.card && (p.taken[e.card] || 0) < (e.need || 1)) continue;
+    out.push(e);
+  }
+  return out;
+}
+/** 拿下一个进化（UI 与无头自检走同一条路径） */
+function takeEvo(p, id) {
+  const e = EVO_BY_ID[id];
+  if (!e || !p || !p.evo || p.evo[e.w]) return false;
+  p.evo[e.w] = 1;
+  G.toast('武器进化 · ' + e.name);
+  SFX.play('rxBig');
+  return true;
+}
 
 /* ---------------------------------------------------------
    持续光束（t_lance）：形态改写，不是一颗弹丸
@@ -410,7 +507,7 @@ const UPGRADES = [
     desc: (l) => l === 0 ? '召唤环绕无人机：自动开火 + 撞击伤害' : `无人机 +1 架（上限 5），单发伤害 +2.4`,
     apply: (p) => { p.wlv.drone = (p.wlv.drone || 0) + 1; } },
 
-  { id: 'w_arc', name: '电弧链', icon: '⚡', rarity: 'epic', max: 5, tag: '武器', unlock: 1,
+  { id: 'w_arc', name: '电弧链', icon: 'arc', rarity: 'epic', max: 5, tag: '武器', unlock: 1,
     desc: (l) => l === 0 ? '解锁链式闪电，在敌群中弹射跳转' : `弹射目标 +1，基础伤害 +4.5`,
     apply: (p) => { p.wlv.arc = (p.wlv.arc || 0) + 1; } },
 
@@ -423,19 +520,19 @@ const UPGRADES = [
     apply: (p) => { p.wlv.black = (p.wlv.black || 0) + 1; } },
 
   /* ============ 被动系 ============ */
-  { id: 'p_dmg', name: '强化弹头', icon: '💥', rarity: 'common', max: 10, tag: '被动', unlock: 1,
+  { id: 'p_dmg', name: '强化弹头', icon: 'tag_passive', rarity: 'common', max: 10, tag: '被动', unlock: 1,
     desc: () => '全部武器伤害 +14%',
     apply: (p) => { p.stats.dmg *= 1.14; } },
 
-  { id: 'p_rate', name: '超载引擎', icon: '⏱', rarity: 'common', max: 8, tag: '被动', unlock: 1,
+  { id: 'p_rate', name: '超载引擎', icon: 'tag_passive', rarity: 'common', max: 8, tag: '被动', unlock: 1,
     desc: () => '全部武器射速 +12%',
     apply: (p) => { p.stats.rate *= 1.12; } },
 
-  { id: 'p_spd', name: '推进器', icon: '🚀', rarity: 'common', max: 6, tag: '被动', unlock: 1,
+  { id: 'p_spd', name: '推进器', icon: 'tag_passive', rarity: 'common', max: 6, tag: '被动', unlock: 1,
     desc: () => '移动速度 +10%',
     apply: (p) => { p.stats.mvSpd *= 1.10; } },
 
-  { id: 'p_hp', name: '装甲强化', icon: '❤️', rarity: 'common', max: 8, tag: '被动', unlock: 1,
+  { id: 'p_hp', name: '装甲强化', icon: 'tag_passive', rarity: 'common', max: 8, tag: '被动', unlock: 1,
     desc: () => '最大生命 +25 并立即回复 25',
     apply: (p) => { p.maxHp += 25; p.hp = Math.min(p.maxHp, p.hp + 25); } },
 
@@ -443,11 +540,11 @@ const UPGRADES = [
     desc: () => '弹速 +15%（射程与命中率同步提升）',
     apply: (p) => { p.stats.pspd *= 1.15; } },
 
-  { id: 'p_crit', name: '精准瞄准', icon: '🎯', rarity: 'common', max: 8, tag: '被动', unlock: 1,
+  { id: 'p_crit', name: '精准瞄准', icon: 'tag_passive', rarity: 'common', max: 8, tag: '被动', unlock: 1,
     desc: () => '暴击率 +6%',
     apply: (p) => { p.stats.crit += 0.06; } },
 
-  { id: 'p_magnet', name: '磁力场', icon: '🧲', rarity: 'common', max: 4, tag: '被动', unlock: 1,
+  { id: 'p_magnet', name: '磁力场', icon: 'tag_passive', rarity: 'common', max: 4, tag: '被动', unlock: 1,
     desc: () => '经验拾取范围 +45',
     apply: (p) => { p.stats.magnet += 45; } },
 
@@ -455,15 +552,15 @@ const UPGRADES = [
     desc: () => '所有弹丸额外穿透 +1 个敌人',
     apply: (p) => { p.stats.pierce += 1; } },
 
-  { id: 'p_critd', name: '致命打击', icon: '🔪', rarity: 'epic', max: 6, tag: '被动', unlock: 5,
+  { id: 'p_critd', name: '致命打击', icon: 'tag_passive', rarity: 'epic', max: 6, tag: '被动', unlock: 5,
     desc: () => '暴击伤害 +30%',
     apply: (p) => { p.stats.critMult += 0.30; } },
 
-  { id: 'p_luck', name: '幸运星', icon: '🍀', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
+  { id: 'p_luck', name: '幸运星', icon: 'tag_passive', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
     desc: () => '升级卡稀有度权重提升（更容易刷到史诗）',
     apply: (p) => { p.stats.luck += 1; } },
 
-  { id: 'p_xp', name: '数据链', icon: '📈', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
+  { id: 'p_xp', name: '数据链', icon: 'tag_passive', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
     desc: () => '经验获取 +20%',
     apply: (p) => { p.stats.xpGain *= 1.20; } },
 
@@ -471,7 +568,7 @@ const UPGRADES = [
     desc: () => '每秒回复 0.7 点生命',
     apply: (p) => { p.stats.regen += 0.7; } },
 
-  { id: 'p_shield', name: '能量护盾', icon: '🛡', rarity: 'rare', max: 5, tag: '被动', unlock: 5,
+  { id: 'p_shield', name: '能量护盾', icon: 'tag_passive', rarity: 'rare', max: 5, tag: '被动', unlock: 5,
     desc: (l) => l === 0 ? '获得 30 点护盾，脱战 4 秒后自动充能' : '护盾上限 +25 并立即充满',
     apply: (p) => { p.shieldMax += 30; p.shield = p.shieldMax; } },
 
@@ -488,7 +585,7 @@ const UPGRADES = [
     desc: (l) => l === 0 ? '解锁 Space 冲刺：0.38s 无敌位移，冷却 6s' : '冲刺冷却 −1.4s，无敌时间 +0.06s',
     apply: (p) => { p.dashLv = (p.dashLv || 0) + 1; p.dashCdMax = Math.max(2.2, 6 - p.dashLv * 1.4); } },
 
-  { id: 'a_bomb', name: '湮灭核弹', icon: '☢', rarity: 'epic', max: 5, tag: '主动', unlock: 5,
+  { id: 'a_bomb', name: '湮灭核弹', icon: 'tag_active', rarity: 'epic', max: 5, tag: '主动', unlock: 5,
     desc: (l) => l === 0 ? '解锁 Q 核弹：清空全场敌弹并造成巨额伤害，携带 2 次' : '核弹携带 +2 次，伤害 +40%',
     apply: (p) => { p.bombCount += 2; p.bombDmg = (p.bombDmg || 1) * 1.4; } },
 
@@ -666,7 +763,7 @@ const UPGRADES = [
      装不下这个频率，玩家会在 W20 前点满，史诗重新退化成"出现了也拿不了"。
      ⚠ 数值全部标 [PLACEHOLDER] —— 未经 playtest，需按真实波次分布校准。
      ========================================================= */
-  { id: 'b_pact', name: '风险契约', icon: '⚖', rarity: 'epic', max: 4, tag: '转化', unlock: 5,
+  { id: 'b_pact', name: '风险契约', icon: 'tag_build', rarity: 'epic', max: 4, tag: '转化', unlock: 5,
     desc: (l) => (l === 0 ? '立即获得 2 次额外升级，但本局敌人血量 +25%（可叠 4 次）'
       : '再叠一层：+2 次额外升级，本局敌人血量再 +25%'),
     apply: (p, G) => {
@@ -780,6 +877,18 @@ function drawCards(G, p, n, exclude) {
   }
   let k = 0;
   while (out.length < size) out.push(UPGRADE_BY_ID[k++ % 2 === 0 ? 'u_heal' : 'u_overload']);
+  /* ---- v3.3 进化卡：条件满足时，把最后一个卡位换成"武器进化" ----
+     刻意"挤掉"一张普通卡，而不是多加一个选项：进化是这一局的转折点，
+     应该让人一眼看到，而不是淹没在六张卡里。 */
+  const evos = availableEvos(p);
+  if (evos.length && out.length) {
+    const e = evos[0];
+    out[out.length - 1] = {
+      id: e.id, name: e.name, icon: e.icon, rarity: 'epic', tag: '进化', max: 1,
+      desc: () => e.desc,
+      apply: (pp) => { takeEvo(pp, e.id); },
+    };
+  }
   return out;
 }
 

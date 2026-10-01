@@ -264,4 +264,103 @@
     timer = setInterval(check, 60000);
     window.addEventListener('pagehide', function () { if (timer) clearInterval(timer); });
   })();
+
+  /* ---------- 7. 继续上次（v3.3 大厅重做）：只读本机存档，不发任何请求 ---------- */
+  (function resume() {
+    var box = doc.getElementById('resume');
+    if (!box) return;
+    var nameEl = doc.getElementById('resumeName');
+    var noteEl = doc.getElementById('resumeNote');
+    var goEl = doc.getElementById('resumeGo');
+    function read(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+    var xi = read('xiuxian_save_v2');
+    var rg = read('rt_save_v2');
+    var last = null;
+    try { last = localStorage.getItem(GKEY); } catch (e) {}
+    var pick = null;
+    /* 优先"上次玩的那款"，其次修仙（长线），再其次星际 */
+    var order = last === 'rogue' ? ['rogue', 'xiuxian'] : ['xiuxian', 'rogue'];
+    for (var i = 0; i < order.length && !pick; i++) {
+      var k = order[i];
+      if (k === 'xiuxian' && xi) pick = { id: 'xiuxian', href: 'xiuxian.html', name: '修仙模拟器', note: '本机有存档' };
+      if (k === 'rogue' && rg) {
+        var best = (rg.best && rg.best.wave) | 0;
+        var rec = (rg.recent || []).slice().sort(function (a, b) { return a - b; });
+        var med = rec.length ? rec[Math.floor((rec.length - 1) / 2)] : 0;
+        pick = { id: 'rogue', href: 'rogue/', name: '星际裂隙',
+          note: '最高 W' + best + (med ? ' · 近 ' + rec.length + ' 局中位 W' + med : '') };
+      }
+    }
+    if (!pick) return;                     // 没存档就整块不出现，绝不占位
+    box.hidden = false;
+    box.classList.add('on');
+    if (nameEl) nameEl.textContent = pick.name;
+    if (noteEl) noteEl.textContent = pick.note;
+    if (goEl) { goEl.href = pick.href; goEl.setAttribute('data-game', pick.id); }
+  })();
+
+  /* ---------- 8. 泊位封面：轻量 canvas 预览（不加载游戏本体，不联网） ---------- */
+  (function berthCover() {
+    var list = [].slice.call(doc.querySelectorAll('canvas[data-cov]'));
+    if (!list.length) return;
+    var raf = 0, t = 0;
+    function drawOne(cv) {
+      var g = cv.getContext && cv.getContext('2d');
+      if (!g) return;
+      var kind = cv.getAttribute('data-cov'), W = cv.width, H = cv.height;
+      g.clearRect(0, 0, W, H);
+      var bg = g.createLinearGradient(0, 0, W * 0.4, H);
+      if (kind === 'rogue') { bg.addColorStop(0, '#0a1030'); bg.addColorStop(1, '#1a0f2c'); }
+      else { bg.addColorStop(0, '#12100c'); bg.addColorStop(1, '#241a14'); }
+      g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      for (var s = 0; s < 60; s++) {
+        var sx = (s * 97 + t * (kind === 'rogue' ? 12 : 3)) % W, sy = (s * 53) % H;
+        g.globalAlpha = 0.15 + ((s * 37) % 50) / 160;
+        g.fillStyle = kind === 'rogue' ? '#dff2ff' : '#ffe6b8';
+        g.fillRect(sx, sy, 1.6, 1.6);
+      }
+      g.globalAlpha = 1;
+      if (kind === 'rogue') {
+        g.lineCap = 'round';
+        for (var i = 0; i < 7; i++) {
+          var x = 80 + i * 72 + Math.sin(t + i) * 18;
+          g.strokeStyle = i % 2 ? 'rgba(255,122,138,.75)' : 'rgba(126,249,255,.8)';
+          g.lineWidth = i % 2 ? 2 : 2.6;
+          g.beginPath(); g.moveTo(x, 40 + i * 12); g.lineTo(x, 150 + i * 8); g.stroke();
+        }
+        g.fillStyle = 'rgba(126,249,255,.45)';
+        g.beginPath(); g.arc(W / 2, H - 82, 26, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#d9f7ff';
+        g.beginPath(); g.moveTo(W / 2, H - 96); g.lineTo(W / 2 + 13, H - 66);
+        g.lineTo(W / 2, H - 74); g.lineTo(W / 2 - 13, H - 66); g.closePath(); g.fill();
+      } else {
+        g.fillStyle = 'rgba(224,101,79,.32)';
+        g.beginPath(); g.arc(W * 0.72, H * 0.34, 52, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(20,14,10,.55)';
+        g.beginPath(); g.moveTo(0, H * 0.78);
+        for (var m = 0; m <= 8; m++) g.lineTo(W * m / 8, H * (0.56 + 0.16 * Math.abs(Math.sin(m * 1.7 + 1))));
+        g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(255,232,190,.28)'; g.lineWidth = 2;
+        g.beginPath();
+        for (var c = 0; c < W; c += 6) g.lineTo(c, H * 0.3 + Math.sin(c * 0.02 + t) * 5);
+        g.stroke();
+      }
+    }
+    function drawAll() { for (var i = 0; i < list.length; i++) drawOne(list[i]); }
+    function frame() { t += 0.016; drawAll(); raf = requestAnimationFrame(frame); }
+    drawAll();
+    if (reduce) return;                    // 尊重 prefers-reduced-motion：只画一帧静态图
+    try {
+      var io = new IntersectionObserver(function (es) {
+        var on = es.some(function (e) { return e.isIntersecting; });
+        if (on && !raf) frame();
+        else if (!on && raf) { cancelAnimationFrame(raf); raf = 0; }
+      });
+      list.forEach(function (c) { io.observe(c); });
+    } catch (e) { frame(); }
+    doc.addEventListener('visibilitychange', function () {
+      if (doc.hidden) { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+      else if (!raf && !reduce) frame();
+    });
+  })();
 })();

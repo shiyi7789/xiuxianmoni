@@ -1,11 +1,11 @@
 {
-  "v": "2026.10.01-1941",
-  "build": "20261001-194150",
+  "v": "2026.10.01-2121",
+  "build": "20261001-212155",
   "site": "index.html",
   "game": "xiuxian.html",
   "gameBytes": 379529,
   "gameSha256": "a0bff3137c5aed27136aa0bb1e1a75bd92e8dfbf931f30bb60876636a0ec76a9",
-  "totalGameBytes": 736203,
+  "totalGameBytes": 778111,
   "games": [
     {
       "id": "xiuxian",
@@ -19,11 +19,11 @@
       "id": "rogue",
       "name": "星际裂隙 · ROGUE THUNDER",
       "path": "rogue/",
-      "bytes": 356674,
-      "sha256": "0259c8b388a9a78add0b503299079b5abcac1250578e06f4dcf3f89e5a59c26c",
-      "files": 10
+      "bytes": 398582,
+      "sha256": "d895ee6c6893aa8f3a07df844f675c6c6d301fb1c6b6b0b9bf6b5143eb16e166",
+      "files": 12
     }
   ],
-  "note": "v3.2 修三个 bug：导弹分导指数分裂 / 持续光束改手动释放 / 机库升级按钮点不动",
-  "time": "2026-10-01T19:41:50.726+08:00"
+  "note": "v3.3 内容扩容一期 + 大厅重做（发射台）",
+  "time": "2026-10-01T21:21:55.624+08:00"
 }

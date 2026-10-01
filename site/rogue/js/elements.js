@@ -18,37 +18,37 @@ const ELEMENT_ORDER = ['thunder', 'ice', 'fire', 'toxin', 'void', 'light'];
 
 const ELEMENTS = {
   thunder: {
-    id: 'thunder', name: '雷', mark: '电', glyph: '⚡', color: '#4DE0C0',
+    id: 'thunder', name: '雷', mark: '电', glyph: 'elem_thunder', color: '#4DE0C0',
     status: '电荷', max: 4, dur: 2.5,
     pos: '密集阵的答案：敌人越多，放电收益越大',
     line: '每层使该目标受到伤害 +2%；满 4 层放电，向 130 内最多 3 个敌人溅射 0.6× 伤害',
   },
   ice: {
-    id: 'ice', name: '冰', mark: '霜', glyph: '❄', color: '#7FC8FF',
+    id: 'ice', name: '冰', mark: '霜', glyph: 'elem_ice', color: '#7FC8FF',
     status: '寒霜', max: 5, dur: 3.5,
     pos: '买时间：对高速高威胁单位收益最大',
     line: '每层移速 −8%、开火 −4%；满 5 层冻结 0.9s，受击伤害 +25%',
   },
   fire: {
-    id: 'fire', name: '火', mark: '燃', glyph: '🔥', color: '#FF8A3D', trail: '#FFB27A',
+    id: 'fire', name: '火', mark: '燃', glyph: 'elem_fire', color: '#FF8A3D', trail: '#FFB27A',
     status: '燃烧', max: 6, dur: 3.0,
     pos: '越拖越强：对成群小怪最佳',
     line: '每层每秒造成 5% 施加伤害；满 6 层爆燃，向 90 内 2 个敌人各传 3 层',
   },
   toxin: {
-    id: 'toxin', name: '毒', mark: '腐', glyph: '☣', color: '#A6E84D',
+    id: 'toxin', name: '毒', mark: '腐', glyph: 'elem_toxin', color: '#A6E84D',
     status: '腐蚀', max: 8, dur: 6.0,
     pos: '破甲：对盾卫与 Boss 是唯一解',
     line: '每层护甲 −4%（上限 −32%），每秒 3% 施加伤害；满 8 层崩解，结算剩余 DoT ×1.5',
   },
   void: {
-    id: 'void', name: '虚空', mark: '虚', glyph: '◉', color: '#B06BFF',
+    id: 'void', name: '虚空', mark: '虚', glyph: 'elem_void', color: '#B06BFF',
     status: '虚空印', max: 3, dur: 5.0,
     pos: '把「击杀」变成清场手段，顺带吃弹幕',
     line: '带印敌人被轻微牵引；击杀带印敌人时原地生成坍缩（半径 70，最大生命 20%）并清除范围内敌弹',
   },
   light: {
-    id: 'light', name: '光', mark: '光', glyph: '☀', color: '#FFF0B8', trail: '#D9C2FF',
+    id: 'light', name: '光', mark: '光', glyph: 'elem_light', color: '#FFF0B8', trail: '#D9C2FF',
     status: '光印', max: 3, dur: 4.0,
     pos: '把暴击从数值变成可见弹道',
     line: '带印目标暴击率 +10%/层；暴击消耗 1 层并折射 0.4× 伤害到最近的另一个敌人',

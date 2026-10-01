@@ -317,3 +317,44 @@ kbd{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font
   .touch-skills{display:flex;gap:8px}   /* v3.2：加到第 5 个按钮（光束）后，320px 机型也不溢出 */
   .hud-bottom{margin-bottom:58px}
 }
+
+/* ======================== 内联 SVG 图标（v3.3） ========================
+   替换掉散落各处的 Unicode 字符图标（⚡🔥☢🛡 在 Android / iOS 会渲染成彩色 emoji）。
+   所有图标统一走 icons.js 的 iconHtml() / cardIconHtml()，尺寸与基线只在这里定。 */
+.ic{display:block;flex:0 0 auto}
+.echip .ic,.wchip .ic,.ecard .eg .ic{display:inline-block;vertical-align:-2px}
+.hud-btn .hud-ic{display:inline-flex;vertical-align:-3px;margin-right:4px}
+.ab .ic{opacity:.95}
+.touch-skills .tsk i{display:flex;align-items:center;justify-content:center}
+.hg-line-head b .ic{display:inline-block;vertical-align:-3px;margin-right:5px}
+#codexBody b .ic{display:inline-block;vertical-align:-3px;margin-right:2px}
+.card .ico .ic{width:22px;height:22px}
+
+/* ======================== 设置面板（v3.3） ======================== */
+.set-body{display:grid;gap:9px;margin:4px 0 16px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;
+  background:rgba(16,24,42,.55);font-size:12.5px;color:var(--dim)}
+.set-row>span{flex:0 0 auto;letter-spacing:.06em}
+.set-row input[type="range"]{flex:1 1 auto;accent-color:#7ef9ff;height:22px;background:transparent}
+.set-row b{flex:0 0 34px;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;font-size:12px}
+.set-seg button{min-height:30px;padding:4px 12px;font-size:12px}
+.set-seg button.on{background:#7ef9ff;color:#06101c}
+.set-toggle{min-height:32px;padding:4px 16px;font-size:12px}
+.set-toggle.on{border-color:#7ef9ff;color:#7ef9ff}
+
+/* ======================== 结算故事 + 图鉴（v3.3） ======================== */
+.over-story{margin:2px 0 12px;padding:10px 12px;border-radius:10px;font-size:11.5px;line-height:1.75;
+  color:#cfe4ff;background:rgba(126,249,255,.07);border:1px solid rgba(126,249,255,.22);text-align:left}
+.over-story.hidden{display:none}
+.cd-sec{margin-top:18px;border-top:1px dashed rgba(255,255,255,.14);padding-top:12px}
+.cd-sec h3{margin:0 0 8px;font-size:13px;color:var(--ink);letter-spacing:.08em}
+.cd-sec h3 b{color:#7ef9ff;font-size:12px;margin-left:6px}
+.cd-row{display:grid;grid-template-columns:96px 1fr 30px;gap:8px;align-items:baseline;
+  padding:6px 8px;border-radius:8px;font-size:11px;color:var(--dim);
+  background:rgba(255,255,255,.03);margin-bottom:4px}
+.cd-row b{color:var(--ink);font-weight:600;font-size:11.5px}
+.cd-row span{line-height:1.5}
+.cd-row i{text-align:right;font-style:normal;color:#7ef9ff;font-variant-numeric:tabular-nums}
+.cd-row.lock{opacity:.5}
+.cd-row.on{border-left:2px solid #7ef9ff}

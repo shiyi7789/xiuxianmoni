@@ -507,7 +507,7 @@ const UPGRADES = [
     desc: (l) => l === 0 ? '召唤环绕无人机：自动开火 + 撞击伤害' : `无人机 +1 架（上限 5），单发伤害 +2.4`,
     apply: (p) => { p.wlv.drone = (p.wlv.drone || 0) + 1; } },
 
-  { id: 'w_arc', name: '电弧链', icon: '⚡', rarity: 'epic', max: 5, tag: '武器', unlock: 1,
+  { id: 'w_arc', name: '电弧链', icon: 'arc', rarity: 'epic', max: 5, tag: '武器', unlock: 1,
     desc: (l) => l === 0 ? '解锁链式闪电，在敌群中弹射跳转' : `弹射目标 +1，基础伤害 +4.5`,
     apply: (p) => { p.wlv.arc = (p.wlv.arc || 0) + 1; } },
 
@@ -520,19 +520,19 @@ const UPGRADES = [
     apply: (p) => { p.wlv.black = (p.wlv.black || 0) + 1; } },
 
   /* ============ 被动系 ============ */
-  { id: 'p_dmg', name: '强化弹头', icon: '💥', rarity: 'common', max: 10, tag: '被动', unlock: 1,
+  { id: 'p_dmg', name: '强化弹头', icon: 'tag_passive', rarity: 'common', max: 10, tag: '被动', unlock: 1,
     desc: () => '全部武器伤害 +14%',
     apply: (p) => { p.stats.dmg *= 1.14; } },
 
-  { id: 'p_rate', name: '超载引擎', icon: '⏱', rarity: 'common', max: 8, tag: '被动', unlock: 1,
+  { id: 'p_rate', name: '超载引擎', icon: 'tag_passive', rarity: 'common', max: 8, tag: '被动', unlock: 1,
     desc: () => '全部武器射速 +12%',
     apply: (p) => { p.stats.rate *= 1.12; } },
 
-  { id: 'p_spd', name: '推进器', icon: '🚀', rarity: 'common', max: 6, tag: '被动', unlock: 1,
+  { id: 'p_spd', name: '推进器', icon: 'tag_passive', rarity: 'common', max: 6, tag: '被动', unlock: 1,
     desc: () => '移动速度 +10%',
     apply: (p) => { p.stats.mvSpd *= 1.10; } },
 
-  { id: 'p_hp', name: '装甲强化', icon: '❤️', rarity: 'common', max: 8, tag: '被动', unlock: 1,
+  { id: 'p_hp', name: '装甲强化', icon: 'tag_passive', rarity: 'common', max: 8, tag: '被动', unlock: 1,
     desc: () => '最大生命 +25 并立即回复 25',
     apply: (p) => { p.maxHp += 25; p.hp = Math.min(p.maxHp, p.hp + 25); } },
 
@@ -540,11 +540,11 @@ const UPGRADES = [
     desc: () => '弹速 +15%（射程与命中率同步提升）',
     apply: (p) => { p.stats.pspd *= 1.15; } },
 
-  { id: 'p_crit', name: '精准瞄准', icon: '🎯', rarity: 'common', max: 8, tag: '被动', unlock: 1,
+  { id: 'p_crit', name: '精准瞄准', icon: 'tag_passive', rarity: 'common', max: 8, tag: '被动', unlock: 1,
     desc: () => '暴击率 +6%',
     apply: (p) => { p.stats.crit += 0.06; } },
 
-  { id: 'p_magnet', name: '磁力场', icon: '🧲', rarity: 'common', max: 4, tag: '被动', unlock: 1,
+  { id: 'p_magnet', name: '磁力场', icon: 'tag_passive', rarity: 'common', max: 4, tag: '被动', unlock: 1,
     desc: () => '经验拾取范围 +45',
     apply: (p) => { p.stats.magnet += 45; } },
 
@@ -552,15 +552,15 @@ const UPGRADES = [
     desc: () => '所有弹丸额外穿透 +1 个敌人',
     apply: (p) => { p.stats.pierce += 1; } },
 
-  { id: 'p_critd', name: '致命打击', icon: '🔪', rarity: 'epic', max: 6, tag: '被动', unlock: 5,
+  { id: 'p_critd', name: '致命打击', icon: 'tag_passive', rarity: 'epic', max: 6, tag: '被动', unlock: 5,
     desc: () => '暴击伤害 +30%',
     apply: (p) => { p.stats.critMult += 0.30; } },
 
-  { id: 'p_luck', name: '幸运星', icon: '🍀', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
+  { id: 'p_luck', name: '幸运星', icon: 'tag_passive', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
     desc: () => '升级卡稀有度权重提升（更容易刷到史诗）',
     apply: (p) => { p.stats.luck += 1; } },
 
-  { id: 'p_xp', name: '数据链', icon: '📈', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
+  { id: 'p_xp', name: '数据链', icon: 'tag_passive', rarity: 'rare', max: 4, tag: '被动', unlock: 5,
     desc: () => '经验获取 +20%',
     apply: (p) => { p.stats.xpGain *= 1.20; } },
 
@@ -568,7 +568,7 @@ const UPGRADES = [
     desc: () => '每秒回复 0.7 点生命',
     apply: (p) => { p.stats.regen += 0.7; } },
 
-  { id: 'p_shield', name: '能量护盾', icon: '🛡', rarity: 'rare', max: 5, tag: '被动', unlock: 5,
+  { id: 'p_shield', name: '能量护盾', icon: 'tag_passive', rarity: 'rare', max: 5, tag: '被动', unlock: 5,
     desc: (l) => l === 0 ? '获得 30 点护盾，脱战 4 秒后自动充能' : '护盾上限 +25 并立即充满',
     apply: (p) => { p.shieldMax += 30; p.shield = p.shieldMax; } },
 
@@ -585,7 +585,7 @@ const UPGRADES = [
     desc: (l) => l === 0 ? '解锁 Space 冲刺：0.38s 无敌位移，冷却 6s' : '冲刺冷却 −1.4s，无敌时间 +0.06s',
     apply: (p) => { p.dashLv = (p.dashLv || 0) + 1; p.dashCdMax = Math.max(2.2, 6 - p.dashLv * 1.4); } },
 
-  { id: 'a_bomb', name: '湮灭核弹', icon: '☢', rarity: 'epic', max: 5, tag: '主动', unlock: 5,
+  { id: 'a_bomb', name: '湮灭核弹', icon: 'tag_active', rarity: 'epic', max: 5, tag: '主动', unlock: 5,
     desc: (l) => l === 0 ? '解锁 Q 核弹：清空全场敌弹并造成巨额伤害，携带 2 次' : '核弹携带 +2 次，伤害 +40%',
     apply: (p) => { p.bombCount += 2; p.bombDmg = (p.bombDmg || 1) * 1.4; } },
 
@@ -763,7 +763,7 @@ const UPGRADES = [
      装不下这个频率，玩家会在 W20 前点满，史诗重新退化成"出现了也拿不了"。
      ⚠ 数值全部标 [PLACEHOLDER] —— 未经 playtest，需按真实波次分布校准。
      ========================================================= */
-  { id: 'b_pact', name: '风险契约', icon: '⚖', rarity: 'epic', max: 4, tag: '转化', unlock: 5,
+  { id: 'b_pact', name: '风险契约', icon: 'tag_build', rarity: 'epic', max: 4, tag: '转化', unlock: 5,
     desc: (l) => (l === 0 ? '立即获得 2 次额外升级，但本局敌人血量 +25%（可叠 4 次）'
       : '再叠一层：+2 次额外升级，本局敌人血量再 +25%'),
     apply: (p, G) => {

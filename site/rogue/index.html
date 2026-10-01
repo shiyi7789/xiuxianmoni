@@ -68,7 +68,7 @@
           <div class="elems" id="hudElems"></div>
         </div>
         <div class="hud-col-right">
-          <button id="btnHudMenu" class="hud-btn">☰ 菜单</button>
+          <button id="btnHudMenu" class="hud-btn"><i class="hud-ic" data-icon="menu"></i>菜单</button>
           <div class="wave-tag">WAVE <b id="hudWave">1</b></div>
           <div class="score" id="hudScore">0</div>
           <div class="sub" id="hudKills">击杀 0</div>
@@ -84,11 +84,11 @@
            用 @media (pointer: coarse) 只在触摸设备显示，桌面端保持纯净的键位 UI。
            注意：它在 #hud 内（随 HUD 显隐），而 #hud 是 pointer-events:none —— 按钮各自打开命中。 -->
       <div id="touchSkills" class="touch-skills">
-        <button class="tsk hidden" id="tskDash" type="button"><i>⇢</i><small>冲刺</small><u></u></button>
-        <button class="tsk hidden" id="tskBomb" type="button"><i>☢</i><small>核弹</small><u></u></button>
-        <button class="tsk hidden" id="tskSlow" type="button"><i>⧗</i><small>时缓</small><u></u></button>
-        <button class="tsk hidden" id="tskPhase" type="button"><i>⊕</i><small>相位</small><u></u></button>
-        <button class="tsk hidden" id="tskLance" type="button"><i>❂</i><small>光束</small><u></u></button>
+        <button class="tsk hidden" id="tskDash" type="button"><i data-icon="dash"></i><small>冲刺</small><u></u></button>
+        <button class="tsk hidden" id="tskBomb" type="button"><i data-icon="bomb"></i><small>核弹</small><u></u></button>
+        <button class="tsk hidden" id="tskSlow" type="button"><i data-icon="slow"></i><small>时缓</small><u></u></button>
+        <button class="tsk hidden" id="tskPhase" type="button"><i data-icon="phase"></i><small>相位</small><u></u></button>
+        <button class="tsk hidden" id="tskLance" type="button"><i data-icon="lance"></i><small>光束</small><u></u></button>
       </div>
     </div>
 
@@ -121,6 +121,7 @@
         <button id="btnStart" class="btn primary">开始战斗</button>
         <button id="btnHangar" class="btn ghost">星港机库 · 强化主战机</button>
         <button id="btnCodex" class="btn ghost">元素图鉴 <kbd>C</kbd></button>
+        <button id="btnSettings" class="btn ghost">设 置</button>
         <div class="best">历史最高分 <b id="menuBest">0</b></div>
         <p class="hint">击杀敌人获得经验 → 升级时从五张卡中<br>选择新武器、被动或主动技能 → 用 Build 撕裂弹幕<br>
           到 <b>Lv4 / Lv9</b> 会开启「元素门」：最多选两种元素，<br>它们会附加到全部武器并互相产生 15 种反应</p>
@@ -199,7 +200,48 @@
         <p class="tagline">按 <kbd>P</kbd> 或点击继续</p>
         <button id="btnResume" class="btn primary">继续</button>
         <button id="btnCodexPause" class="btn ghost">元素图鉴 <kbd>C</kbd></button>
+        <button id="btnSettingsPause" class="btn ghost">设 置</button>
         <button id="btnQuit" class="btn ghost">放弃本次战斗</button>
+      </div>
+    </div>
+
+    <!-- ======================== 设置（v3.3） ======================== -->
+    <div id="settings" class="overlay hidden">
+      <div class="panel narrow">
+        <h2>设 置</h2>
+        <p class="tagline">只存在本机浏览器里，不上传</p>
+        <div class="set-body">
+          <div class="set-row">
+            <span>特效强度</span>
+            <div class="seg set-seg" id="setFx">
+              <button type="button" data-fx="high">高</button>
+              <button type="button" data-fx="low">低</button>
+              <button type="button" data-fx="off">关</button>
+            </div>
+          </div>
+          <div class="set-row">
+            <span>屏幕震动</span>
+            <button type="button" class="btn ghost set-toggle" id="setShake">开</button>
+          </div>
+          <div class="set-row">
+            <span>弹幕高对比</span>
+            <button type="button" class="btn ghost set-toggle" id="setContrast">关</button>
+          </div>
+          <div class="set-row">
+            <span>舰体涂装</span>
+            <div class="seg set-seg" id="setSkin"></div>
+          </div>
+          <label class="set-row"><span>主音量</span>
+            <input type="range" id="setVolMaster" min="0" max="100" step="5"><b id="setVolMasterV">100</b>
+          </label>
+          <label class="set-row"><span>音效</span>
+            <input type="range" id="setVolSfx" min="0" max="100" step="5"><b id="setVolSfxV">100</b>
+          </label>
+          <label class="set-row"><span>音乐</span>
+            <input type="range" id="setVolMusic" min="0" max="100" step="5"><b id="setVolMusicV">100</b>
+          </label>
+        </div>
+        <button id="btnSettingsClose" class="btn primary">关 闭</button>
       </div>
     </div>
 
@@ -208,6 +250,7 @@
       <div class="panel">
         <h2 id="overTitle">舰体损毁</h2>
         <p class="tagline" id="overRank"></p>
+        <p class="over-story hidden" id="overStory"></p>
         <div class="stats" id="overStats"></div>
         <div class="build-list" id="overBuild"></div>
         <button id="btnRetry" class="btn primary">再次出击</button>
@@ -218,10 +261,12 @@
   </div>
 </div>
 
+<script src="js/icons.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/elements.js"></script>
 <script src="js/meta.js"></script>
+<script src="js/codex.js"></script>
 <script src="js/entities.js"></script>
 <script src="js/upgrades.js"></script>
 <script src="js/waves.js"></script>

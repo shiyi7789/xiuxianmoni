@@ -1,0 +1,149 @@
+/* ============================================================
+ * hub.css —— 游戏大厅（发射台）专用样式，v3.3 重做
+ * ------------------------------------------------------------
+ * 为什么不直接改 site.css：
+ *   site.css 被「大厅 / 两个玩法详情 / 网站声明」四个页面共用。
+ *   大厅要从"编辑式落地页"改成"主机库/发射台"，视觉要大改；
+ *   把新版式单独放这里（并用 body.hub 限定作用域），另外三页一个字都不动。
+ *
+ * 分层纪律：令牌 → 骨架 → 泊位卡 → 试玩 → 折叠区。
+ * 配色刻意避开"紫蓝渐变统治"：青色为主、琥珀为强调、品红只做点缀。
+ * ============================================================ */
+
+body.hub{
+  --hb-bg:#070b12; --hb-bg2:#0c1220; --hb-panel:rgba(16,24,40,.72);
+  --hb-panel2:rgba(22,32,52,.55); --hb-line:rgba(126,180,255,.16);
+  --hb-line2:rgba(126,180,255,.32);
+  --hb-ink:#e8f2ff; --hb-dim:#8fa3bf; --hb-dim2:#5f7391;
+  --hb-cyan:#4fd1ff; --hb-amber:#ffb347; --hb-magenta:#ff6b9d;
+  --hb-zhu:#c0453a;
+  background:var(--hb-bg); color:var(--hb-ink);
+  background-image:
+    radial-gradient(120% 70% at 12% -10%, rgba(79,209,255,.10), transparent 60%),
+    radial-gradient(90% 60% at 100% 0%, rgba(255,179,71,.07), transparent 55%);
+  background-attachment:fixed;
+}
+body.hub #sky{opacity:.5}
+body.hub a{color:var(--hb-cyan)}
+body.hub .hdr{background:rgba(7,11,18,.82);border-bottom-color:var(--hb-line)}
+body.hub .logo b{letter-spacing:.18em}
+body.hub .logo i,body.hub .nav a{color:var(--hb-dim)}
+body.hub .nav a:hover{color:var(--hb-cyan);background:rgba(255,255,255,.05)}
+body.hub .icon-btn{border-color:var(--hb-line2);background:var(--hb-panel2);color:var(--hb-dim)}
+body.hub .btn{border-color:var(--hb-line2);background:var(--hb-panel2);color:var(--hb-ink)}
+body.hub .btn:hover{border-color:var(--hb-cyan);color:var(--hb-cyan);background:rgba(79,209,255,.08)}
+body.hub .btn.primary{background:var(--hb-cyan);border-color:var(--hb-cyan);color:#04141f}
+body.hub .btn.primary:hover{background:#7fe0ff;border-color:#7fe0ff;color:#04141f}
+body.hub code{background:rgba(255,255,255,.06);border-color:var(--hb-line);color:var(--hb-dim)}
+body.hub kbd{border-color:var(--hb-line2);background:var(--hb-panel2);color:var(--hb-dim);box-shadow:none}
+body.hub .muted{color:var(--hb-dim)}
+body.hub footer{border-top-color:var(--hb-line);color:var(--hb-dim)}
+body.hub .foot-grid a{color:var(--hb-dim)}
+body.hub .foot-grid a:hover{color:var(--hb-cyan)}
+body.hub ::selection{background:rgba(79,209,255,.28)}
+body.hub :focus-visible{outline-color:var(--hb-cyan)}
+body.hub .upd{background:var(--hb-panel);border-color:var(--hb-line2);color:var(--hb-dim)}
+body.hub .upd b{color:var(--hb-amber)}
+body.hub .upd button{background:var(--hb-cyan);border-color:var(--hb-cyan);color:#04141f}
+
+/* ---------- 首屏：紧凑横幅，把游戏入口顶到第一屏 ---------- */
+body.hub .launch{padding:clamp(24px,5vw,54px) 0 6px}
+body.hub .launch-top{display:grid;gap:18px;align-items:end}
+@media (min-width:900px){ body.hub .launch-top{grid-template-columns:1fr auto} }
+body.hub .launch h1{margin:0 0 10px;font-size:clamp(26px,5.4vw,44px);letter-spacing:.02em}
+body.hub .launch h1 em{font-style:normal;color:var(--hb-cyan)}
+body.hub .launch .lead{font-size:clamp(14px,2.4vw,16px);color:var(--hb-dim);max-width:56ch;margin:0}
+body.hub .facts{display:flex;gap:8px;flex-wrap:wrap;margin:0;padding:0;list-style:none}
+body.hub .facts li{font-size:12px;padding:5px 12px;border-radius:100px;
+  border:1px solid var(--hb-line);background:var(--hb-panel2);color:var(--hb-dim)}
+body.hub .facts b{color:var(--hb-ink);font-variant-numeric:tabular-nums}
+
+/* ---------- 继续上次：零风险的留存钩子（只读本机存档） ---------- */
+body.hub .resume{display:none;align-items:center;gap:14px;flex-wrap:wrap;
+  margin:18px 0 0;padding:14px 18px;border-radius:12px;
+  border:1px solid var(--hb-line2);background:linear-gradient(90deg,rgba(79,209,255,.10),rgba(79,209,255,.02))}
+body.hub .resume.on{display:flex}
+body.hub .resume .rs-t{font-size:12px;letter-spacing:.2em;color:var(--hb-dim2)}
+body.hub .resume .rs-v{font-weight:700;font-size:15px}
+body.hub .resume .rs-n{font-size:12px;color:var(--hb-dim)}
+body.hub .resume .btn{margin-left:auto;min-height:40px;padding:8px 20px}
+
+/* ---------- 泊位卡：两个游戏 ── 各自带主题色 ---------- */
+body.hub .berths{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  padding:clamp(20px,4vw,36px) 0 clamp(18px,4vw,30px)}
+body.hub .berths > .gcard{position:relative;display:flex;flex-direction:column;overflow:hidden;
+  border:1px solid var(--hb-line);border-radius:16px;background:var(--hb-panel);
+  transition:transform .22s cubic-bezier(.22,.61,.36,1),border-color .22s,box-shadow .22s}
+body.hub .berths > .gcard:hover,body.hub .berths > .gcard:focus-within{transform:translateY(-4px);
+  border-color:var(--bc,var(--hb-cyan));box-shadow:0 24px 60px rgba(0,0,0,.5)}
+body.hub .berths > .gcard .gcover{position:relative;aspect-ratio:16/9;overflow:hidden;border-bottom:1px solid var(--hb-line)}
+body.hub .berths > .gcard .gcover canvas{width:100%;height:100%;display:block}
+body.hub .berths > .gcard .cov{display:block;width:100%;height:100%}
+body.hub .berths > .gcard .scan{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .2s;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.05) 0 1px,transparent 1px 3px)}
+body.hub .berths > .gcard:hover .scan,body.hub .berths > .gcard:focus-within .scan{opacity:1}
+body.hub .berths > .gcard .tag{position:absolute;left:12px;top:12px;font-size:11px;letter-spacing:.14em;
+  padding:4px 10px;border-radius:100px;background:rgba(4,10,18,.72);color:var(--bc,var(--hb-cyan));border:1px solid var(--hb-line2)}
+body.hub .berths > .gcard .badge[hidden]{display:none}
+body.hub .berths > .gcard .badge{position:absolute;right:12px;top:12px;font-size:11px;letter-spacing:.14em;
+  padding:4px 10px;border-radius:100px;background:var(--hb-amber);color:#241400}
+body.hub .berths > .gcard .meta{position:absolute;right:12px;bottom:10px;font-family:var(--mono);font-size:11px;
+  padding:3px 9px;border-radius:100px;background:rgba(4,10,18,.72);color:var(--hb-dim)}
+body.hub .berths > .gcard .gbody{padding:18px 20px 20px;display:flex;flex-direction:column;flex:1 1 auto;gap:10px}
+body.hub .berths > .gcard h3{margin:0;font-size:21px;letter-spacing:.04em}
+body.hub .berths > .gcard .sub-en{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;color:var(--hb-dim2)}
+body.hub .berths > .gcard .desc{margin:0;font-size:13.5px;line-height:1.75;color:var(--hb-dim)}
+body.hub .berths > .gcard .tags{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+body.hub .berths > .gcard .tags li{font-size:11px;padding:3px 9px;border-radius:100px;
+  border:1px solid var(--hb-line);background:rgba(255,255,255,.03);color:var(--hb-dim)}
+body.hub .berths > .gcard .rows{display:grid;gap:4px;font-size:12px;color:var(--hb-dim2)}
+body.hub .berths > .gcard .rows div{display:flex;justify-content:space-between;gap:12px;
+  border-bottom:1px dotted var(--hb-line);padding:3px 0}
+body.hub .berths > .gcard .rows b{color:var(--hb-dim);font-weight:400}
+body.hub .berths > .gcard .acts{display:flex;gap:10px;margin-top:auto;padding-top:6px}
+body.hub .berths > .gcard .acts .btn{flex:1 1 auto}
+
+/* ---------- 试玩舞台：沿用 site.js 的钩子，只换皮 ---------- */
+body.hub .try{border:1px solid var(--hb-line);border-radius:14px;overflow:hidden;background:var(--hb-panel)}
+body.hub .try-bar{display:flex;align-items:center;gap:10px;padding:9px 14px;flex-wrap:wrap;
+  border-bottom:1px solid var(--hb-line);font-size:13px;color:var(--hb-dim)}
+body.hub .try-bar .dots i{background:var(--hb-line2)}
+body.hub .try-bar .url{font-family:var(--mono);font-size:12px;color:var(--hb-dim2)}
+body.hub .seg{border-color:var(--hb-line2);background:rgba(255,255,255,.04)}
+body.hub .seg button{color:var(--hb-dim)}
+body.hub .seg button[aria-pressed="true"]{background:var(--hb-cyan);color:#04141f}
+body.hub .stage{aspect-ratio:16/10;background:var(--hb-bg2)}
+body.hub .poster{color:var(--hb-dim)}
+body.hub .poster .ring{border-color:var(--hb-line2);background:var(--hb-panel2);color:var(--hb-cyan)}
+body.hub .poster strong{color:var(--hb-ink)}
+
+/* ---------- 折叠区：声明 / FAQ / 六件事全部收起，不占首屏 ---------- */
+body.hub .about{margin:0 0 clamp(30px,6vw,64px)}
+body.hub .about details{border-color:var(--hb-line);background:var(--hb-panel);border-radius:12px;margin-bottom:9px}
+body.hub .about summary{color:var(--hb-ink);font-size:14.5px}
+body.hub .about summary:hover{background:rgba(255,255,255,.04);color:var(--hb-cyan)}
+body.hub .about summary::after{color:var(--hb-dim)}
+body.hub .about .ans{color:var(--hb-dim);border-top-color:var(--hb-line)}
+body.hub .about .ans a{color:var(--hb-cyan)}
+body.hub .about .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+body.hub .about .card{border-color:var(--hb-line);background:var(--hb-panel2);border-radius:10px;
+  padding:14px 16px;box-shadow:none}
+body.hub .about .card h3{margin:0 0 5px;font-size:13.5px;color:var(--hb-ink);display:flex;gap:8px;align-items:center}
+body.hub .about .card p{margin:0;font-size:12.5px;color:var(--hb-dim);line-height:1.7}
+body.hub .about .dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:var(--hb-cyan)}
+body.hub .about .d2{background:var(--hb-amber)} body.hub .about .d3{background:var(--hb-magenta)}
+body.hub .about .d4{background:#7cffb2} body.hub .about .d5{background:#b06bff} body.hub .about .d6{background:#ff8a5c}
+body.hub .promise{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+body.hub .promise li{display:grid;gap:2px 14px;padding:11px 14px;border-radius:8px;
+  border-left:3px solid var(--hb-cyan);background:var(--hb-panel2)}
+@media (min-width:640px){ body.hub .promise li{grid-template-columns:112px 1fr;align-items:baseline} }
+body.hub .promise b{font-size:13px;color:var(--hb-cyan)}
+body.hub .promise span{font-size:13px;color:var(--hb-dim);line-height:1.7}
+
+body.hub .sec-h h2{font-size:clamp(19px,4vw,27px)}
+body.hub .sec-h p{color:var(--hb-dim)}
+body.hub .note{color:var(--hb-dim2)}
+
+@media (prefers-reduced-motion:reduce){
+  body.hub .berths > .gcard:hover,body.hub .berths > .gcard:focus-within{transform:none}
+}
