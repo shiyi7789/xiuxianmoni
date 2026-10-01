@@ -55,6 +55,7 @@ body{display:flex;align-items:center;justify-content:center}
 .energybar{height:5px;width:62%}
 .energybar i{background:linear-gradient(90deg,#7ef9ff,#d9c2ff)}
 .energybar.low i{background:linear-gradient(90deg,#ff5566,#ff8f6b);animation:elow .45s infinite alternate}
+.energybar.over i{background:linear-gradient(90deg,#ffd166,#fff3bf);box-shadow:0 0 10px rgba(255,209,102,.75)}
 @keyframes elow{from{opacity:.4}to{opacity:1}}
 /* 元素徽章（最多 2 个） */
 .elems{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
@@ -309,9 +310,10 @@ kbd{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font
 .touch-skills .tsk u{position:absolute;inset:0;background:rgba(255,255,255,.30);
   transform-origin:bottom;transform:scaleY(0);pointer-events:none}
 .touch-skills .tsk.off{opacity:.34}
+.touch-skills .tsk.over{border-color:#ffd166;box-shadow:0 0 16px rgba(255,209,102,.55)}
 .touch-skills .tsk:active{transform:scale(.93)}
 /* 只在触摸设备出现；并把 HUD 底行抬起来，避免和技能圈重叠 */
 @media (pointer: coarse){
-  .touch-skills{display:flex}
+  .touch-skills{display:flex;gap:8px}   /* v3.2：加到第 5 个按钮（光束）后，320px 机型也不溢出 */
   .hud-bottom{margin-bottom:58px}
 }

@@ -106,6 +106,8 @@ function saveMeta(m) {
 
 function normalizeMeta(m) {
   m.lines = Object.assign({ hull: 0, fire: 0, engine: 0 }, m.lines || {});
+  /* 清掉历史脏 key：v3.1 机库按钮的 HTML 少引号，曾把整段标签当 lineId 写进 lines */
+  for (const k of Object.keys(m.lines)) if (!META_LINES.some(l => l.id === k)) delete m.lines[k];
   if (!Array.isArray(m.mods)) m.mods = [];
   if (!m.best) m.best = { wave: 0, score: 0 };
   if (!Array.isArray(m.recent)) m.recent = [];           // v3.1 新增字段：老存档没有 → 补空数组

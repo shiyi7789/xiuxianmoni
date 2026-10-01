@@ -268,35 +268,64 @@ const WEAPONS = {
    --------------------------------------------------------- */
 function tLanceUpdate(G, p, lv, dt) {
   const max = p.stats.energyMax || 100;
-  const on = p.energy > 0.5;
-  p.lanceOn = on;
-  if (on) {
+  /* v3.2 手动释放：旧实现是 `on = p.energy > 0.5` 自动开火 ——
+     能量一超过 0.5 就放电、放完回到 0.5 以下再充能，形成"充不满"的锯齿，
+     玩家永远看不到满能量，也谈不上"什么时候放"。
+     现在：不开火时充能到满；按 R（或移动端「光束」）释放；开火中随时可关。 */
+  if (p.lanceOn) {
     p.energy = Math.max(0, p.energy - 3 * dt);
     p.lanceCd = (p.lanceCd || 0) - dt;
     if (p.lanceCd <= 0) {
       p.lanceCd = 0.1;
-      const dmg = (10 + lv * 4.5) * dmgMul(p, 'laser') * 0.55;
+      /* 满能量释放 = 过载：伤害 ×1.8、判定半宽 11 → 22（能同时命中更宽的一列敌人） */
+      const over = p.lanceOver ? 1 : 0;
+      const halfW = over ? 22 : 11;
+      const dmg = (10 + lv * 4.5) * dmgMul(p, 'laser') * 0.55 * (over ? 1.8 : 1);
       for (const e of G.enemies) {
         if (e.dead) continue;
-        if (Math.abs(e.x - p.x) > 11 + e.r) continue;
+        if (Math.abs(e.x - p.x) > halfW + e.r) continue;
         if (e.y > p.y - 14) continue;
         const c = rollCrit(p);
         damageEnemy(G, e, dmg * c, { crit: c > 1, src: 'laser' });
         /* 地面灼痕：束扫过的敌人位置留一枚 0.4s 的烧蚀圆（元素色优先） */
-        const sc = (G.player && elemTrailColor(G.player)) || '#7ef9ff';
-        G.particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.4, max: 0.4, size: 28, color: sc, kind: 'ring' });
+        const sc = over ? '#ffd166' : ((G.player && elemTrailColor(G.player)) || '#7ef9ff');
+        G.particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.4, max: 0.4, size: over ? 40 : 28, color: sc, kind: 'ring' });
       }
       /* 束首溅射火星（约 10/s，与设计「每秒 12 颗」同量级） */
       for (let i = 0; i < 2; i++) {
         const a = rand(TAU);
         G.particles.push({ x: p.x + rand(9, -9), y: -36, vx: Math.cos(a) * rand(180, 40), vy: rand(160, 20),
-          life: 0.35, max: 0.35, size: rand(3.4, 1.6), color: chance(0.5) ? '#ffffff' : '#bff4ff', kind: 'spark' });
+          life: 0.35, max: 0.35, size: rand(3.4, 1.6),
+          color: over ? (chance(0.5) ? '#ffffff' : '#ffd166') : (chance(0.5) ? '#ffffff' : '#bff4ff'), kind: 'spark' });
       }
       SFX.playAt('laser', p.x, p.y);
     }
+    /* 能量耗尽自动收束（过载状态同时结束） */
+    if (p.energy <= 0) { p.lanceOn = false; p.lanceOver = 0; }
   } else {
     p.energy = Math.min(max, p.energy + 2.5 * dt);
   }
+}
+
+/** 手动释放 / 收束持续光束（R 键、移动端「光束」按钮）
+ *  返回 true 表示状态被切换。满能量起手会打上 lanceOver，直到这次光束耗尽或手动关闭。 */
+function tLanceToggle(p) {
+  if (!p || !p.stats || !p.stats.lance) return false;
+  if (p.lanceOn) {
+    p.lanceOn = false; p.lanceOver = 0;
+    SFX.play('uiBack');
+    return true;
+  }
+  const max = p.stats.energyMax || 100;
+  if (p.energy < 10) {
+    G.toast('能量不足 · ' + Math.floor(p.energy) + ' / ' + max);
+    return false;
+  }
+  p.lanceOn = true;
+  p.lanceOver = p.energy >= max - 0.5 ? 1 : 0;
+  SFX.play('uiClick');
+  if (p.lanceOver) G.toast('满能过载 · 光束强化');
+  return true;
 }
 
 /** 查找最近敌人 */

@@ -221,6 +221,15 @@ const DRIVER = `
       const r = loadMeta().recent;
       return r.length === 2 && r[0] === 7 && r[1] === 9;
     })());
+    /* v3.2：v3.1 的机库按钮少一个引号，曾把整段标签当 lineId 写进 lines —— 读档时必须清掉 */
+    T('#35 lines 里的历史脏 key 被清掉', (function () {
+      const bad = blankMeta();
+      bad.lines['hull>升 级</button>'] = 3;
+      bad.lines.fire = 2;
+      saveMeta(bad);
+      const r = loadMeta();
+      return Object.keys(r.lines).length === 3 && r.lines.fire === 2 && r.lines.hull === 0;
+    })());
   }
 
   return R;

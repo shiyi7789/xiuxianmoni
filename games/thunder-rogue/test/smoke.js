@@ -292,6 +292,9 @@ const driver = `
       if (G.shards.length > 24) throw new Error('shards 泄漏 =' + G.shards.length);
       if (G.hazards.length > 120) throw new Error('hazards 泄漏 =' + G.hazards.length);
       if (G.wakes.length > 24) throw new Error('wakes 泄漏 =' + G.wakes.length);
+      /* 玩家弹幕硬上限（PBULLET_HARD_CAP=1400）的哨兵：正常玩法远达不到，
+         真撞上就是"分裂类"又在生弹（v3.2 修掉的导弹分导指数分裂就是这个形态） */
+      if (G.pBullets.length > 1200) throw new Error('pBullets 失控 =' + G.pBullets.length);
       if (G.wave > 60) throw new Error('波次失控');
     } catch (err) {
       REPORT.errors.push({ frame: i, wave: G.wave, msg: err && err.message,
@@ -351,6 +354,19 @@ const driver = `
     META.mods = []; META.abyss = 0;
     renderHangar();
     REPORT.hangar.render = 'ok';
+    /* 回归：升级按钮的 HTML 必须闭合 —— v3.1 的 data-line 少一个引号，属性会吞掉后面的标签，
+       点击时 metaUpgrade 收到脏 id → 先扣钱写脏 key、再在 META_LINES.find(...).name 抛异常
+       （表现就是玩家说的"点击无反应"）。这里用 innerHTML 做静态守卫，覆盖 DOM 桩点不到按钮的盲区。 */
+    const hgHtml = document.getElementById('hgBody').innerHTML;
+    REPORT.hangar.htmlLines = ['hull', 'fire', 'engine'].every(id => hgHtml.indexOf('data-line="' + id + '"') >= 0);
+    REPORT.hangar.htmlNoSwallow = hgHtml.indexOf('data-line="hull>') < 0;
+    if (!REPORT.hangar.htmlLines || !REPORT.hangar.htmlNoSwallow) {
+      REPORT.errors.push('hangar: 升级按钮 data-line 属性损坏（HTML 未闭合）');
+    }
+    /* 白名单守卫：脏 id 一律拒绝，绝不能写进存档 */
+    const __k0 = Object.keys(META.lines).length;
+    metaUpgrade('hull>升 级</button>');
+    REPORT.hangar.dirtyIdRejected = Object.keys(META.lines).length === __k0;
     REPORT.hangar.noDust = metaUpgrade('hull') === false;      // 星尘不足时必须拒绝
     META.dust = 500000; META.core = 500;
     REPORT.hangar.up = metaUpgrade('hull') && metaUpgrade('fire') && metaUpgrade('engine');
@@ -371,6 +387,37 @@ const driver = `
     REPORT.hangar.saved = raw.dust + '/' + raw.core + '/' + raw.mods.join(',') + '/' + raw.abyss;
     REPORT.hangar.sumOk = metaSum(raw) === raw._sum;
   } catch (e) { REPORT.errors.push('hangar: ' + e.message); }
+
+  /* ---- v3.2：持续光束改为手动释放（用户报告「它会一直释放能量、攒不满」） ---- */
+  REPORT.lance = {};
+  try {
+    const q = newPlayer();
+    q.stats.lance = 1; q.energy = 0; q.lanceOn = false; q.lanceOver = 0;
+    G.player = q;
+    G.enemies.length = 0;
+    for (let i = 0; i < 120; i++) tLanceUpdate(G, q, 1, 1 / 60);   // 空闲 2 秒
+    REPORT.lance.charge2s = +q.energy.toFixed(2);                  // 2.5/s × 2 ≈ 5
+    REPORT.lance.noAutoFire = q.lanceOn === false;                 // 关键：不许自动开火
+    q.energy = 5;
+    REPORT.lance.lowRejected = tLanceToggle(q) === false;          // <10 能量不响应
+    q.energy = (q.stats.energyMax || 100);
+    REPORT.lance.fullToggles = tLanceToggle(q) === true;
+    REPORT.lance.overload = q.lanceOver === 1;                     // 满能释放 = 过载
+    tLanceToggle(q);                                               // 手动收束
+    q.energy = 40; tLanceToggle(q);
+    REPORT.lance.normalShot = q.lanceOver === 0;                   // 非满能 = 普通
+    tLanceToggle(q);
+    q.energy = 100; q.lanceOn = true; q.lanceOver = 1;
+    for (let i = 0; i < 2100 && q.lanceOn; i++) tLanceUpdate(G, q, 1, 1 / 60);
+    REPORT.lance.autoStop = q.lanceOn === false && q.lanceOver === 0;   // 耗尽必须自动收束
+    q.energy = 0;
+    for (let i = 0; i < 60; i++) tLanceUpdate(G, q, 1, 1 / 60);
+    REPORT.lance.recharge = q.energy > 0;
+    if (!REPORT.lance.noAutoFire || !REPORT.lance.fullToggles || !REPORT.lance.overload ||
+        !REPORT.lance.normalShot || !REPORT.lance.autoStop) {
+      REPORT.errors.push('lance: 手动释放/过载语义未满足');
+    }
+  } catch (e) { REPORT.errors.push('lance: ' + e.message); }
 
   REPORT.rxKinds = Object.keys(REPORT.rxCount).length;
   REPORT.rxMissing = REACTIONS.filter(r => !REPORT.rxCount[r.name]).map(r => r.name);

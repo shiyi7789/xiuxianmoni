@@ -107,8 +107,12 @@ function spawnEBullet(G, x, y, ang, spd, opt = {}) {
 /* ---------------------------------------------------------
    玩家子弹
    --------------------------------------------------------- */
+/* 玩家弹幕硬上限：正常玩法离它很远（压测峰值 ~600），它防的是"分裂类"指数爆炸。
+   任何来源都不得把 pBullets 堆过这个数，宁可少画几发也不能卡死帧。 */
+const PBULLET_HARD_CAP = 1400;
 function spawnPBullet(G, x, y, ang, opt = {}) {
   const p = G.player;
+  if (G.pBullets.length >= PBULLET_HARD_CAP) return;
   G.pBullets.push({
     x, y,
     vx: Math.cos(ang) * (opt.spd || 760),
@@ -130,6 +134,7 @@ function spawnPBullet(G, x, y, ang, opt = {}) {
     trail: opt.trail !== false,
     hist: null,                                   // 尾迹历史点（惰性分配）
     burst: opt.burst || 0,                        // 消失时的小爆半径（散射聚合）
+    noSplit: opt.noSplit || 0,                    // 分裂/折射子代标记：子代不得再分裂（否则指数爆炸）
     born: G.t,                                    // 用于舰船系留束（0.16s）
     x0: x, y0: y,
   });

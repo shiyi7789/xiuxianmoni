@@ -208,7 +208,7 @@ function newPlayer() {
     shield: 0, shieldMax: 0, shieldTimer: 0, shieldPulse: 0,
     noShield: 0, removed: {}, sixPick: 0,
     elems: [],                       // 元素（上限 2，Lv4 / Lv9 各一次，不进卡池）
-    energy: 0, lanceOn: false, lanceCd: 0,
+    energy: 0, lanceOn: false, lanceOver: 0, lanceCd: 0,
     stillT: 0, _bastionK: 0, fieldSlow: 0, pickupN: 0,
     // 主动
     dashLv: 0, dashCd: 0, dashCdMax: 6, dashT: 0, dashVX: 0, dashVY: 0,
@@ -566,6 +566,8 @@ window.addEventListener('keydown', (e) => {
   if (k === 'q') doBomb();
   if (k === 'e') doSlow();
   if (k === 'f') doPhase();
+  /* v3.2 持续光束改为手动释放：R 开/关（能量不足时不响应并提示） */
+  if (k === 'r' && G.state === 'playing') tLanceToggle(G.player);
   if (k === 'p') { if (G.state === 'playing') pauseGame(); else if (G.state === 'paused') resumeGame(); }
   if (k === 'm') { const on = SFX.toggleMute(); G.toast(on ? '音效开启' : '音效关闭'); }
   {
@@ -840,6 +842,7 @@ function updateWorld(dt) {
             spawnPBullet(G, e.x, e.y, bang + (i ? 0.46 : -0.46), {
               spd: sp * 0.8, r: b.r, len: b.len, dmg: b.dmg * 0.5, pierce: 1,
               color: b.color, kind: b.kind, src: b.src, life: 0.75, crit: b.crit,
+              noSplit: 1,                       // 折射子代不得再折射，否则同样会指数爆炸
             });
           }
           G.particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.22, max: 0.22, size: 54, color: '#D9C2FF', kind: 'ring' });
@@ -865,8 +868,9 @@ function updateWorld(dt) {
           /* 穿透连锁（b_pierce）：每穿透 1 个敌人剩余伤害 +14%（叠乘） */
           if (p.stats.pierceGrow) b.dmg *= 1 + 0.14 * p.stats.pierceGrow;
         } else {
-          /* 导弹分导（t_split）：导弹销毁时裂成 3+2×(lv−1) 枚小追踪弹 */
-          if (b.kind === 'missile' && p.stats.tSplit) {
+          /* 导弹分导（t_split）：导弹销毁时裂成 3+2×(lv−1) 枚小追踪弹
+             ⚠ 判 !b.noSplit：小追踪弹 kind 仍是 'missile'，不拦就会"弹生弹"指数爆炸（卡死真因） */
+          if (b.kind === 'missile' && p.stats.tSplit && !b.noSplit) {
             const lv = p.stats.tSplit;
             const n = 3 + 2 * (lv - 1);
             const dm = b.dmg * (0.45 + 0.15 * (lv - 1));
@@ -874,6 +878,7 @@ function updateWorld(dt) {
               spawnPBullet(G, b.x, b.y, bang + rand(0.72, -0.72), {
                 spd: 430, r: 4, len: 13, dmg: dm, kind: 'missile', homing: 5.6,
                 color: b.color, src: 'missile', life: 0.85, crit: b.crit, trail: true,
+                noSplit: 1,
               });
             }
             G.particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, life: 0.2, max: 0.2, size: 46, color: '#b39dff', kind: 'ring' });
@@ -1369,14 +1374,15 @@ function drawLance() {
   const p = G.player;
   if (!p || !p.lanceOn) return;
   const low = p.energy <= 0.5;
-  const k = low ? 0.4 : 1;
+  const over = !low && p.lanceOver ? 1 : 0;
+  const k = (low ? 0.4 : 1) * (over ? 1.45 : 1);
   const y0 = p.y - 14, y1 = -40, x1 = p.x + Math.sin(G.t * 1.6) * 26;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'round';
   const layers = [
-    { c: low ? '#ff5566' : '#9fefff', lw: 26 * k, a: 0.18 },
-    { c: low ? '#ff8f6b' : '#7ef9ff', lw: 11 * k, a: 0.55 },
+    { c: low ? '#ff5566' : (over ? '#ffb347' : '#9fefff'), lw: 26 * k, a: 0.18 },
+    { c: low ? '#ff8f6b' : (over ? '#ffd166' : '#7ef9ff'), lw: 11 * k, a: 0.55 },
     { c: low ? 'rgba(255,180,180,.9)' : '#ffffff', lw: 3.2 * k, a: 1 },
   ];
   for (const L of layers) {
@@ -1392,7 +1398,7 @@ function drawLance() {
     ctx.stroke();
   }
   /* 束首灼烧点：光斑 + 4 道 45° 芒线 */
-  drawGlow(ctx, x1, y1 + 8, 42 * k, low ? '#ff5566' : '#bff4ff', 0.8);
+  drawGlow(ctx, x1, y1 + 8, 42 * k, low ? '#ff5566' : (over ? '#ffd166' : '#bff4ff'), 0.8);
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + i * Math.PI / 2;
     ctx.strokeStyle = rgba('#ffffff', 0.55 * k);
@@ -1774,6 +1780,8 @@ function syncUI() {
     ui.energyBar.classList.remove('hidden');
     ui.energy.style.transform = 'scaleX(' + clamp(p.energy / Math.max(1, p.stats.energyMax), 0, 1) + ')';
     ui.energyBar.classList.toggle('low', p.energy <= 0.5);
+    /* v3.2：满能待释放时整条变金色，提示"现在放就是过载" */
+    ui.energyBar.classList.toggle('over', !!p.lanceOver || p.energy >= (p.stats.energyMax || 100) - 0.5);
   } else if (!ui.energyBar.classList.contains('hidden')) {
     ui.energyBar.classList.add('hidden');
   }
@@ -1804,6 +1812,12 @@ function syncUI() {
   if (p.slowLv) ab.push({ k: 'E', i: '⧗', cd: p.slowCd / p.slowCdMax, ready: p.slowCd <= 0 });
   /* v3.1：相位门原先漏在 HUD 之外 —— 玩家拿了卡却看不到指示 */
   if (p.phaseLv) ab.push({ k: 'F', i: '⊕', cd: p.phaseCd / (p.phaseCdMax || 9), ready: p.phaseCd <= 0 });
+  /* v3.2：持续光束改手动释放后，HUD 必须给出"按 R"的入口（否则玩家只会看到能量条满着不动） */
+  if (p.stats.lance) ab.push({
+    k: 'R', i: '❂',
+    cd: p.lanceOn ? 1 : 1 - clamp(p.energy / Math.max(1, p.stats.energyMax), 0, 1),
+    ready: !!p.lanceOn || p.energy >= 10,
+  });
   const ahtml = ab.map(a => '<div class="ab' + (a.ready ? '' : ' off') + '">' + a.i +
     (a.n != null ? '<small>×' + a.n + '</small>' : '<small>' + a.k + '</small>') +
     (a.cd > 0 ? '<span class="cd" style="transform:scaleY(' + clamp(a.cd, 0, 1) + ')"></span>' : '') +
@@ -1820,9 +1834,11 @@ const tskEls = {
   bomb: document.getElementById('tskBomb'),
   slow: document.getElementById('tskSlow'),
   phase: document.getElementById('tskPhase'),
+  lance: document.getElementById('tskLance'),
 };
 {
-  const ACT = { dash: doDash, bomb: doBomb, slow: doSlow, phase: doPhase };
+  /* v3.2：持续光束改成手动释放后，手机必须有一个可点入口（否则该卡在移动端形同废弃） */
+  const ACT = { dash: doDash, bomb: doBomb, slow: doSlow, phase: doPhase, lance: () => tLanceToggle(G.player) };
   for (const k in tskEls) {
     const el = tskEls[k];
     if (!el) continue;
@@ -1861,6 +1877,27 @@ function syncTouchSkills() {
   upd(tskEls.bomb, p.bombCount > 0, 0, p.bombCount);
   upd(tskEls.slow, !!p.slowLv, p.slowCd / Math.max(0.01, p.slowCdMax), null);
   upd(tskEls.phase, !!p.phaseLv, p.phaseCd / Math.max(0.01, p.phaseCdMax || 9), null);
+
+  /* 持续光束：<u> 用"未充能比例"表示进度（越矮越接近满能），文案随状态变化 */
+  {
+    const el = tskEls.lance;
+    if (el) {
+      const has = !!(p.stats && p.stats.lance);
+      el.classList.toggle('hidden', !has);
+      if (has) {
+        const max = p.stats.energyMax || 100;
+        const ratio = clamp(p.energy / Math.max(1, max), 0, 1);
+        const full = p.energy >= max - 0.5;
+        el.classList.toggle('off', !p.lanceOn && p.energy < 10);
+        el.classList.toggle('over', !!p.lanceOver || (!p.lanceOn && full));
+        const u = el.querySelector('u');
+        if (u) u.style.transform = 'scaleY(' + (1 - ratio).toFixed(3) + ')';
+        const sm = el.querySelector('small');
+        const txt = p.lanceOn ? '收束' : (full ? '过载' : '光束');
+        if (sm && sm.textContent !== txt) sm.textContent = txt;
+      }
+    }
+  }
 }
 
 /* ---------------------------------------------------------
@@ -2173,7 +2210,7 @@ function snapshotRun() {
       growthStack: p.growthStack, growthT: p.growthT,
       adaptLv: p.adaptLv, adaptStacks: p.adaptStacks, phaseLv: p.phaseLv,
       dashLv: p.dashLv, bombCount: p.bombCount, bombDmg: p.bombDmg, slowLv: p.slowLv,
-      energy: p.energy, lanceOn: p.lanceOn,
+      energy: p.energy, lanceOn: p.lanceOn, lanceOver: p.lanceOver,
       g1: p._gate1Done, g2: p._gate2Done,
     },
   };
@@ -2223,7 +2260,7 @@ function resumeSavedRun() {
     growthStack: q.growthStack, growthT: q.growthT,
     adaptLv: q.adaptLv, adaptStacks: q.adaptStacks, phaseLv: q.phaseLv,
     dashLv: q.dashLv, bombCount: q.bombCount, bombDmg: q.bombDmg, slowLv: q.slowLv,
-    energy: q.energy, lanceOn: q.lanceOn,
+    energy: q.energy, lanceOn: q.lanceOn, lanceOver: q.lanceOver,
     _gate1Done: q.g1, _gate2Done: q.g2,
   });
   G.wave = Math.max(1, s.wave | 0);
@@ -2380,7 +2417,7 @@ function renderHangar() {
       '</div>' +
       (cost === null ? '' :
         '<button class="btn hg-up' + (can ? '' : ' off') + '" data-line="' + L.id +
-        (can ? '' : ' disabled') + '>' + (can ? '升 级' : '星尘不足') + '</button>') +
+        '"' + (can ? '' : ' disabled') + '>' + (can ? '升 级' : '星尘不足') + '</button>') +
       '</div>');
   }
 
@@ -2449,6 +2486,9 @@ function renderHangar() {
 
 /* 三个动作抽成具名函数：UI 与无头自检走同一条路径（否则点击逻辑无法被测试覆盖） */
 function metaUpgrade(lineId) {
+  /* 白名单校验：v3.1 的机库按钮少了一个引号，把整段标签当 id 传进来 →
+     扣了星尘、写了脏 key，最后在 META_LINES.find(...).name 抛异常（表现为"点击无反应"）。 */
+  if (!META_LINES.some(l => l.id === lineId)) return false;
   const cost = nextCost(META, lineId);
   if (cost === null || META.dust < cost) return false;
   META.dust -= cost;

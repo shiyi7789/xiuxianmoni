@@ -305,6 +305,8 @@ chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'elements',
 {
   const MT = (bodies['/rogue/js/meta.js'] || {}).text || '';
   const GMC = (bodies['/rogue/js/game.js'] || {}).text || '';
+  const UPG = (bodies['/rogue/js/upgrades.js'] || {}).text || '';
+  const ENT = (bodies['/rogue/js/entities.js'] || {}).text || '';
   /* ⚠ 必须比对 <script> 标签：index.html 顶部的 subpathBase 注释里也提到了 js/game.js，
      用裸文件名 indexOf 会命中注释（实测 meta 在 9076、注释里的 game 在 1766）→ 假失败。 */
   chk('meta.js 在 game.js 之前加载',
@@ -344,12 +346,22 @@ chk('脚本按顺序拼接且不依赖打包器', ['utils', 'audio', 'elements',
     chk('菜单显隐统一走 showMenu（修「只隐藏从不显示」的卡死 bug）',
       /function showMenu/.test(GMC) && !/getElementById\('menu'\)\.classList\.add\('hidden'\)/.test(GMC),
       '原来返回主菜单后菜单不出现，玩家卡在空画布');
-    chk('移动端技能按钮 4 个（冲刺 / 核弹 / 时缓 / 相位）',
-      (RGI.match(/class="tsk[ "]/g) || []).length === 4, '');
+    chk('移动端技能按钮 5 个（冲刺 / 核弹 / 时缓 / 相位 / 光束）',
+      (RGI.match(/class="tsk[ "]/g) || []).length === 5, '');
     chk('技能按钮仅在触摸设备显示（pointer: coarse）',
       /pointer:\s*coarse/.test(CSSR) && /\.touch-skills/.test(CSSR), '桌面端保持键位 UI');
     chk('本机波次中位数（零隐私风险的"自己的分布"）',
       /function metaMedianWave/.test(MT) && /recent/.test(MT), '数据报告 §6.4 方案①');
+    /* ---------- v3.2 三个 bug 的静态守卫 ---------- */
+    chk('导弹分导子代带 noSplit（否则弹生弹指数爆炸 → 卡死）',
+      /noSplit/.test(ENT) && /!b\.noSplit/.test(GMC) && /noSplit: 1/.test(GMC),
+      '分裂弹 kind 仍是 missile，不拦就会无限递归');
+    chk('持续光束手动释放（不再"能量一过阈值就自动开火"）',
+      /function tLanceToggle/.test(UPG) && !/const on = p\.energy > 0\.5/.test(UPG),
+      '旧行为让能量在 0.5 附近锯齿放电，永远攒不满');
+    chk('机库升级按钮 data-line 属性闭合（点了没反应的真因）',
+      /data-line="' \+ L\.id \+\s*'"'/.test(GMC) && !/data-line="' \+ L\.id \+ \(can/.test(GMC),
+      '少一个引号会让属性吞掉后面的标签，metaUpgrade 收到脏 id 抛异常');
   }
   chk('元素上限走 elemCap（改装槽「三相共鸣」才能生效）',
     /function elemCap/.test(MT) && /elemCap\(p\)/.test(GMC), '');
