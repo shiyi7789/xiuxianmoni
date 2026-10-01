@@ -17,7 +17,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/entities.js',
+const FILES = ['js/icons.js', 'js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/codex.js', 'js/entities.js',
   'js/upgrades.js', 'js/waves.js', 'js/game.js'];
 
 /* ---------------- DOM / Canvas 桩（与 smoke.js 同源） ---------------- */

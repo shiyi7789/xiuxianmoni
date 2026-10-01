@@ -4,7 +4,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const FILES = ['js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/entities.js', 'js/upgrades.js', 'js/waves.js', 'js/game.js'];
+const FILES = ['js/icons.js', 'js/utils.js', 'js/audio.js', 'js/elements.js', 'js/meta.js', 'js/codex.js', 'js/entities.js', 'js/upgrades.js', 'js/waves.js', 'js/game.js'];
 
 /* ---------------- DOM / Canvas 桩 ---------------- */
 function makeCtx() {
@@ -418,6 +418,63 @@ const driver = `
       REPORT.errors.push('lance: 手动释放/过载语义未满足');
     }
   } catch (e) { REPORT.errors.push('lance: ' + e.message); }
+
+  /* ---- v3.3 武器进化（"让每一局都值得讲一遍"的质变时刻） ---- */
+  REPORT.evo = {};
+  try {
+    REPORT.evo.locked = availableEvos(newPlayer()).length === 0;   // 新号不该有可进化项
+    const q = newPlayer();
+    q.wlv.laser = 5; q.taken.p_shield = 1;
+    REPORT.evo.available = availableEvos(q).length;
+    REPORT.evo.take = takeEvo(q, 'evo_laser') === true;
+    REPORT.evo.dup = takeEvo(q, 'evo_laser') === false;             // 不许重复进化
+    REPORT.evo.flag = q.evo.laser === 1;
+    REPORT.evo.gone = !availableEvos(q).some(e => e.id === 'evo_laser');
+    /* 八条进化逐条验证：条件可达 + apply 不报错 + 标记写对 */
+    let allOk = true;
+    const q2 = newPlayer();
+    for (const e of EVOLUTIONS) {
+      q2.evo = {}; q2.wlv = { main: 0, laser: 0, spread: 0, missile: 0, drone: 0, arc: 0, boomer: 0, black: 0 };
+      q2.wlv[e.w] = e.lv;
+      if (e.card) q2.taken[e.card] = e.need || 1;
+      if (!availableEvos(q2).some(x => x.id === e.id)) allOk = false;
+      if (!takeEvo(q2, e.id) || q2.evo[e.w] !== 1) allOk = false;
+    }
+    REPORT.evo.all = allOk;
+    /* 抽卡里必须真的能出现"进化"档（不能只存在于数据表里） */
+    const q3 = newPlayer();
+    q3.wlv.laser = 5; q3.taken.p_shield = 1;
+    const hand = drawCards(G, q3, undefined, null);
+    REPORT.evo.inHand = hand.some(u => u.tag === '进化');
+    if (!REPORT.evo.locked || !REPORT.evo.take || !REPORT.evo.dup || !REPORT.evo.flag ||
+        !REPORT.evo.all || !REPORT.evo.inHand) {
+      REPORT.errors.push('evo: 武器进化契约未满足');
+    }
+  } catch (e) { REPORT.errors.push('evo: ' + e.message); }
+
+  /* ---- v3.3 图鉴 / 成就 / 死亡叙事 ---- */
+  REPORT.codex = {};
+  try {
+    const n0 = ENEMY_SEEN.drone | 0;
+    codexKill('drone'); codexKill('drone');
+    REPORT.codex.kills = (ENEMY_SEEN.drone | 0) === n0 + 2;
+    REPORT.codex.persist = !!JSON.parse(localStorage.getItem('rt_codex_v1') || 'null');
+    REPORT.codex.rows = ENEMY_CODEX.length === 19;
+    REPORT.codex.ach = ACHIEVEMENTS.length >= 20;
+    /* 造一个"高光局"，成就必须能解锁（含无伤与进化类） */
+    G.player = newPlayer();
+    G.player.evo = { missile: 1 };
+    G.player.elems = ['ice', 'thunder'];
+    G.wave = 30; G.kills = 700; G.score = 60000; G.bossKills = 6;
+    G.rxTotal = 40; G.bestCombo = 55; G.playerHits = 0; G.usedOverload = 1; G.isDaily = 1;
+    const got = achCheck(G);
+    REPORT.codex.unlocked = got.length;
+    REPORT.codex.w30 = !!ACH.w30 && !!ACH.noHit10 && !!ACH.evo1;
+    REPORT.codex.html = codexEnemyHtml().length > 200 && codexAchHtml().length > 200;
+    if (!REPORT.codex.kills || !REPORT.codex.persist || !REPORT.codex.w30 || !REPORT.codex.html) {
+      REPORT.errors.push('codex: 图鉴/成就契约未满足');
+    }
+  } catch (e) { REPORT.errors.push('codex: ' + e.message); }
 
   REPORT.rxKinds = Object.keys(REPORT.rxCount).length;
   REPORT.rxMissing = REACTIONS.filter(r => !REPORT.rxCount[r.name]).map(r => r.name);

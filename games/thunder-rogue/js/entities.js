@@ -135,6 +135,10 @@ function spawnPBullet(G, x, y, ang, opt = {}) {
     hist: null,                                   // 尾迹历史点（惰性分配）
     burst: opt.burst || 0,                        // 消失时的小爆半径（散射聚合）
     noSplit: opt.noSplit || 0,                    // 分裂/折射子代标记：子代不得再分裂（否则指数爆炸）
+    /* v3.3 武器进化的弹丸标记（原样透传，逻辑在 game.js 的碰撞里） */
+    evoChain: opt.evoChain || 0,                  // 棱镜炮：命中后折射跳数
+    nova: opt.nova || 0,                          // 超新星：近距离增伤
+    evoBlade: opt.evoBlade || 0,                  // 千刃回廊：首次命中裂开
     born: G.t,                                    // 用于舰船系留束（0.16s）
     x0: x, y0: y,
   });
@@ -259,6 +263,9 @@ function damageEnemy(G, e, dmg, opt = {}) {
 function killEnemy(G, e) {
   if (e.dead) return;
   e.dead = true;
+  /* v3.3 图鉴与成就的击杀埋点 */
+  if (typeof codexKill === 'function') codexKill(e.type);
+  if (e.isBoss) G.bossKills = (G.bossKills | 0) + 1;
 
   const isBig = e.isBoss || e.type === 'tank' || e.type === 'bulwark';
   SFX.playAt(isBig ? 'bigKill' : 'kill', e.x, e.y);

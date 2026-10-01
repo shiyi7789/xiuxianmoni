@@ -24,9 +24,9 @@ const SAVE_V1_KEY = 'rt_best';        // v1 只有一个最高分
    三线升级（§5.3）
    --------------------------------------------------------- */
 const META_LINES = [
-  { id: 'hull',   name: '机体线', icon: '⛨', per: '每级 +6 最大生命 · +1.5% 减伤' },
-  { id: 'fire',   name: '火力线', icon: '✦', per: '每级 +2% 伤害 · +1.5% 射速' },
-  { id: 'engine', name: '引擎线', icon: '⇢', per: '每级 +1.5% 移速 · −0.12s 冲刺冷却' },
+  { id: 'hull',   name: '机体线', icon: 'line_hull',   per: '每级 +6 最大生命 · +1.5% 减伤' },
+  { id: 'fire',   name: '火力线', icon: 'line_fire',   per: '每级 +2% 伤害 · +1.5% 射速' },
+  { id: 'engine', name: '引擎线', icon: 'line_engine', per: '每级 +1.5% 移速 · −0.12s 冲刺冷却' },
 ];
 const META_MAX_LV = 10;
 /** 单级花费：380 × 1.42^(n−1)（§5.3 [公式]） */
